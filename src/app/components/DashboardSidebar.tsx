@@ -92,12 +92,12 @@ export function DashboardSidebar() {
   };
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       {/* Mobile Menu Button */}
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-20 left-4 z-50 md:hidden"
+        className="fixed top-40 left-4 z-50 md:hidden"
         onClick={toggleMobileSidebar}
       >
         {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -162,7 +162,7 @@ export function DashboardSidebar() {
           isCollapsed ? "w-20" : "w-64"
         )}
       />
-    </>
+    </div>
   );
 }
 

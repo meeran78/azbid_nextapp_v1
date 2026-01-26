@@ -31,7 +31,7 @@ const Header = () => {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 	const { data: session } = useSession();
-
+	const isSeller = session?.user?.role === "SELLER";
 	const navigate = useRouter();
 
 	useEffect(() => {
@@ -74,27 +74,30 @@ const Header = () => {
 								<Image src="/images/azbid-logo.jpg" alt="Logo" width={46} height={26} className='rounded-full' />
 							</div>
 							<nav className='hidden md:flex items-center space-x-6'>
-								<Button
-									variant='ghost'
-									size='sm'
-									onClick={() => navigate.push('/')}
-									className='hover:scale-105 transition-all duration-200'>
-									Home
-								</Button>
-								<Button
-									variant='ghost'
-									size='sm'
-									onClick={() => navigate.push('/live-auctions')}
-									className='hover:scale-105 transition-all duration-200'>
-									Live Auctions
-								</Button>
-								<Button
-									variant='ghost'
-									size='sm'
-									onClick={() => navigate.push('/buy-now')}>
-									Buy Now
-								</Button>
-
+								{!isSeller && (
+									<>
+										<Button
+											variant='ghost'
+											size='sm'
+											onClick={() => navigate.push('/')}
+											className='hover:scale-105 transition-all duration-200'>
+											Home
+										</Button>
+										<Button
+											variant='ghost'
+											size='sm'
+											onClick={() => navigate.push('/live-auctions')}
+											className='hover:scale-105 transition-all duration-200'>
+											Live Auctions
+										</Button>
+										<Button
+											variant='ghost'
+											size='sm'
+											onClick={() => navigate.push('/buy-now')}>
+											Buy Now
+										</Button>
+									</>
+								)}
 								<Button
 									variant='ghost'
 									size='sm'
@@ -122,57 +125,54 @@ const Header = () => {
 							</nav>
 						</div>
 						{/* Desktop Login Button */}
-						{session?.user ? (
+						<div className="flex items-center gap-4">
+							{/* Welcome message for all logged-in users */}
+							{session?.user && (
+								<p className="flex items-center gap-2">
+									<span
+										data-role={session.user.role}
+										className="size-4 rounded-full animate-pulse data-[role=BUYER]:bg-blue-600 data-[role=SELLER]:bg-purple-600 data-[role=ADMIN]:bg-red-600"
+									/>
+									Welcome back, {session.user.name}!👋
+								</p>
+							)}
 
-							<>
-								{session && (
-									<p className=" flex items-center gap-2">
-										<span
-											data-role={session.user.role}
-											className="size-4 rounded-full animate-pulse data-[role=USER]:bg-blue-600 data-[role=ADMIN]:bg-red-600"
-										/>
-										Welcome back, {session.user.name}!👋
-									</p>
-								)}
+							{/* Dashboard button - only for BUYER */}
+							{session?.user && session?.user?.role === "BUYER" ? (
 								<Button
 									variant='default'
 									size='sm'
 									onClick={() => {
-										if (session.user.role === 'BUYER') {
-											navigate.push('/buyers-dashboard');
-										} else if (session.user.role === 'SELLER') {
-											navigate.push('/sellers-dashboard');
-										} else if (session.user.role === 'ADMIN') {
-											navigate.push('/admin-dashboard');
-										}
+										navigate.push('/buyers-dashboard');
 									}}
-									className=' md:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse hover:animate-none'>
+									className='md:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse hover:animate-none'>
 									<UserCircle className='h-4 w-4' />
 									<span className='font-medium'>Dashboard</span>
 								</Button>
-								<div className=' flex justify-center'>
+							) : !session?.user ? (
+								<Button
+									variant='default'
+									size='sm'
+									onClick={() => navigate.push('/sign-in')}
+									className='hidden md:flex items-justify gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'>
+									{/* Animated background effect */}
+									<span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000'></span>
+									<LogIn className='h-4 w-4 relative z-10 animate-bounce group-hover:animate-none' />
+									<span className='font-medium relative z-10'>Sign In</span>
+								</Button>
+							) : null}
+
+							{/* Sign Out button for all logged-in users */}
+							{session?.user && (
+								<div className='flex justify-center'>
 									<SignOutButton />
 								</div>
+							)}
+						
+						</div>
+					
 
-							</>
-
-
-						) : (
-							<div className='items-end ml-auto'>
-								<Button
-								variant='default'
-								size='sm'
-								onClick={() => navigate.push('/sign-in')}
-								className='hidden md:flex items-justify gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'>
-								{/* Animated background effect */}
-								<span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000'></span>
-								<LogIn className='h-4 w-4 relative z-10 animate-bounce group-hover:animate-none' />
-								<span className='font-medium relative z-10'>Sign In</span>
-							</Button>
-							</div>
-							
-						)}
-
+								
 						<div className='flex items-center space-x-4'>
 							{/* Mobile Hamburger Button */}
 							<Button
@@ -205,11 +205,11 @@ const Header = () => {
 
 			{/* Mobile Menu Overlay */}
 			<div
-				className={`fixed inset-0 z-50 md:hidden ${isMobileMenuOpen ? 'visible' : 'invisible'
+				className={`fixed inset-0 z-50 md:hidden  ${isMobileMenuOpen ? 'visible' : 'invisible' 
 					}`}>
 				{/* Backdrop */}
 				<div
-					className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
+					className={`fixed inset-0 bg-black/50 transition-opacity duration-300  ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
 						}`}
 					onClick={() => setIsMobileMenuOpen(false)}
 				/>
@@ -262,33 +262,37 @@ const Header = () => {
 						{/* Navigation */}
 						<div className='flex-1 overflow-y-auto p-6'>
 							<nav className='space-y-2'>
-								<Button
-									variant='ghost'
-									className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
-									onClick={() => {
-										navigate.push('/');
-										setIsMobileMenuOpen(false);
-									}}>
-									Home
-								</Button>
-								<Button
-									variant='ghost'
-									className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
-									onClick={() => {
-										navigate.push('/live-auctions');
-										setIsMobileMenuOpen(false);
-									}}>
-									Live Auctions
-								</Button>
-								<Button
-									variant='ghost'
-									className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
-									onClick={() => {
-										navigate.push('/buy-now');
-										setIsMobileMenuOpen(false);
-									}}>
-									Buy Now
-								</Button>
+								{!isSeller && (
+									<>
+										<Button
+											variant='ghost'
+											className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
+											onClick={() => {
+												navigate.push('/');
+												setIsMobileMenuOpen(false);
+											}}>
+											Home
+										</Button>
+										<Button
+											variant='ghost'
+											className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
+											onClick={() => {
+												navigate.push('/live-auctions');
+												setIsMobileMenuOpen(false);
+											}}>
+											Live Auctions
+										</Button>
+										<Button
+											variant='ghost'
+											className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
+											onClick={() => {
+												navigate.push('/buy-now');
+												setIsMobileMenuOpen(false);
+											}}>
+											Buy Now
+										</Button>
+									</>
+								)}
 								<Button
 									variant='ghost'
 									className='w-full justify-start text-left hover:scale-105 transition-all duration-200'
@@ -342,31 +346,18 @@ const Header = () => {
 								{/* Cart ({getTotalItems()}) */}
 							</Button>
 
-							{/* Login/Dashboard Button */}
-							{session?.user ? (
-								<><Button
+							{session?.user && session?.user?.role === "BUYER" ? (
+								<Button
 									variant='default'
 									className='w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300'
 									onClick={() => {
-										if (session.user.role === 'BUYER') {
-											navigate.push('/buyers-dashboard');
-										} else if (session.user.role === 'SELLER') {
-											navigate.push('/sellers-dashboard');
-										} else if (session.user.role === 'ADMIN') {
-											navigate.push('/admin-dashboard');
-										}
+										navigate.push('/buyers-dashboard');
 										setIsMobileMenuOpen(false);
 									}}>
 									<UserCircle className='h-4 w-4 mr-2' />
 									Dashboard
 								</Button>
-									<div className='w-full flex justify-center'>
-										<SignOutButton />
-									</div>
-
-								</>
-
-							) : (
+							) : !session?.user ? (
 								<Button
 									variant='default'
 									className='w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'
@@ -379,7 +370,15 @@ const Header = () => {
 									<LogIn className='h-4 w-4 mr-2 relative z-10 animate-bounce group-hover:animate-none' />
 									<span className='relative z-10 font-medium'>Sign In</span>
 								</Button>
-							)}
+							) : null}
+
+							{/* Sign Out button for all logged-in users */}
+							{/* {session?.user && (
+								<div className='w-full flex justify-center'>
+									<SignOutButton />
+								</div>
+							)} */}
+
 						</div>
 					</div>
 				</div>

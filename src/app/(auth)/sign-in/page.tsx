@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { signInEmailAction } from "@/actions/signInEmail.action";
 import { SignInOauthButton } from "@/app/components/SignInOauthButton";
 import { MagicLinkLoginForm } from "@/app/components/MagicLinkForm";
+
 export default function SignInPage() {
   const router = useRouter();
 
@@ -23,7 +24,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
+ 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -86,11 +87,45 @@ export default function SignInPage() {
           duration: 3000,
         });
         
+       
         // Small delay before redirect for better UX
         // Use window.location for full page reload to ensure session is refreshed
         // This ensures cookies are properly read and session updates
-        setTimeout(() => {
-          window.location.href = "/";
+        // setTimeout(() => {
+        //   window.location.href = "/";
+        // }, 1000);
+         // Wait for session to update, then redirect based on role
+         setTimeout(async () => {
+          try {
+            // Fetch session directly from Better Auth API
+            const response = await fetch("/api/auth/get-session", {
+              method: "GET",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+            
+            if (response.ok) {
+              const sessionData = await response.json();
+              const userRole = sessionData?.user?.role;
+              
+              if (userRole === "SELLER") {
+                window.location.href = "/sellers-dashboard";
+              }  else if (userRole === "ADMIN") {
+                window.location.href = "/admin-dashboard";
+              } else {
+                window.location.href = "/";
+              }
+            } else {
+              // Fallback to home if session fetch fails
+              window.location.href = "/";
+            }
+          } catch (err) {
+            console.error("Error fetching session:", err);
+            // Fallback to home if session fetch fails
+            window.location.href = "/";
+          }
         }, 1000);
       }
     } catch (err) {
@@ -122,7 +157,7 @@ export default function SignInPage() {
           <div className="flex flex-col gap-2 space-y-2 mb-4">
             <SignInOauthButton provider="github" signUp={false} /> 
           </div> */}
-          <MagicLinkLoginForm />
+          {/* <MagicLinkLoginForm /> */}
 
           <div className="relative mb-4">
             <div className="absolute inset-0 flex items-center">
