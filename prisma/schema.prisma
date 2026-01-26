@@ -19,6 +19,40 @@ enum UserRole {
   ADMIN
 }
 
+enum StoreStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AuctionStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum LotStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  SOLD
+  UNSOLD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum InvoiceStatus {
+  OPEN
+  PAID
+  VOID
+}
+
 model Post {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
@@ -35,8 +69,8 @@ model Post {
 
 model User {
   id        String   @id @default(uuid())
-  createdAt DateTime
-  updatedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   name          String
   email         String    @unique
@@ -50,6 +84,19 @@ model User {
   sessions Session[]
   accounts Account[]
   posts    Post[]
+
+  // Buyer
+  bids   Bid[]
+  orders Order[]
+
+  // Seller
+  stores Store[]
+
+  // Admin actions
+  adminLogs AdminLog[]
+
+  //Stripe
+  stripeCustomerId String? @unique
 
   @@map("users")
 }
@@ -104,3 +151,182 @@ model Verification {
   @@map("verifications")
 }
 
+model Store {
+  id      String @id @default(uuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  name          String
+  description   String?
+  logoUrl       String?
+  commissionPct Float
+  status        StoreStatus @default(ACTIVE)
+
+  auctions Auction[]
+  lots     Lot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, status])
+}
+
+model Auction {
+  id      String @id @default(uuid())
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
+
+  title       String
+  description String?
+  status      AuctionStatus @default(DRAFT)
+
+  startAt DateTime
+  endAt   DateTime
+
+  // 🔥 Soft-close config
+  softCloseEnabled     Boolean @default(true)
+  softCloseWindowSec   Int     @default(120)
+  softCloseExtendSec   Int     @default(60)
+  softCloseExtendLimit Int     @default(10)
+
+  lots Lot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId, status])
+}
+
+model Lot {
+  id        String  @id @default(uuid())
+  storeId   String
+  auctionId String?
+
+  store   Store    @relation(fields: [storeId], references: [id])
+  auction Auction? @relation(fields: [auctionId], references: [id])
+
+  title       String
+  description String?
+  status      LotStatus @default(DRAFT)
+
+  startPrice   Float
+  reservePrice Float?
+  currentPrice Float?
+
+  // 🔥 Soft-close tracking// ⏱️ Soft-close fields
+  closesAt       DateTime
+  extendedCount  Int       @default(0)
+  lastExtendedAt DateTime?
+
+  items        Item[]
+  bids         Bid[]
+  winningBid   Bid?    @relation("WinningBid", fields: [winningBidId], references: [id])
+  winningBidId String? @unique
+  orders       Order[] // Add this line to fix the Order relation
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId, auctionId, status])
+}
+
+model Item {
+  id    String @id @default(uuid())
+  lotId String
+  lot   Lot    @relation(fields: [lotId], references: [id])
+
+  title       String
+  description String?
+  condition   String?
+  imageUrls   String[]
+
+  estimatedValue Float?
+
+  createdAt DateTime @default(now())
+
+  @@index([lotId])
+}
+
+model Bid {
+  id     String @id @default(uuid())
+  lotId  String
+  userId String
+
+  lot           Lot  @relation(fields: [lotId], references: [id])
+  bidder        User @relation(fields: [userId], references: [id])
+  winningBidFor Lot? @relation("WinningBid") // Add this line to fix the WinningBid relation
+
+  amount Float
+  isAuto Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([lotId, amount])
+}
+
+model Order {
+  id      String @id @default(uuid())
+  buyerId String
+  lotId   String
+
+  buyer User @relation(fields: [buyerId], references: [id])
+  lot   Lot  @relation(fields: [lotId], references: [id])
+
+  subtotal     Float
+  buyerPremium Float
+  tax          Float
+  total        Float
+
+  status PaymentStatus @default(PENDING)
+
+  invoice Invoice?
+  payment Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([buyerId, lotId])
+}
+
+model Invoice {
+  id      String @id @default(uuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  number String        @unique
+  status InvoiceStatus @default(OPEN)
+
+  issuedAt DateTime  @default(now())
+  paidAt   DateTime?
+}
+
+// Payment (Stripe / Gateway)
+model Payment {
+  id      String @id @default(uuid())
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  provider    String // STRIPE
+  providerRef String // PaymentIntent ID
+  amount      Float
+  status      PaymentStatus
+
+  failureReason String?
+
+  createdAt DateTime @default(now())
+}
+
+//Admin Audit Log
+model AdminLog {
+  id      String @id @default(uuid())
+  adminId String
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  action   String
+  entity   String
+  entityId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+}

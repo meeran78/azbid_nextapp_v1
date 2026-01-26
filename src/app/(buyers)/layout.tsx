@@ -1,11 +1,16 @@
-import React from 'react'
+import { DashboardSidebar } from "@/app/components/DashboardSidebar";
 
-type Props = {}
-
-const BuyersLayout = (props: Props) => {
+export default function BuyersLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div>BuyersLayout</div>
-  )
+    <div className="flex min-h-screen">
+      <DashboardSidebar />
+      <main className="flex-1 md:ml-0">
+        {children}
+      </main>
+    </div>
+  );
 }
-
-export default BuyersLayout;

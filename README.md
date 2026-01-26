@@ -110,7 +110,7 @@ Before you begin, ensure you have the following installed:
    pnpm dlx prisma migrate dev
 
    # (Optional) Seed the database
-   # pnpm dlx prisma db seed
+    pnpm dlx prisma db seed
 5. **Start the development server**
        pnpm dev
    # or
@@ -196,15 +196,15 @@ Before you begin, ensure you have the following installed:
     ADMIN - Platform administrators
 ## 🚀 Available Scripts
 
-# Developmentpnpm dev              
-# Start development server (generates Prisma client)# Productionpnpm build            
-# Build for production (generates Prisma client)pnpm start            
-# Start production server# Databasepnpm dlx prisma generate        
-# Generate Prisma Clientpnpm dlx prisma migrate dev      
-# Run migrations in developmentpnpm dlx prisma migrate deploy   
-# Run migrations in productionpnpm dlx prisma studio           
-# Open Prisma Studio# Lintingpnpm lint             
-# Run ESLint# Sanitypnpm dlx sanity@latest loginpnpm create sanity@latest --project 3zqt6l7q --dataset production --template clean --typescript --output-path studio-azbid
+## Developmentpnpm dev              
+## Start development server (generates Prisma client)# Productionpnpm build            
+## Build for production (generates Prisma client)pnpm start            
+## Start production server# Databasepnpm dlx prisma generate        
+## Generate Prisma Clientpnpm dlx prisma migrate dev      
+## Run migrations in developmentpnpm dlx prisma migrate deploy   
+## Run migrations in productionpnpm dlx prisma studio           
+## Open Prisma Studio# Lintingpnpm lint             
+## Run ESLint# Sanitypnpm dlx sanity@latest loginpnpm create sanity@latest --project 3zqt6l7q --dataset production --template clean --typescript --output-path studio-azbid
 
 ## 🎨 UI Components
     This project uses Shadcn/ui components built on Radix UI. Components are located in src/app/components/ui/.

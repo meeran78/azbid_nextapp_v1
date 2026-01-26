@@ -87,10 +87,11 @@ export default function SignInPage() {
         });
         
         // Small delay before redirect for better UX
+        // Use window.location for full page reload to ensure session is refreshed
+        // This ensures cookies are properly read and session updates
         setTimeout(() => {
-          router.push("/");
-          router.refresh();
-        }, 500);
+          window.location.href = "/";
+        }, 1000);
       }
     } catch (err) {
       const errorMessage = "An unexpected error occurred. Please try again.";
