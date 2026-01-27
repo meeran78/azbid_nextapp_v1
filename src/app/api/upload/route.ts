@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
-  if (!session || session.user.role !== "SELLER") {
+  if (!session || (session.user.role !== "SELLER" && session.user.role !== "ADMIN")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -118,7 +118,7 @@ export async function DELETE(request: NextRequest) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
-  if (!session || session.user.role !== "SELLER") {
+  if (!session || (session.user.role !== "SELLER" && session.user.role !== "ADMIN")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

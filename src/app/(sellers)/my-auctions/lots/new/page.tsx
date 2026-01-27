@@ -371,14 +371,14 @@ export default function CreateLotPage() {
                       <FormControl>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                            $
+                            $ 
                           </span>
                           <Input
                             type="number"
                             step="0.01"
                             min="0"
                             placeholder="0.00"
-                            className="pl-7"
+                            className="pl-7 left-6"
                             {...field}
                             value={field.value || ""}
                             onChange={(e) =>

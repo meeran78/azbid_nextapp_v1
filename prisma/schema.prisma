@@ -53,6 +53,11 @@ enum InvoiceStatus {
   VOID
 }
 
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model Post {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
@@ -81,13 +86,33 @@ model User {
   banReason     String?
   banExpires    DateTime?
 
+  // NEW – business address / contact
+  addressLine1            String?
+  addressLine2            String?
+  city                    String?
+  state                   String? // will be driven by dropdown in UI (default “VA”)
+  zipcode                 String?
+  country                 String?
+  displayLocation         String? // e.g. "Richmond, VA"
+  businessPhone           String?
+  businessEmail           String?
+  businessWebsite         String?
+  businessDescription     String?
+  businessLogo            String?
+  businessBanner          String?
+  businessSocialMedia     String?
+  businessSocialMediaUrl  String?
+  businessSocialMediaIcon String?
+
   sessions Session[]
   accounts Account[]
   posts    Post[]
 
   // Buyer
-  bids   Bid[]
-  orders Order[]
+  bids         Bid[]
+  orders       Order[]
+  favourites   StoreFavourite[] // NEW: stores this user has favourited
+  storeReviews StoreReview[] // NEW: reviews this user has written
 
   // Seller
   stores Store[]
@@ -162,13 +187,50 @@ model Store {
   commissionPct Float
   status        StoreStatus @default(ACTIVE)
 
-  auctions Auction[]
-  lots     Lot[]
+  // NEW: reputation metrics
+  averageRating    Float? // e.g. 0–5, computed from StoreReview
+  ratingsCount     Int? // number of ratings used in average
+  responseRate     Float? // 0–100 (% of messages responded to)
+  responseTimeMins Float? // optional: average first response time
+
+  auctions   Auction[]
+  lots       Lot[]
+  favourites StoreFavourite[] // link to who favourited this store
+  reviews    StoreReview[] // NEW: reviews for this store
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ownerId, status])
+}
+
+model StoreFavourite {
+  id      String @id @default(uuid())
+  userId  String
+  storeId String
+
+  user  User  @relation(fields: [userId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storeId])
+  @@index([storeId])
+}
+
+model StoreReview {
+  id        String   @id @default(uuid())
+  storeId   String
+  userId    String // buyer who left the review
+  rating    Int // e.g. 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([storeId])
+  @@index([userId])
 }
 
 model Auction {
@@ -226,6 +288,9 @@ model Item {
   id    String @id @default(uuid())
   lotId String
   lot   Lot    @relation(fields: [lotId], references: [id])
+
+  categoryId String? // Changed from enum to relation
+  category   Category? @relation(fields: [categoryId], references: [id])
 
   title       String
   description String?
@@ -336,4 +401,21 @@ model AdminLog {
   createdAt DateTime @default(now())
 
   @@index([adminId])
+}
+
+// Add Category model (place it before the Item model, around line 280)
+model Category {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  imageUrl    String?
+  status      CategoryStatus @default(ACTIVE)
+
+  items Item[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([name])
 }

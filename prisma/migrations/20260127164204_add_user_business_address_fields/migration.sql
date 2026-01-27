@@ -1,0 +1,17 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN     "addressLine1" TEXT,
+ADD COLUMN     "addressLine2" TEXT,
+ADD COLUMN     "businessBanner" TEXT,
+ADD COLUMN     "businessDescription" TEXT,
+ADD COLUMN     "businessEmail" TEXT,
+ADD COLUMN     "businessLogo" TEXT,
+ADD COLUMN     "businessPhone" TEXT,
+ADD COLUMN     "businessSocialMedia" TEXT,
+ADD COLUMN     "businessSocialMediaIcon" TEXT,
+ADD COLUMN     "businessSocialMediaUrl" TEXT,
+ADD COLUMN     "businessWebsite" TEXT,
+ADD COLUMN     "city" TEXT,
+ADD COLUMN     "country" TEXT,
+ADD COLUMN     "displayLocation" TEXT,
+ADD COLUMN     "state" TEXT,
+ADD COLUMN     "zipcode" TEXT;
