@@ -209,20 +209,12 @@ model Lot {
   description String?
   status      LotStatus @default(DRAFT)
 
-  startPrice   Float
-  reservePrice Float?
-  currentPrice Float?
-
   // 🔥 Soft-close tracking// ⏱️ Soft-close fields
   closesAt       DateTime
   extendedCount  Int       @default(0)
   lastExtendedAt DateTime?
 
-  items        Item[]
-  bids         Bid[]
-  winningBid   Bid?    @relation("WinningBid", fields: [winningBidId], references: [id])
-  winningBidId String? @unique
-  orders       Order[] // Add this line to fix the Order relation
+  items Item[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -240,37 +232,50 @@ model Item {
   condition   String?
   imageUrls   String[]
 
-  estimatedValue Float?
+  startPrice       Float
+  reservePrice     Float?
+  currentPrice     Float?
+  retailPrice      Float?
+  winningBidAmount Float?
+  estimatedValue   Float?
+
+  // Relations for bids and orders per item
+  bids         Bid[]
+  winningBid   Bid?    @relation("WinningBid", fields: [winningBidId], references: [id])
+  winningBidId String? @unique
+  orders       Order[]
 
   createdAt DateTime @default(now())
 
   @@index([lotId])
+  @@index([winningBidId])
 }
 
 model Bid {
   id     String @id @default(uuid())
-  lotId  String
+  itemId String // Changed from lotId
   userId String
 
-  lot           Lot  @relation(fields: [lotId], references: [id])
-  bidder        User @relation(fields: [userId], references: [id])
-  winningBidFor Lot? @relation("WinningBid") // Add this line to fix the WinningBid relation
+  item          Item  @relation(fields: [itemId], references: [id])
+  bidder        User  @relation(fields: [userId], references: [id])
+  winningBidFor Item? @relation("WinningBid")
 
   amount Float
   isAuto Boolean @default(false)
 
   createdAt DateTime @default(now())
 
-  @@index([lotId, amount])
+  @@index([itemId, amount])
+  @@index([userId])
 }
 
 model Order {
   id      String @id @default(uuid())
   buyerId String
-  lotId   String
+  itemId  String // Changed from lotId
 
   buyer User @relation(fields: [buyerId], references: [id])
-  lot   Lot  @relation(fields: [lotId], references: [id])
+  item  Item @relation(fields: [itemId], references: [id])
 
   subtotal     Float
   buyerPremium Float
@@ -285,7 +290,9 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([buyerId, lotId])
+  @@unique([buyerId, itemId])
+  @@index([itemId])
+  @@index([buyerId])
 }
 
 model Invoice {
