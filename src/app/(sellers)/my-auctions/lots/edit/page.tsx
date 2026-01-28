@@ -40,6 +40,7 @@ import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema
 import { createLotAction } from "@/actions/create-lot.action";
 import { getLotAction } from "@/actions/get-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
+import { truncate } from "node:fs";
 
 export default function EditLotPage() {
   const router = useRouter();
@@ -86,7 +87,7 @@ export default function EditLotPage() {
       try {
         // Load lot data
         const lotResult = await getLotAction(lotId);
-        
+
         if (lotResult.error || !lotResult.lot) {
           toast.error(lotResult.error || "Failed to load lot");
           router.push("/my-auctions");
@@ -127,12 +128,14 @@ export default function EditLotPage() {
           description: lot.description || "",
           storeId: lot.storeId,
           auctionId: lot.auctionId || null,
+          status: lot.status,
           lotDisplayId: lot.lotDisplayId || null,
           closesAt: new Date(lot.closesAt),
           removalStartAt: lot.inspectionAt ? new Date(lot.inspectionAt) : null, // Note: schema uses inspectionAt
           inspectionAt: lot.inspectionAt ? new Date(lot.inspectionAt) : null,
           items: itemsWithImages,
           disclaimerAccepted: true, // Assume accepted if lot exists
+          isDraft: lot.status === "DRAFT",
         });
       } catch (error) {
         console.error("Error loading lot:", error);
@@ -147,6 +150,8 @@ export default function EditLotPage() {
   }, [lotId, router, form]);
 
   const onSubmit = async (data: CreateLotFormData, isDraft: boolean = false) => {
+    console.log("data", data);
+    console.log("isDraft", isDraft);
     setIsLoading(true);
     setError("");
 
@@ -157,7 +162,7 @@ export default function EditLotPage() {
 
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
-        
+
         // Upload images
         if (item.images && item.images.length > 0) {
           const urls: string[] = [];
@@ -236,12 +241,11 @@ export default function EditLotPage() {
         title: data.title,
         description: data.description,
         storeId: data.storeId,
-        auctionId: data.auctionId,  
+        auctionId: data.auctionId,
         lotDisplayId: data.lotDisplayId,
         closesAt: data.closesAt.toISOString(),
         removalStartAt: data.removalStartAt?.toISOString() || null,
         inspectionAt: data.inspectionAt?.toISOString() || null,
-      
         items: data.items.map((item, index) => ({
           title: item.title,
           categoryId: item.categoryId,
@@ -270,7 +274,7 @@ export default function EditLotPage() {
         });
       } else {
         toast.success(isDraft ? "Draft Saved!" : "Lot Updated!", {
-          description: isDraft 
+          description: isDraft
             ? "Your draft has been saved. You can continue editing it later."
             : "Your lot has been updated successfully.",
           duration: 3000,
@@ -336,9 +340,9 @@ export default function EditLotPage() {
         )}
 
         <Form {...form}>
-          {/* <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6"> */}
-          <form  onSubmit={form.handleSubmit((formData: CreateLotFormData) => onSubmit(formData, false) )} className="space-y-6">
-       
+          <form onSubmit={(e) => { e.preventDefault(); onSubmit(form.getValues(), false) }} className="space-y-6">
+            {/* <form  onSubmit={form.handleSubmit((formData: CreateLotFormData) => onSubmit(formData, false) )} className="space-y-6"> */}
+
             {/* Lot Details Section */}
             <Card>
               <CardHeader>
@@ -460,8 +464,8 @@ export default function EditLotPage() {
                             value={
                               field.value
                                 ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
+                                  .toISOString()
+                                  .slice(0, 16)
                                 : ""
                             }
                             onChange={(e) =>
@@ -486,8 +490,8 @@ export default function EditLotPage() {
                             value={
                               field.value
                                 ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
+                                  .toISOString()
+                                  .slice(0, 16)
                                 : ""
                             }
                             onChange={(e) =>
@@ -514,8 +518,8 @@ export default function EditLotPage() {
                             value={
                               field.value
                                 ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
+                                  .toISOString()
+                                  .slice(0, 16)
                                 : ""
                             }
                             onChange={(e) =>

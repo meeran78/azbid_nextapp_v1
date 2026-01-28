@@ -73,6 +73,7 @@ export default function CreateLotPage() {
       description: "",
       storeId: storeId || "",
       auctionId: auctionId || null,
+
       lotDisplayId: null,
       closesAt: defaultClosesAt,
       removalStartAt: null,
@@ -107,7 +108,7 @@ export default function CreateLotPage() {
         if (response.ok) {
           const data = await response.json();
           setStores(data);
-          
+
           // If storeId is in URL and not in form, set it
           if (storeId && !form.getValues("storeId")) {
             form.setValue("storeId", storeId);
@@ -134,7 +135,7 @@ export default function CreateLotPage() {
 
       for (let i = 0; i < data.items.length; i++) {
         const item = data.items[i];
-        
+
         // Upload images
         if (item.images && item.images.length > 0) {
           const urls: string[] = [];
@@ -194,8 +195,8 @@ export default function CreateLotPage() {
         }
       }
 
-       // Prepare data for server action (serialize dates and replace media with URLs)
-       const serverData = {
+      // Prepare data for server action (serialize dates and replace media with URLs)
+      const serverData = {
         lotId: data.lotId, // Include lotId for updates
         title: data.title,
         description: data.description,
@@ -233,7 +234,7 @@ export default function CreateLotPage() {
         });
       } else {
         toast.success(isDraft ? "Draft Saved!" : "Lot Published!", {
-          description: isDraft 
+          description: isDraft
             ? "Your draft has been saved. You can continue editing it later."
             : "Your lot has been published successfully.",
           duration: 3000,
@@ -259,7 +260,7 @@ export default function CreateLotPage() {
   const handleSaveDraft = async () => {
     const data = form.getValues();
     // For now, just save as draft with same submission
-   // Save as draft with relaxed validation
+    // Save as draft with relaxed validation
     await onSubmit(data, true);
   };
 
@@ -291,7 +292,7 @@ export default function CreateLotPage() {
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); onSubmit(form.getValues(), false) }} className="space-y-6">
             {/* Lot Details Section */}
             <Card>
               <CardHeader>
@@ -396,7 +397,7 @@ export default function CreateLotPage() {
                     </FormItem>
                   )}
                 />
-            
+
 
                 {/* Date/Time Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -414,8 +415,8 @@ export default function CreateLotPage() {
                             value={
                               field.value
                                 ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
+                                  .toISOString()
+                                  .slice(0, 16)
                                 : ""
                             }
                             onChange={(e) =>
@@ -440,8 +441,8 @@ export default function CreateLotPage() {
                             value={
                               field.value
                                 ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
+                                  .toISOString()
+                                  .slice(0, 16)
                                 : ""
                             }
                             onChange={(e) =>
@@ -471,8 +472,8 @@ export default function CreateLotPage() {
                             value={
                               field.value
                                 ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
+                                  .toISOString()
+                                  .slice(0, 16)
                                 : ""
                             }
                             onChange={(e) =>

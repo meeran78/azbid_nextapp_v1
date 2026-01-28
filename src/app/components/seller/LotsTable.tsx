@@ -48,6 +48,7 @@ interface Lot {
   _count: {
     items: number;
   };
+  createdAt: string;
 }
 interface LotsTableProps {
   lots: Lot[];
@@ -55,10 +56,10 @@ interface LotsTableProps {
 
 const statusColors: Record<string, string> = {
   DRAFT: "bg-orange-500  border-transparent",
-  SCHEDULED: "bg-blue-500 text-white border-transparent",
-  LIVE: "bg-green-500 text-white border-transparent",
-  SOLD: "bg-purple-500 text-white border-transparent",
-  UNSOLD: "bg-red-500 text-white border-transparent",
+  SCHEDULED: "bg-orange-500  border-transparent",
+  LIVE: "bg-green-500  border-transparent",
+  SOLD: "bg-purple-500  border-transparent",
+  UNSOLD: "bg-red-500  border-transparent",
 };
 
 export function LotsTable({ lots }: LotsTableProps) {
@@ -82,7 +83,7 @@ export function LotsTable({ lots }: LotsTableProps) {
     setIsDeleting(true);
     try {
       const result = await deleteLotAction(lotToDelete);
-      
+
       if (result.error) {
         toast.error("Error", {
           description: result.error,
@@ -148,15 +149,9 @@ export function LotsTable({ lots }: LotsTableProps) {
                   )}
                 </TableCell>
                 <TableCell>{lot._count.items}</TableCell>
-                <TableCell> 
-                
-                <Badge 
-                    variant="outline"
-                    className={`${statusColors[lot.status] || "bg-gray-500 border-transparent"}`}
-                   
-                  >
-                    {lot.status}
-                  </Badge>
+                <TableCell >
+
+                  <Badge variant="outline" className={`${statusColors[lot.status] || "bg-gray-500 border-transparent"}`}>{lot.status}</Badge>
                 </TableCell>
                 <TableCell>
                   {format(new Date(lot.createdAt), "MMM dd, yyyy")}

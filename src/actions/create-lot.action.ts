@@ -137,6 +137,7 @@ export async function createLotAction(data: {
 
   try {
     // Determine lot status
+
     const lotStatus = data.isDraft ? "DRAFT" : "SCHEDULED";
 
     let lot;
@@ -174,13 +175,13 @@ export async function createLotAction(data: {
             description: validatedData.description,
             storeId: validatedData.storeId,
             auctionId: validatedData.auctionId || null,
-          //  lotDisplayId: validatedData.lotDisplayId || null,
+
             status: lotStatus,
             closesAt: validatedData.closesAt,
             inspectionAt: validatedData.inspectionAt || null,
             removalStartAt: validatedData.removalStartAt || null, // Set lotDisplayId when publishing (if not already set)
             lotDisplayId: existingLot.lotDisplayId ?? validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
-           // Delete existing items and create new ones
+            // Delete existing items and create new ones
             items: {
               deleteMany: {},
               create: validatedData.items.map((item) => ({
@@ -250,8 +251,8 @@ export async function createLotAction(data: {
     // Create new lot (either no lotId provided, or lotId doesn't exist)
     lot = await prisma.lot.create({
       data: {
-       // lotDisplayId: !data.isDraft ? await generateUniqueLotDisplayId() : null,
-       lotDisplayId:  validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
+        // lotDisplayId: !data.isDraft ? await generateUniqueLotDisplayId() : null,
+        lotDisplayId: validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
         title: validatedData.title,
         description: validatedData.description,
         storeId: validatedData.storeId,

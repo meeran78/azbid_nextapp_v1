@@ -12,7 +12,7 @@ import { DashboardMetrics } from "@/app/components/seller/DashboardMetrics";
 export default async function SellersDashboardPage({
   searchParams,
 }: {
-  searchParams: { status?: string; storeId?: string; auctionId?: string };
+  searchParams: Promise<{ status?: string; storeId?: string; auctionId?: string }>;
 }) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });

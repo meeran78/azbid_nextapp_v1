@@ -14,7 +14,7 @@ export const itemMediaSchema = z.object({
         const isImage = file.type.startsWith("image/");
         const isVideo = file.type.startsWith("video/");
         if (!isImage && !isVideo) return false;
-        
+
         const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
         return file.size <= maxSize;
       },
@@ -82,9 +82,9 @@ export const itemSchemaForServer = z
 
 // Schema for client-side form (with File objects)
 // images: z
-  //   .array(itemMediaSchema)
-  //   .min(1, "At least one image is required for each item")
-  //   .max(10, "Maximum 10 images per item"),
+//   .array(itemMediaSchema)
+//   .min(1, "At least one image is required for each item")
+//   .max(10, "Maximum 10 images per item"),
 export const itemSchema = z
   .object({
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
@@ -96,15 +96,14 @@ export const itemSchema = z
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     description: z
-    .string()
-    .min(1, "Item description is required")
-    .max(1000, "Description must be less than 1000 characters"),
-    // images: z.array(itemMediaSchema).max(10, "Maximum 10 images per item").optional().default([]),  
+      .string()
+      .min(1, "Item description is required")
+      .max(1000, "Description must be less than 1000 characters"),
+
     images: z
-  .array(itemMediaSchema)
-  .max(10, "Maximum 10 images per item")
-  .optional()
-  .default([]),
+      .array(z.any())
+      .optional()
+      .default([]),
     videos: z.array(itemMediaSchema).max(5, "Maximum 5 videos per item").optional().default([]),
   })
   .refine(
@@ -129,9 +128,10 @@ export const createLotSchema = z
       .string()
       .min(100, "Description must be at least 500 characters")
       .max(5000, "Description must be less than 5000 characters"),
- 
+
     storeId: z.string().min(1, "Store is required"),
     auctionId: z.string().optional().nullable(),
+    status: z.enum(["DRAFT", "SCHEDULED"]),
     lotDisplayId: z.string().optional().nullable(),
     closesAt: z.coerce.date({
       required_error: "Closing date and time is required",
@@ -235,24 +235,24 @@ export const createLotSchemaForServer = z
     }
   );
 
-  // Draft schema with relaxed validation (for saving drafts)
+// Draft schema with relaxed validation (for saving drafts)
 export const draftLotSchemaForServer = z
-.object({
-  lotId: z.string().optional(),
-  title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
-  description: z
-    .string()
-    .min(1, "Description is required") // Relaxed: no 500 char minimum
-    .max(2000, "Description must be less than 2000 characters"),
-  storeId: z.string().min(1, "Store is required"),
-  auctionId: z.string().optional().nullable(),
-  lotDisplayId: z.string().optional().nullable(),
-  closesAt: z.string().transform((str) => new Date(str)),
-  removalStartAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
-  inspectionAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
-  items: z.array(itemSchemaForServer).min(1, "At least one item is required"),
-  disclaimerAccepted: z.boolean().optional(), // Optional for drafts
-})
+  .object({
+    lotId: z.string().optional(),
+    title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
+    description: z
+      .string()
+      .min(1, "Description is required") // Relaxed: no 500 char minimum
+      .max(2000, "Description must be less than 2000 characters"),
+    storeId: z.string().min(1, "Store is required"),
+    auctionId: z.string().optional().nullable(),
+    lotDisplayId: z.string().optional().nullable(),
+    closesAt: z.string().transform((str) => new Date(str)),
+    removalStartAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
+    inspectionAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
+    items: z.array(itemSchemaForServer).min(1, "At least one item is required"),
+    disclaimerAccepted: z.boolean().optional(), // Optional for drafts
+  })
 // No date validation refinements for drafts - allow any dates
 // No disclaimer requirement for drafts
 
