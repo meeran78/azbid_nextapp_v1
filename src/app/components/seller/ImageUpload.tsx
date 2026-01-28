@@ -7,7 +7,7 @@ import { X, Upload, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/components/lib/utils";
 
 interface ImageFile {
-  file: File;
+  file?: File; // Make file optional for existing images
   preview: string;
 }
 
@@ -141,15 +141,18 @@ export function ImageUpload({
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 h-7 w-7 opacity-100 group-hover:opacity-100 transition-opacity shadow-md"
                   onClick={() => removeImage(index)}
                   disabled={disabled}
+                  title="Delete image"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
-                <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                  {(image.file.size / 1024 / 1024).toFixed(2)} MB
-                </div>
+                {image.file && (
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                    {(image.file.size / 1024 / 1024).toFixed(2)} MB
+                  </div>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

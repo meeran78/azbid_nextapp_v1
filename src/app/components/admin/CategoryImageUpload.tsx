@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { X, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import { cn } from "@/components/lib/utils";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -11,19 +11,36 @@ import { toast } from "sonner";
 interface CategoryImageUploadProps {
   imageUrl: string | null;
   onChange: (imageUrl: string | null) => void;
+  onFileChange?: (file: File | null) => void;
   disabled?: boolean;
 }
 
 export function CategoryImageUpload({
   imageUrl,
   onChange,
+  onFileChange,
   disabled = false,
 }: CategoryImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Create preview URL when file is selected
+  useEffect(() => {
+    if (selectedFile) {
+      const url = URL.createObjectURL(selectedFile);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [selectedFile]);
+
+  // Use preview URL if file is selected, otherwise use imageUrl
+  const displayUrl = previewUrl || imageUrl;
 
   const handleFileSelect = useCallback(
-    async (file: File) => {
+    (file: File) => {
       if (!file.type.startsWith("image/")) {
         toast.error("Invalid file type", {
           description: "Please select an image file.",
@@ -38,60 +55,33 @@ export function CategoryImageUpload({
         return;
       }
 
-      setIsUploading(true);
-
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("folder", "categories");
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Upload failed");
-        }
-
-        const result = await response.json();
-        onChange(result.url);
-        toast.success("Image uploaded", {
-          description: "Category image has been uploaded successfully.",
-        });
-      } catch (error: any) {
-        console.error("Upload error:", error);
-        toast.error("Upload failed", {
-          description: error.message || "Failed to upload image. Please try again.",
-        });
-      } finally {
-        setIsUploading(false);
-      }
+      setSelectedFile(file);
+      onFileChange?.(file);
+      // Don't upload yet, just store the file
     },
-    [onChange]
+    [onFileChange]
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      if (disabled || isUploading) return;
+      if (disabled) return;
 
       const file = e.dataTransfer.files[0];
       if (file) {
         handleFileSelect(file);
       }
     },
-    [handleFileSelect, disabled, isUploading]
+    [handleFileSelect, disabled]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (!disabled && !isUploading) {
+    if (!disabled) {
       setIsDragging(true);
     }
-  }, [disabled, isUploading]);
+  }, [disabled]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -108,35 +98,15 @@ export function CategoryImageUpload({
     [handleFileSelect]
   );
 
-  const handleRemove = useCallback(async () => {
-    if (imageUrl && imageUrl.includes("cloudinary")) {
-      try {
-        // Extract public_id from Cloudinary URL
-        const urlParts = imageUrl.split("/");
-        const publicIdWithExt = urlParts.slice(-2).join("/").split(".")[0];
-        const publicId = publicIdWithExt;
-
-        const response = await fetch(
-          `/api/upload?public_id=${encodeURIComponent(publicId)}&resource_type=image`,
-          {
-            method: "DELETE",
-          }
-        );
-
-        if (!response.ok) {
-          console.error("Failed to delete from Cloudinary");
-        }
-      } catch (error) {
-        console.error("Error deleting image:", error);
-      }
-    }
-
+  const handleRemove = useCallback(() => {
+    setSelectedFile(null);
+    onFileChange?.(null);
     onChange(null);
-  }, [imageUrl, onChange]);
+  }, [onChange, onFileChange]);
 
   return (
     <div className="space-y-4">
-      {imageUrl ? (
+      {displayUrl ? (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -144,7 +114,7 @@ export function CategoryImageUpload({
         >
           <div className="relative h-48 w-48 rounded-lg overflow-hidden border-2 border-primary">
             <Image
-              src={imageUrl}
+              src={displayUrl}
               alt="Category image"
               fill
               className="object-cover"
@@ -160,6 +130,11 @@ export function CategoryImageUpload({
               <X className="h-4 w-4" />
             </Button>
           </div>
+          {selectedFile && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Image will be uploaded when you save the category
+            </p>
+          )}
         </motion.div>
       ) : (
         <div
@@ -171,7 +146,7 @@ export function CategoryImageUpload({
             isDragging
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25 hover:border-muted-foreground/50",
-            (disabled || isUploading) && "opacity-50 cursor-not-allowed"
+            disabled && "opacity-50 cursor-not-allowed"
           )}
         >
           <input
@@ -179,26 +154,20 @@ export function CategoryImageUpload({
             id="category-image-upload"
             accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
             onChange={handleFileInputChange}
-            disabled={disabled || isUploading}
+            disabled={disabled}
             className="hidden"
           />
           <label
             htmlFor="category-image-upload"
             className={cn(
               "cursor-pointer flex flex-col items-center gap-2",
-              (disabled || isUploading) && "cursor-not-allowed"
+              disabled && "cursor-not-allowed"
             )}
           >
-            {isUploading ? (
-              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-            ) : (
-              <Upload className="h-8 w-8 text-muted-foreground" />
-            )}
+            <Upload className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium">
-                {isUploading
-                  ? "Uploading..."
-                  : "Click to upload or drag and drop"}
+                Click to upload or drag and drop
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 PNG, JPG, WEBP, GIF up to 10MB

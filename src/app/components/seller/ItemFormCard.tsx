@@ -1,11 +1,10 @@
 "use client";
 
-import { useFormContext, useFieldArray } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -23,8 +22,8 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { ImageUpload } from "./ImageUpload";
-import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect } from "react";
 import { CreateLotFormData } from "@/lib/validations/lot.schema";
 
 interface ItemFormCardProps {
@@ -33,15 +32,34 @@ interface ItemFormCardProps {
   canRemove: boolean;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE";
+}
+
 export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
   const form = useFormContext<CreateLotFormData>();
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "items",
-  });
 
   const item = form.watch(`items.${index}`);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const response = await fetch("/api/categories");
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.filter((cat: Category) => cat.status === "ACTIVE"));
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    }
+    fetchCategories();
+  }, []);
 
   return (
     <motion.div
@@ -107,7 +125,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name={`items.${index}.category`}
+                name={`items.${index}.categoryId`}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
@@ -115,7 +133,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -123,12 +141,11 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Electronics">Electronics</SelectItem>
-                        <SelectItem value="Jewelry">Jewelry</SelectItem>
-                        <SelectItem value="Vehicles">Vehicles</SelectItem>
-                        <SelectItem value="Furniture">Furniture</SelectItem>
-                        <SelectItem value="Collectibles">Collectibles</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -146,7 +163,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -167,7 +184,41 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name={`items.${index}.startPrice`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Starting Price <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className="-mx-2 pl-7 px-6"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value ? parseFloat(e.target.value) : null
+                            )
+                          }
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name={`items.${index}.retailPrice`}
@@ -184,7 +235,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                           step="0.01"
                           min="0"
                           placeholder="0.00"
-                          className="pl-7"
+                          className="-mx-2 pl-7 px-6"
                           {...field}
                           value={field.value ?? ""}
                           onChange={(e) =>
@@ -205,7 +256,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                 name={`items.${index}.reservePrice`}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Reserve Price</FormLabel>
+                    <FormLabel>Reserve Price ( Must be ≤ retail price )</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -216,7 +267,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                           step="0.01"
                           min="0"
                           placeholder="0.00"
-                          className="pl-7"
+                          className="-mx-2 pl-7 px-6"
                           {...field}
                           value={field.value ?? ""}
                           onChange={(e) =>
@@ -227,6 +278,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                         />
                       </div>
                     </FormControl>
+
                     <FormMessage />
                   </FormItem>
                 )}
@@ -268,7 +320,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                     />
                   </FormControl>
                   <FormDescription>
-                    Upload up to 10 images per item (max 5MB each)
+                    Upload up to 10 images per item (max 10MB each)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

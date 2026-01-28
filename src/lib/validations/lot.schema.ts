@@ -47,12 +47,11 @@ export const itemMediaSchema = z.object({
 export const itemSchemaForServer = z
   .object({
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
-    category: z.enum(["Electronics", "Jewelry", "Vehicles", "Furniture", "Collectibles", "Other"], {
-      required_error: "Please select a category",
-    }),
+    categoryId: z.string().min(1, "Category is required").optional().nullable(),
     condition: z.enum(["New", "Like New", "Used – Good", "Used – Fair", "Salvage"], {
       required_error: "Please select a condition",
     }),
+    startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
@@ -77,12 +76,11 @@ export const itemSchemaForServer = z
 export const itemSchema = z
   .object({
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
-    category: z.enum(["Electronics", "Jewelry", "Vehicles", "Furniture", "Collectibles", "Other"], {
-      required_error: "Please select a category",
-    }),
+    categoryId: z.string().min(1, "Category is required").optional().nullable(),
     condition: z.enum(["New", "Like New", "Used – Good", "Used – Fair", "Salvage"], {
       required_error: "Please select a condition",
     }),
+    startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
@@ -113,13 +111,12 @@ export const createLotSchema = z
       .max(2000, "Description must be less than 2000 characters"),
     storeId: z.string().min(1, "Store is required"),
     auctionId: z.string().optional().nullable(),
+    lotDisplayId: z.string().optional().nullable(),
     closesAt: z.coerce.date({
       required_error: "Closing date and time is required",
     }),
     removalStartAt: z.coerce.date().optional().nullable(),
     inspectionAt: z.coerce.date().optional().nullable(),
-    startPrice: z.coerce.number().min(0, "Starting price must be positive"),
-    reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     items: z.array(itemSchema).min(1, "At least one item is required"),
     disclaimerAccepted: z.boolean().refine((val) => val === true, {
       message: "You must accept the disclaimer to proceed",
@@ -152,12 +149,12 @@ export const createLotSchema = z
     (data) => {
       // Inspection Date ≤ Closing Date
       if (data.inspectionAt && data.closesAt) {
-        return data.inspectionAt <= data.closesAt;
+        return data.inspectionAt >= data.closesAt;
       }
       return true;
     },
     {
-      message: "Inspection date must be on or before closing date",
+      message: "Inspection date must be on or after closing date",
       path: ["inspectionAt"],
     }
   );
@@ -173,11 +170,10 @@ export const createLotSchemaForServer = z
       .max(2000, "Description must be less than 2000 characters"),
     storeId: z.string().min(1, "Store is required"),
     auctionId: z.string().optional().nullable(),
+    lotDisplayId: z.string().optional().nullable(),
     closesAt: z.string().transform((str) => new Date(str)),
     removalStartAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
     inspectionAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
-    startPrice: z.coerce.number().min(0, "Starting price must be positive"),
-    reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     items: z.array(itemSchemaForServer).min(1, "At least one item is required"),
     disclaimerAccepted: z.boolean(),
   })
@@ -208,16 +204,38 @@ export const createLotSchemaForServer = z
     (data) => {
       // Inspection Date ≤ Closing Date
       if (data.inspectionAt && data.closesAt) {
-        return data.inspectionAt <= data.closesAt;
+        return data.inspectionAt >= data.closesAt;
       }
       return true;
     },
     {
-      message: "Inspection date must be on or before closing date",
+      message: "Inspection date must be on or after closing date",
       path: ["inspectionAt"],
     }
   );
 
+  // Draft schema with relaxed validation (for saving drafts)
+export const draftLotSchemaForServer = z
+.object({
+  lotId: z.string().optional(),
+  title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
+  description: z
+    .string()
+    .min(1, "Description is required") // Relaxed: no 500 char minimum
+    .max(2000, "Description must be less than 2000 characters"),
+  storeId: z.string().min(1, "Store is required"),
+  auctionId: z.string().optional().nullable(),
+  lotDisplayId: z.string().optional().nullable(),
+  closesAt: z.string().transform((str) => new Date(str)),
+  removalStartAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
+  inspectionAt: z.string().optional().nullable().transform((str) => (str ? new Date(str) : null)),
+  items: z.array(itemSchemaForServer).min(1, "At least one item is required"),
+  disclaimerAccepted: z.boolean().optional(), // Optional for drafts
+})
+// No date validation refinements for drafts - allow any dates
+// No disclaimer requirement for drafts
+
 export type CreateLotFormData = z.infer<typeof createLotSchema>;
 export type CreateLotServerData = z.infer<typeof createLotSchemaForServer>;
 export type ItemFormData = z.infer<typeof itemSchema>;
+export type DraftLotServerData = z.infer<typeof draftLotSchemaForServer>;

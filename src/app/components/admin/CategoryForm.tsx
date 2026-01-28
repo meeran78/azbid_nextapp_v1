@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useEffect } from "react";
+import { useTransition, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,6 +57,7 @@ interface CategoryFormProps {
 export function CategoryForm({ initialData }: CategoryFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const isEditing = !!initialData;
 
   const form = useForm<CategoryFormValues>({
@@ -77,16 +78,54 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
         imageUrl: initialData.imageUrl ?? null,
         status: initialData.status,
       });
+      setImageFile(null); // Reset file when editing existing category
     }
   }, [initialData, form]);
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "categories");
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Upload failed");
+    }
+
+    const result = await response.json();
+    return result.url;
+  };
 
   const onSubmit = async (values: CategoryFormValues) => {
     startTransition(async () => {
       try {
+        let imageUrl = values.imageUrl;
+
+        // Upload image if a new file was selected
+        if (imageFile) {
+          try {
+            imageUrl = await uploadImage(imageFile);
+            toast.success("Image uploaded", {
+              description: "Category image has been uploaded successfully.",
+            });
+          } catch (error: any) {
+            console.error("Image upload error:", error);
+            toast.error("Image upload failed", {
+              description: error.message || "Failed to upload image. Please try again.",
+            });
+            return; // Don't proceed with category creation if image upload fails
+          }
+        }
+
         const data = {
           ...values,
           description: values.description?.trim() || null,
-          imageUrl: values.imageUrl?.trim() || null,
+          imageUrl: imageUrl?.trim() || null,
         };
 
         if (isEditing && initialData) {
@@ -176,6 +215,7 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
                     <CategoryImageUpload
                       imageUrl={field.value}
                       onChange={field.onChange}
+                      onFileChange={setImageFile}
                       disabled={isPending}
                     />
                   </FormControl>

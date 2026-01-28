@@ -38,89 +38,113 @@ import { AlertCircle, ArrowLeft, Package, Plus, Save, Send } from "lucide-react"
 import { toast } from "sonner";
 import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
+import { getLotAction } from "@/actions/get-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
 
-// Generate human-friendly lot ID
-function generateLotId(): string {
-  const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 1000000)
-    .toString()
-    .padStart(6, "0");
-  return `LOT-${year}-${random}`;
-}
-
-export default function CreateLotPage() {
+export default function EditLotPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const storeId = searchParams.get("storeId");
-  const auctionId = searchParams.get("auctionId");
+  const lotId = searchParams.get("lotId");
 
   const [isLoading, setIsLoading] = useState(false);
-  const [lotId] = useState(generateLotId());
+  const [isLoadingLot, setIsLoadingLot] = useState(true);
   const [stores, setStores] = useState<any[]>([]);
   const [error, setError] = useState("");
-
-  // Set default closing date to tomorrow
-  const defaultClosesAt = new Date();
-  defaultClosesAt.setDate(defaultClosesAt.getDate() + 1);
-  defaultClosesAt.setHours(18, 0, 0, 0); // 6 PM
 
   const form = useForm<CreateLotFormData>({
     resolver: zodResolver(createLotSchema),
     defaultValues: {
-      lotId,
-      title: `Lot ${lotId}`,
+      lotId: "",
+      title: "",
       description: "",
-      storeId: storeId || "",
-      auctionId: auctionId || null,
-      closesAt: defaultClosesAt,
+      storeId: "",
+      auctionId: null,
+      lotDisplayId: null,
+      closesAt: new Date(),
       removalStartAt: null,
       inspectionAt: null,
-      items: [
-        {
-          title: "",
-          categoryId: null,
-          condition: "Used – Good",
-          startPrice: 0,
-          retailPrice: null,
-          reservePrice: null,
-          description: "",
-          images: [],
-          videos: [],
-        },
-      ],
+      items: [],
       disclaimerAccepted: false,
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items",
   });
 
-  // Fetch stores on mount
+  // Load lot data and stores on mount
   useEffect(() => {
-    async function fetchStores() {
+    async function loadData() {
+      if (!lotId) {
+        toast.error("Lot ID is required");
+        router.push("/my-auctions");
+        return;
+      }
+
+      setIsLoadingLot(true);
       try {
-        const response = await fetch("/api/seller/stores");
-        if (response.ok) {
-          const data = await response.json();
-          setStores(data);
-          
-          // If storeId is in URL and not in form, set it
-          if (storeId && !form.getValues("storeId")) {
-            form.setValue("storeId", storeId);
-          }
-        } else {
-          toast.error("Failed to load stores");
+        // Load lot data
+        const lotResult = await getLotAction(lotId);
+        
+        if (lotResult.error || !lotResult.lot) {
+          toast.error(lotResult.error || "Failed to load lot");
+          router.push("/my-auctions");
+          return;
         }
+
+        const lot = lotResult.lot;
+
+        // Load stores
+        const storesResponse = await fetch("/api/seller/stores");
+        if (storesResponse.ok) {
+          const storesData = await storesResponse.json();
+          setStores(storesData);
+        }
+
+        // Convert existing images from URLs to form format
+        // For existing images, we'll use objects with just preview (no file)
+        const itemsWithImages = lot.items.map((item) => ({
+          title: item.title,
+          categoryId: item.categoryId || null,
+          condition: item.condition || "Used – Good",
+          startPrice: item.startPrice,
+          retailPrice: item.retailPrice || null,
+          reservePrice: item.reservePrice || null,
+          description: item.description || "",
+          // Convert image URLs to form format (existing images have preview only, no file)
+          images: item.imageUrls.map((url) => ({
+            preview: url,
+            // No file property - this indicates it's an existing image
+          } as any)),
+          videos: [], // Videos not stored in DB yet
+        }));
+
+        // Populate form with lot data
+        form.reset({
+          lotId: lot.id,
+          title: lot.title,
+          description: lot.description || "",
+          storeId: lot.storeId,
+          auctionId: lot.auctionId || null,
+          lotDisplayId: lot.lotDisplayId || null,
+          closesAt: new Date(lot.closesAt),
+          removalStartAt: lot.inspectionAt ? new Date(lot.inspectionAt) : null, // Note: schema uses inspectionAt
+          inspectionAt: lot.inspectionAt ? new Date(lot.inspectionAt) : null,
+          items: itemsWithImages,
+          disclaimerAccepted: true, // Assume accepted if lot exists
+        });
       } catch (error) {
-        console.error("Error fetching stores:", error);
-        toast.error("Failed to load stores");
+        console.error("Error loading lot:", error);
+        toast.error("Failed to load lot data");
+        router.push("/my-auctions");
+      } finally {
+        setIsLoadingLot(false);
       }
     }
-    fetchStores();
-  }, [storeId, form]);
+
+    loadData();
+  }, [lotId, router, form]);
 
   const onSubmit = async (data: CreateLotFormData, isDraft: boolean = false) => {
     setIsLoading(true);
@@ -138,26 +162,33 @@ export default function CreateLotPage() {
         if (item.images && item.images.length > 0) {
           const urls: string[] = [];
           for (const image of item.images) {
-            try {
-              const formData = new FormData();
-              formData.append("file", image.file);
-              formData.append("folder", "auctions/lots");
+            // Check if image has a file property (new upload) or just preview (existing image)
+            if (image.file) {
+              // New image - upload it
+              try {
+                const formData = new FormData();
+                formData.append("file", image.file);
+                formData.append("folder", "auctions/lots");
 
-              const response = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-              });
+                const response = await fetch("/api/upload", {
+                  method: "POST",
+                  body: formData,
+                });
 
-              if (response.ok) {
-                const result = await response.json();
-                urls.push(result.url);
-              } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to upload image");
+                if (response.ok) {
+                  const result = await response.json();
+                  urls.push(result.url);
+                } else {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || "Failed to upload image");
+                }
+              } catch (uploadError: any) {
+                console.error("Image upload error:", uploadError);
+                toast.error(`Failed to upload image: ${uploadError.message}`);
               }
-            } catch (uploadError: any) {
-              console.error("Image upload error:", uploadError);
-              toast.error(`Failed to upload image: ${uploadError.message}`);
+            } else if (image.preview) {
+              // Existing image - use the preview URL directly
+              urls.push(image.preview);
             }
           }
           uploadedImageUrls[i] = urls;
@@ -167,42 +198,50 @@ export default function CreateLotPage() {
         if (item.videos && item.videos.length > 0) {
           const urls: string[] = [];
           for (const video of item.videos) {
-            try {
-              const formData = new FormData();
-              formData.append("file", video.file);
-              formData.append("folder", "auctions/lots");
+            if (video.file) {
+              // New video - upload it
+              try {
+                const formData = new FormData();
+                formData.append("file", video.file);
+                formData.append("folder", "auctions/lots");
 
-              const response = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
-              });
+                const response = await fetch("/api/upload", {
+                  method: "POST",
+                  body: formData,
+                });
 
-              if (response.ok) {
-                const result = await response.json();
-                urls.push(result.url);
-              } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to upload video");
+                if (response.ok) {
+                  const result = await response.json();
+                  urls.push(result.url);
+                } else {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || "Failed to upload video");
+                }
+              } catch (uploadError: any) {
+                console.error("Video upload error:", uploadError);
+                toast.error(`Failed to upload video: ${uploadError.message}`);
               }
-            } catch (uploadError: any) {
-              console.error("Video upload error:", uploadError);
-              toast.error(`Failed to upload video: ${uploadError.message}`);
+            } else if (video.preview) {
+              // Existing video - use the preview URL directly
+              urls.push(video.preview);
             }
           }
           uploadedVideoUrls[i] = urls;
         }
       }
 
-       // Prepare data for server action (serialize dates and replace media with URLs)
-       const serverData = {
+      // Prepare data for server action
+      const serverData = {
         lotId: data.lotId, // Include lotId for updates
         title: data.title,
         description: data.description,
         storeId: data.storeId,
-        auctionId: data.auctionId,
+        auctionId: data.auctionId,  
+        lotDisplayId: data.lotDisplayId,
         closesAt: data.closesAt.toISOString(),
         removalStartAt: data.removalStartAt?.toISOString() || null,
         inspectionAt: data.inspectionAt?.toISOString() || null,
+      
         items: data.items.map((item, index) => ({
           title: item.title,
           categoryId: item.categoryId,
@@ -215,7 +254,7 @@ export default function CreateLotPage() {
           videoUrls: uploadedVideoUrls[index] || [],
         })),
         disclaimerAccepted: data.disclaimerAccepted,
-        isDraft: isDraft, // Pass draft flag
+        isDraft: isDraft,
       };
 
       const result = await createLotAction(serverData);
@@ -230,10 +269,10 @@ export default function CreateLotPage() {
           duration: 5000,
         });
       } else {
-        toast.success(isDraft ? "Draft Saved!" : "Lot Published!", {
+        toast.success(isDraft ? "Draft Saved!" : "Lot Updated!", {
           description: isDraft 
             ? "Your draft has been saved. You can continue editing it later."
-            : "Your lot has been published successfully.",
+            : "Your lot has been updated successfully.",
           duration: 3000,
         });
 
@@ -256,10 +295,18 @@ export default function CreateLotPage() {
 
   const handleSaveDraft = async () => {
     const data = form.getValues();
-    // For now, just save as draft with same submission
-   // Save as draft with relaxed validation
     await onSubmit(data, true);
   };
+
+  if (isLoadingLot) {
+    return (
+      <div className="container mx-auto p-6 max-w-5xl">
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading lot data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
@@ -275,9 +322,9 @@ export default function CreateLotPage() {
               Back to My Auctions
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold">Create New Lot</h1>
+          <h1 className="text-3xl font-bold">Edit Lot</h1>
           <p className="text-muted-foreground mt-1">
-            Add a new lot with items to your auction
+            Update your lot details and items
           </p>
         </div>
 
@@ -305,7 +352,7 @@ export default function CreateLotPage() {
                 {/* Lot ID (Read-only) */}
                 <FormField
                   control={form.control}
-                  name="lotId"
+                  name="lotDisplayId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Lot ID</FormLabel>
@@ -313,7 +360,7 @@ export default function CreateLotPage() {
                         <Input {...field} readOnly className="bg-muted" />
                       </FormControl>
                       <FormDescription>
-                        Auto-generated lot identifier
+                        Lot identifier
                       </FormDescription>
                     </FormItem>
                   )}
@@ -394,7 +441,6 @@ export default function CreateLotPage() {
                     </FormItem>
                   )}
                 />
-            
 
                 {/* Date/Time Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -449,9 +495,6 @@ export default function CreateLotPage() {
                             }
                           />
                         </FormControl>
-                        {/* <FormDescription>
-                          Must be before closing date
-                        </FormDescription> */}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -480,9 +523,6 @@ export default function CreateLotPage() {
                             }
                           />
                         </FormControl>
-                        {/* <FormDescription>
-                          Must be after closing date
-                        </FormDescription> */}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -508,12 +548,14 @@ export default function CreateLotPage() {
                     onClick={() =>
                       append({
                         title: "",
-                        category: "Other",
+                        categoryId: null,
                         condition: "Used – Good",
+                        startPrice: 0,
                         retailPrice: null,
                         reservePrice: null,
                         description: "",
                         images: [],
+                        videos: [],
                       })
                     }
                   >
@@ -594,7 +636,7 @@ export default function CreateLotPage() {
                 </Button>
                 <Button type="submit" disabled={isLoading || stores.length === 0}>
                   <Send className="h-4 w-4 mr-2" />
-                  {isLoading ? "Publishing..." : "Publish Lot"}
+                  {isLoading ? "Updating..." : "Update Lot"}
                 </Button>
               </div>
             </div>

@@ -34,19 +34,22 @@ export default async function SellersDashboardPage({
         redirect("/");
     }
 
+        // Await searchParams before accessing its properties
+    const params = await searchParams;
+
     const [stores, auctions, lots] = await Promise.all([
 
         getSellerStores(session.user.id),
         getSellerAuctions(
             session.user.id,
-            searchParams.status,
-            searchParams.storeId
+            params.status,
+            params.storeId
         ),
         getSellerLots(
             session.user.id,
-            searchParams.status,
-            searchParams.storeId,
-            searchParams.auctionId
+            params.status,
+            params.storeId,
+            params.auctionId
         ),
     ]);
 
@@ -61,8 +64,8 @@ export default async function SellersDashboardPage({
                 </div>
             </div>
 
-{/* Seller Profile */}
-<SellerProfile />
+            {/* Seller Profile */}
+            <SellerProfile />
             {/* Stores Section */}
             <StoresList stores={stores} />
 

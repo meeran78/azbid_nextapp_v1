@@ -6,9 +6,46 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createLotSchemaForServer } from "@/lib/validations/lot.schema";
-import { z } from "zod";
+import { sendEmailAction } from "@/actions/sendEmail.action";
+
+// Generate human-friendly lot display ID
+async function generateUniqueLotDisplayId(): Promise<string> {
+  let displayId: string;
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (!isUnique && attempts < maxAttempts) {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 1000000)
+      .toString()
+      .padStart(6, "0");
+    displayId = `LOT-${year}-${random}`;
+
+    // Check if this ID already exists
+    const existing = await prisma.lot.findUnique({
+      where: { lotDisplayId: displayId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      isUnique = true;
+    } else {
+      attempts++;
+    }
+  }
+
+  if (!isUnique) {
+    // Fallback: use timestamp if we can't generate a unique ID
+    const timestamp = Date.now();
+    displayId = `LOT-${new Date().getFullYear()}-${timestamp.toString().slice(-6)}`;
+  }
+
+  return displayId!;
+}
 
 export async function createLotAction(data: {
+  lotId?: string;
   title: string;
   description: string;
   storeId: string;
@@ -16,18 +53,19 @@ export async function createLotAction(data: {
   closesAt: string; // ISO date string
   removalStartAt?: string | null;
   inspectionAt?: string | null;
-  startPrice: number;
-  reservePrice?: number | null;
   items: Array<{
     title: string;
-    category: string;
+    categoryId: string | null;
     condition: string;
+    startPrice: number;
     retailPrice?: number | null;
     reservePrice?: number | null;
     description?: string;
     imageUrls: string[];
+    videoUrls?: string[];
   }>;
   disclaimerAccepted: boolean;
+  isDraft?: boolean; // New parameter for draft saves
 }) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
@@ -36,26 +74,52 @@ export async function createLotAction(data: {
     redirect("/sign-in");
   }
 
-  // Validate the data
-  const validationResult = createLotSchemaForServer.safeParse({
-    ...data,
-    closesAt: data.closesAt,
-    removalStartAt: data.removalStartAt || null,
-    inspectionAt: data.inspectionAt || null,
-  });
+  let validatedData: any;
 
-  if (!validationResult.success) {
-    console.error("Validation errors:", validationResult.error.issues);
-    return {
-      error: "Validation failed",
-      details: validationResult.error.issues.map((err) => ({
-        path: err.path.join("."),
-        message: err.message,
+  // Skip validation for drafts - allow incomplete data
+  if (data.isDraft) {
+    // Minimal processing for drafts - just ensure basic types
+    validatedData = {
+      title: data.title || "",
+      description: data.description || "",
+      storeId: data.storeId,
+      auctionId: data.auctionId || null,
+      closesAt: data.closesAt ? new Date(data.closesAt) : new Date(),
+      removalStartAt: data.removalStartAt ? new Date(data.removalStartAt) : null,
+      inspectionAt: data.inspectionAt ? new Date(data.inspectionAt) : null,
+      items: (data.items || []).map((item) => ({
+        title: item.title || "",
+        categoryId: item.categoryId || null,
+        description: item.description || null,
+        condition: item.condition || "Used – Good",
+        startPrice: item.startPrice || 0,
+        retailPrice: item.retailPrice || null,
+        reservePrice: item.reservePrice || null,
+        imageUrls: item.imageUrls || [],
       })),
     };
-  }
+  } else {
+    // Full validation for publishing
+    const validationResult = createLotSchemaForServer.safeParse({
+      ...data,
+      closesAt: data.closesAt,
+      removalStartAt: data.removalStartAt || null,
+      inspectionAt: data.inspectionAt || null,
+    });
 
-  const validatedData = validationResult.data;
+    if (!validationResult.success) {
+      console.error("Validation errors:", validationResult.error.issues);
+      return {
+        error: "Validation failed",
+        details: validationResult.error.issues.map((err) => ({
+          path: err.path.join("."),
+          message: err.message,
+        })),
+      };
+    }
+
+    validatedData = validationResult.data;
+  }
 
   // Verify store ownership
   const store = await prisma.store.findFirst({
@@ -70,38 +134,195 @@ export async function createLotAction(data: {
   }
 
   try {
-    // Create the lot with items
-    const lot = await prisma.lot.create({
+    // Determine lot status
+    const lotStatus = data.isDraft ? "DRAFT" : "SCHEDULED";
+
+    let lot;
+
+    // If lotId is provided, try to update existing lot
+    if (data.lotId) {
+      // First check if lot exists (by ID only)
+      const existingLot = await prisma.lot.findUnique({
+        where: { id: data.lotId },
+        include: {
+          store: {
+            select: {
+              ownerId: true,
+            },
+          },
+        },
+      });
+
+      // If lot exists, verify ownership and draft status
+      if (existingLot) {
+        // Check ownership through store relationship
+        if (existingLot.store.ownerId !== session.user.id) {
+          return { error: "Access denied: You don't own this lot" };
+        }
+
+        // Only allow editing drafts
+        if (existingLot.status !== "DRAFT") {
+          return { error: "Cannot edit: Lot is not in draft status" };
+        }
+
+        lot = await prisma.lot.update({
+          where: { id: data.lotId },
+          data: {
+            title: validatedData.title,
+            description: validatedData.description,
+            storeId: validatedData.storeId,
+            auctionId: validatedData.auctionId || null,
+            status: lotStatus,
+            closesAt: validatedData.closesAt,
+            inspectionAt: validatedData.inspectionAt || null,
+            removalStartAt: validatedData.removalStartAt || null, // Set lotDisplayId when publishing (if not already set)
+            lotDisplayId: !data.isDraft && !existingLot.lotDisplayId 
+              ? await generateUniqueLotDisplayId() 
+              : existingLot.lotDisplayId || null,
+            // Delete existing items and create new ones
+            items: {
+              deleteMany: {},
+              create: validatedData.items.map((item) => ({
+                title: item.title,
+                categoryId: item.categoryId || null,
+                description: item.description || null,
+                condition: item.condition,
+                startPrice: item.startPrice,
+                retailPrice: item.retailPrice || null,
+                reservePrice: item.reservePrice || null,
+                imageUrls: item.imageUrls || [],
+              })),
+            },
+          },
+          include: {
+            items: true,
+            store: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
+
+        revalidatePath("/my-auctions");
+        revalidatePath("/sellers-dashboard");
+
+        // Send email to admins when lot is published (not a draft)
+        if (!data.isDraft && lot) {
+          try {
+            // Get all admin users
+            const adminUsers = await prisma.user.findMany({
+              where: {
+                role: "ADMIN",
+                emailVerified: true,
+              },
+              select: {
+                email: true,
+              },
+            });
+
+            // Send email to each admin
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const adminDashboardUrl = `${appUrl}/admin-dashboard`;
+
+            for (const admin of adminUsers) {
+              await sendEmailAction({
+                to: admin.email,
+                subject: "New Lot Pending Approval",
+                meta: {
+                  description: `A new lot "${lot.title}" from store "${lot.store.name}" has been submitted and is pending your approval. Please review and approve it in the admin dashboard.`,
+                  link: adminDashboardUrl,
+                },
+              });
+            }
+          } catch (emailError) {
+            // Log email error but don't fail the lot creation
+            console.error("Error sending approval email to admins:", emailError);
+          }
+        }
+
+        return { error: null, lot };
+      }
+      // If lot doesn't exist, fall through to create new lot
+    }
+
+    // Create new lot (either no lotId provided, or lotId doesn't exist)
+    lot = await prisma.lot.create({
       data: {
+        lotDisplayId: !data.isDraft ? await generateUniqueLotDisplayId() : null,
         title: validatedData.title,
         description: validatedData.description,
         storeId: validatedData.storeId,
         auctionId: validatedData.auctionId || null,
-        status: "DRAFT",
-        startPrice: validatedData.startPrice,
-        reservePrice: validatedData.reservePrice || null,
+        status: lotStatus,
         closesAt: validatedData.closesAt,
+        inspectionAt: validatedData.inspectionAt || null,
+        removalStartAt: validatedData.removalStartAt || null,
         items: {
           create: validatedData.items.map((item) => ({
             title: item.title,
+            categoryId: item.categoryId || null,
             description: item.description || null,
             condition: item.condition,
-            estimatedValue: item.retailPrice || null,
+            startPrice: item.startPrice,
+            retailPrice: item.retailPrice || null,
+            reservePrice: item.reservePrice || null,
             imageUrls: item.imageUrls || [],
           })),
         },
       },
       include: {
         items: true,
+        store: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
+    revalidatePath("/my-auctions");
     revalidatePath("/sellers-dashboard");
+
+    // Send email to admins when lot is published (not a draft)
+    if (!data.isDraft && lot) {
+      try {
+        // Get all admin users
+        const adminUsers = await prisma.user.findMany({
+          where: {
+            role: "ADMIN",
+            emailVerified: true,
+          },
+          select: {
+            email: true,
+          },
+        });
+
+        // Send email to each admin
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const adminDashboardUrl = `${appUrl}/admin-dashboard`;
+
+        for (const admin of adminUsers) {
+          await sendEmailAction({
+            to: admin.email,
+            subject: "New Lot Pending Approval",
+            meta: {
+              description: `A new lot "${lot.title}" from store "${lot.store.name}" has been submitted and is pending your approval. Please review and approve it in the admin dashboard.`,
+              link: adminDashboardUrl,
+            },
+          });
+        }
+      } catch (emailError) {
+        // Log email error but don't fail the lot creation
+        console.error("Error sending approval email to admins:", emailError);
+      }
+    }
+
     return { error: null, lot };
   } catch (err: any) {
-    console.error("Error creating lot:", err);
-    return { 
-      error: err.message || "Failed to create lot. Please try again.",
+    console.error("Error creating/updating lot:", err);
+    return {
+      error: err.message || "Failed to save lot. Please try again.",
       details: err,
     };
   }

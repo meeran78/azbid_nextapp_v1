@@ -263,6 +263,7 @@ model Lot {
   id        String  @id @default(uuid())
   storeId   String
   auctionId String?
+  lotDisplayId String? @unique
 
   store   Store    @relation(fields: [storeId], references: [id])
   auction Auction? @relation(fields: [auctionId], references: [id])
@@ -271,8 +272,12 @@ model Lot {
   description String?
   status      LotStatus @default(DRAFT)
 
-  // 🔥 Soft-close tracking// ⏱️ Soft-close fields
-  closesAt       DateTime
+// Date & Time fields
+  closesAt       DateTime // Closing date & time
+  inspectionAt   DateTime? // Inspection date & time (optional)
+  removalStartAt DateTime? // Removal start date & time (optional)
+
+  // 🔥 Soft-close tracking// ⏱️ Soft-close fields  
   extendedCount  Int       @default(0)
   lastExtendedAt DateTime?
 
