@@ -336,7 +336,9 @@ export default function EditLotPage() {
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6"> */}
+          <form  onSubmit={form.handleSubmit((formData: CreateLotFormData) => onSubmit(formData, false) )} className="space-y-6">
+       
             {/* Lot Details Section */}
             <Card>
               <CardHeader>
@@ -636,7 +638,7 @@ export default function EditLotPage() {
                 </Button>
                 <Button type="submit" disabled={isLoading || stores.length === 0}>
                   <Send className="h-4 w-4 mr-2" />
-                  {isLoading ? "Updating..." : "Update Lot"}
+                  {isLoading ? "Publishing..." : "Publish Lot"}
                 </Button>
               </div>
             </div>

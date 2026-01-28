@@ -2,10 +2,15 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SellerProfileForm } from "@/app/components/seller/SellerProfileForm";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ChevronDownIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 export default async function SellerProfile() {
   const headersList = await headers();
@@ -52,33 +57,27 @@ export default async function SellerProfile() {
   };
 
   return (
-      <div className="container mx-auto max-w-5xl py-8">
-      {/* <div className="mb-6">
-        <h1 className="text-3xl font-bold">Seller Profile</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your business address and contact details shown to buyers.
-        </p>
-      </div> */}
+    <div className="container mx-auto max-w-5xl py-8">
+   
 
-      <Card>
-        {/* <CardHeader>
-          <CardTitle>Business Information</CardTitle>
-          <CardDescription>
-            Update your business address and contact information
-          </CardDescription>
-        </CardHeader> */}
+      <Card >
         <CardContent>
-          <Accordion type="single" collapsible defaultValue="business-address" className="w-full">
-            <AccordionItem value="business-address">
-              <AccordionTrigger>Business Address Details - Update your business address and contact information</AccordionTrigger>
-              <AccordionContent>
-                <SellerProfileForm initialData={initialData} />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <Collapsible className="data-[state=open]:bg-muted rounded-md">
+            <CollapsibleTrigger asChild>
+              <div>
+                <Button variant="ghost">
+                  Click here to Add/Update your Business Address Details
+                </Button>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent >
+              <SellerProfileForm initialData={initialData} />
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
+
+
     </div>
   );
 }
-  

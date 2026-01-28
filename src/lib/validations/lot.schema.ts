@@ -54,8 +54,16 @@ export const itemSchemaForServer = z
     startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
-    description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
-    imageUrls: z.array(z.string()).optional().default([]),
+    //description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
+    //imageUrls: z.array(z.string()).optional().default([]),
+    description: z
+      .string()
+      .min(1, "Item description is required")
+      .max(1000, "Description must be less than 1000 characters"),
+    imageUrls: z
+      .array(z.string())
+      .min(1, "At least one image is required for each item")
+      .default([]),
     videoUrls: z.array(z.string()).optional().default([]),
   })
   .refine(
@@ -73,6 +81,10 @@ export const itemSchemaForServer = z
   );
 
 // Schema for client-side form (with File objects)
+// images: z
+  //   .array(itemMediaSchema)
+  //   .min(1, "At least one image is required for each item")
+  //   .max(10, "Maximum 10 images per item"),
 export const itemSchema = z
   .object({
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
@@ -83,8 +95,16 @@ export const itemSchema = z
     startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
     reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
-    description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
-    images: z.array(itemMediaSchema).max(10, "Maximum 10 images per item").optional().default([]),
+    description: z
+    .string()
+    .min(1, "Item description is required")
+    .max(1000, "Description must be less than 1000 characters"),
+    // images: z.array(itemMediaSchema).max(10, "Maximum 10 images per item").optional().default([]),  
+    images: z
+  .array(itemMediaSchema)
+  .max(10, "Maximum 10 images per item")
+  .optional()
+  .default([]),
     videos: z.array(itemMediaSchema).max(5, "Maximum 5 videos per item").optional().default([]),
   })
   .refine(
@@ -107,8 +127,9 @@ export const createLotSchema = z
     title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
     description: z
       .string()
-      .min(500, "Description must be at least 500 characters")
-      .max(2000, "Description must be less than 2000 characters"),
+      .min(100, "Description must be at least 500 characters")
+      .max(5000, "Description must be less than 5000 characters"),
+ 
     storeId: z.string().min(1, "Store is required"),
     auctionId: z.string().optional().nullable(),
     lotDisplayId: z.string().optional().nullable(),

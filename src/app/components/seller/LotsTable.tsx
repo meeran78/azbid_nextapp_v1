@@ -32,6 +32,7 @@ import { motion } from "framer-motion";
 import { Edit, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteLotAction } from "@/actions/delete-lot.action";
+import { format } from "date-fns";
 
 interface Lot {
   id: string;
@@ -125,6 +126,7 @@ export function LotsTable({ lots }: LotsTableProps) {
               <TableHead>Auction</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Created At</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -155,6 +157,9 @@ export function LotsTable({ lots }: LotsTableProps) {
                   >
                     {lot.status}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(lot.createdAt), "MMM dd, yyyy")}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>

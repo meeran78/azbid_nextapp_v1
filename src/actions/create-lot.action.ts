@@ -50,6 +50,7 @@ export async function createLotAction(data: {
   description: string;
   storeId: string;
   auctionId?: string | null;
+  lotDisplayId?: string | null;
   closesAt: string; // ISO date string
   removalStartAt?: string | null;
   inspectionAt?: string | null;
@@ -84,6 +85,7 @@ export async function createLotAction(data: {
       description: data.description || "",
       storeId: data.storeId,
       auctionId: data.auctionId || null,
+      lotDisplayId: data.lotDisplayId || null,
       closesAt: data.closesAt ? new Date(data.closesAt) : new Date(),
       removalStartAt: data.removalStartAt ? new Date(data.removalStartAt) : null,
       inspectionAt: data.inspectionAt ? new Date(data.inspectionAt) : null,
@@ -172,14 +174,13 @@ export async function createLotAction(data: {
             description: validatedData.description,
             storeId: validatedData.storeId,
             auctionId: validatedData.auctionId || null,
+          //  lotDisplayId: validatedData.lotDisplayId || null,
             status: lotStatus,
             closesAt: validatedData.closesAt,
             inspectionAt: validatedData.inspectionAt || null,
             removalStartAt: validatedData.removalStartAt || null, // Set lotDisplayId when publishing (if not already set)
-            lotDisplayId: !data.isDraft && !existingLot.lotDisplayId 
-              ? await generateUniqueLotDisplayId() 
-              : existingLot.lotDisplayId || null,
-            // Delete existing items and create new ones
+            lotDisplayId: existingLot.lotDisplayId ?? validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
+           // Delete existing items and create new ones
             items: {
               deleteMany: {},
               create: validatedData.items.map((item) => ({
@@ -249,11 +250,13 @@ export async function createLotAction(data: {
     // Create new lot (either no lotId provided, or lotId doesn't exist)
     lot = await prisma.lot.create({
       data: {
-        lotDisplayId: !data.isDraft ? await generateUniqueLotDisplayId() : null,
+       // lotDisplayId: !data.isDraft ? await generateUniqueLotDisplayId() : null,
+       lotDisplayId:  validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
         title: validatedData.title,
         description: validatedData.description,
         storeId: validatedData.storeId,
         auctionId: validatedData.auctionId || null,
+        // lotDisplayId: validatedData.lotDisplayId || null,
         status: lotStatus,
         closesAt: validatedData.closesAt,
         inspectionAt: validatedData.inspectionAt || null,

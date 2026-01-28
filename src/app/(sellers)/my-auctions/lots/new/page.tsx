@@ -69,10 +69,11 @@ export default function CreateLotPage() {
     resolver: zodResolver(createLotSchema),
     defaultValues: {
       lotId,
-      title: `Lot ${lotId}`,
+      title: `${lotId}`,
       description: "",
       storeId: storeId || "",
       auctionId: auctionId || null,
+      lotDisplayId: null,
       closesAt: defaultClosesAt,
       removalStartAt: null,
       inspectionAt: null,
@@ -200,6 +201,7 @@ export default function CreateLotPage() {
         description: data.description,
         storeId: data.storeId,
         auctionId: data.auctionId,
+        lotDisplayId: data.lotDisplayId,
         closesAt: data.closesAt.toISOString(),
         removalStartAt: data.removalStartAt?.toISOString() || null,
         inspectionAt: data.inspectionAt?.toISOString() || null,
@@ -382,13 +384,13 @@ export default function CreateLotPage() {
                       </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Describe your lot (500-2000 characters)..."
+                          placeholder="Describe your lot (100-5000 characters)..."
                           rows={6}
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        {field.value?.length || 0}/2000 characters (minimum 500)
+                        {field.value?.length || 0}/5000 characters (minimum 100)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

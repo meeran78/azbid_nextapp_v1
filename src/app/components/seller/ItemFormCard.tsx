@@ -224,7 +224,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                 name={`items.${index}.retailPrice`}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Retail Price</FormLabel>
+                    <FormLabel>Retail Price </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -290,7 +290,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
               name={`items.${index}.description`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item Description</FormLabel>
+                  <FormLabel>Item Description <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Describe the item..."
@@ -311,7 +311,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
               name={`items.${index}.images`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item Images</FormLabel>
+                  <FormLabel>Item Images (At least one image is required) <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <ImageUpload
                       images={field.value || []}
