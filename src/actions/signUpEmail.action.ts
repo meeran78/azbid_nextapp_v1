@@ -17,6 +17,9 @@ export async function signUpEmailAction(formData: FormData) {
   const selRole = String(formData.get("role"));
   if (!selRole) return { error: "Please select an account type" };
 
+  const acceptedTerms = String(formData.get("acceptedTerms")).toLowerCase() === "true";
+  if (!acceptedTerms) return { error: "You must accept the terms and conditions" };
+
   const role = selRole === "ADMIN" ? "ADMIN" : selRole === "SELLER" ? "SELLER" : "BUYER";
 
   try {
@@ -29,8 +32,11 @@ export async function signUpEmailAction(formData: FormData) {
         //selRole: role as any, // Type assertion to bypass validation, but hook will handle it
       },
     });
-    if (result.user?.id) {
-      const updateData: Record<string, unknown> = { role };
+   if (result.user?.id) {
+  const updateData: Record<string, unknown> = { 
+    role,
+    acceptedTermsAt: new Date(),  // or acceptedTerms: true if using boolean
+  };
 
       if (role === "SELLER") {
         const companyName = String(formData.get("companyName") ?? "").trim() || null;
@@ -71,8 +77,8 @@ export async function signUpEmailAction(formData: FormData) {
       //   });
       // }
 
-      return { error: null };
-    }
+      
+    }return { error: null };
   } catch (err) {
     if (err instanceof APIError) {
       const errCode = err.body ? (err.body.code as ErrorCode) : "UNKNOWN";

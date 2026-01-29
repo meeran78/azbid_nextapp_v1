@@ -19,7 +19,14 @@ import { ShoppingBag, Store, Shield, Check } from "lucide-react";
 import { SignInOauthButton } from "@/app/components/SignInOauthButton";
 import { useRef } from "react";
 import LoginCompanyInfo, { type LoginCompanyInfoRef } from "@/app/components/admin/LoginCompanyInfo";
-
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -119,9 +126,11 @@ export default function SignUpPage() {
     setSuccess(false);
     setValidationErrors({});
 
-    if (!validateForm()) {
+    const isValid = await validateForm();
+    if (!isValid) {
       return;
     }
+
     // Validate company info when role is SELLER
     if (formData.role === "SELLER") {
       const isValid = await companyInfoRef.current?.trigger();
@@ -134,39 +143,46 @@ export default function SignUpPage() {
       }
     }
     setIsLoading(true);
-    // const formData = new FormData(e.target as HTMLFormElement);
-    const formDataObj = new FormData();
-    formDataObj.append("name", formData.name);
-    formDataObj.append("email", formData.email);
-    formDataObj.append("password", formData.password);
-    formDataObj.append("role", formData.role); // Add role
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append("name", formData.name);
+      formDataObj.append("email", formData.email);
+      formDataObj.append("password", formData.password);
+      formDataObj.append("role", formData.role);
+      formDataObj.append("acceptedTerms", acceptedTerms ? "true" : "false");
 
-    // Append company info for SELLER
-    if (formData.role === "SELLER" && companyInfoRef.current) {
-      const companyInfo = companyInfoRef.current.getValues();
-      formDataObj.append("companyName", companyInfo.companyName?.trim() ?? "");
-      formDataObj.append("companyDescription", companyInfo.companyDescription?.trim() ?? "");
-      formDataObj.append("companyLocationDescription", companyInfo.companyLocationDescription?.trim() ?? "");
-      formDataObj.append("addressLine1", companyInfo.addressLine1?.trim() ?? "");
-      formDataObj.append("addressLine2", companyInfo.addressLine2?.trim() ?? "");
-      formDataObj.append("city", companyInfo.city?.trim() ?? "");
-      formDataObj.append("state", companyInfo.state?.trim() ?? "");
-      formDataObj.append("zipcode", companyInfo.zipcode?.trim() ?? "");
-      formDataObj.append("country", companyInfo.country?.trim() ?? "");
-      formDataObj.append("businessPhone", companyInfo.businessPhone?.trim() ?? "");
+      if (formData.role === "SELLER" && companyInfoRef.current) {
+        const companyInfo = companyInfoRef.current.getValues();
+        formDataObj.append("companyName", companyInfo.companyName?.trim() ?? "");
+        formDataObj.append("companyDescription", companyInfo.companyDescription?.trim() ?? "");
+        formDataObj.append("companyLocationDescription", companyInfo.companyLocationDescription?.trim() ?? "");
+        formDataObj.append("addressLine1", companyInfo.addressLine1?.trim() ?? "");
+        formDataObj.append("addressLine2", companyInfo.addressLine2?.trim() ?? "");
+        formDataObj.append("city", companyInfo.city?.trim() ?? "");
+        formDataObj.append("state", companyInfo.state?.trim() ?? "");
+        formDataObj.append("zipcode", companyInfo.zipcode?.trim() ?? "");
+        formDataObj.append("country", companyInfo.country?.trim() ?? "");
+        formDataObj.append("businessPhone", companyInfo.businessPhone?.trim() ?? "");
+      }
+
+      const result = await signUpEmailAction(formDataObj);
+      const error = result?.error ?? null;
+
+      if (error) {
+        setError(error);
+        toast.error(error);
+      } else {
+        setSuccess(true);
+        toast.success("Account created successfully. Please check your email to verify your account.");
+        router.push("/sign-up/success");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
-    const { error } = await signUpEmailAction(formDataObj);
-
-    if (error) {
-      setError(error);
-      toast.error(error);
-    } else {
-      setSuccess(true);
-      toast.success("Account created successfully. Please check your email to verify your account.");
-      router.push("/sign-up/success");
-    }
-    setIsLoading(false);
-
 
   };
 
@@ -222,14 +238,14 @@ export default function SignUpPage() {
             <SignInOauthButton provider="github" signUp={false} /> 
           </div> */}
 
-          <div className="relative mb-4">
+          {/* <div className="relative mb-4">
             <div className="absolute inset-0 flex items-center">
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
             </div>
-          </div>
+          </div> */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Field */}

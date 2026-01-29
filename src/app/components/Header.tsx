@@ -125,7 +125,7 @@ const Header = () => {
 							</nav>
 						</div>
 						{/* Desktop Login Button */}
-						<div className="flex items-center gap-4">
+						<div className="flex gap-4">
 							{/* Welcome message for all logged-in users */}
 							{session?.user && (
 								<p className="flex items-center gap-2">

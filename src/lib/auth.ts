@@ -20,9 +20,9 @@ const options = {
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       const link = new URL(url);
-      link.searchParams.set("callbackURL", "/verify-email");
+      link.searchParams.set("callbackURL", "/verify-email/success");
 
-      await sendEmailAction({
+      const result = await sendEmailAction({
         to: user.email,
         subject: "Verify your email address",
         meta: {
@@ -31,6 +31,9 @@ const options = {
           link: String(link),
         },
       });
+      if (!result?.success) {
+        throw new Error("Failed to send verification email. Please try again.");
+      }
     },
   },
   emailAndPassword: {
