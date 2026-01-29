@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import SellerProfile from "@/app/components/seller/SellerProfile";
+import { motion } from "framer-motion";
 
 export default async function SellersDashboardPage({
     searchParams,
@@ -34,7 +35,7 @@ export default async function SellersDashboardPage({
         redirect("/");
     }
 
-        // Await searchParams before accessing its properties
+    // Await searchParams before accessing its properties
     const params = await searchParams;
 
     const [stores, auctions, lots] = await Promise.all([
@@ -70,11 +71,20 @@ export default async function SellersDashboardPage({
             <StoresList stores={stores} />
 
             {/* Auctions and Lots Tabs */}
-            <Tabs defaultValue="lots" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="lots">Lots</TabsTrigger>
-                    <TabsTrigger value="auctions">Auctions</TabsTrigger>
+            <Tabs defaultValue="lots" className="w-full space-y-4 space-x-4">
+                <TabsList className="relative">
+                    {["lots", "auctions", "analytics"].map((tab) => (
+                        <TabsTrigger
+                            key={tab}
+                            value={tab}
+                            className="relative"
+                        >
+                            {tab.toUpperCase()}
 
+
+
+                        </TabsTrigger>
+                    ))}
                 </TabsList>
 
                 <TabsContent value="auctions" className="space-y-4">
@@ -82,7 +92,7 @@ export default async function SellersDashboardPage({
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-2xl font-semibold">Auctions</h2>
                             <Select defaultValue="ALL">
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger className="w-[380px]">
                                     <SelectValue placeholder="Filter by status" />
                                 </SelectTrigger>
                                 <SelectContent>

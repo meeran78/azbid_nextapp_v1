@@ -317,6 +317,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                       images={field.value || []}
                       onChange={(images) => field.onChange(images)}
                       maxImages={10}
+                      itemIndex={index}
                     />
                   </FormControl>
                   <FormDescription>

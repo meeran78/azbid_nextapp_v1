@@ -57,27 +57,24 @@ export default async function SellerProfile() {
   };
 
   return (
-    <div className="container mx-auto max-w-5xl py-8">
-   
-
-      <Card >
-        <CardContent>
-          <Collapsible className="data-[state=open]:bg-muted rounded-md">
-            <CollapsibleTrigger asChild>
-              <div>
-                <Button variant="ghost">
-                  Click here to Add/Update your Business Address Details
-                </Button>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent >
-              <SellerProfileForm initialData={initialData} />
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
-      </Card>
+    <Card className="container mx-auto max-w-full p-2" >
+      <CardContent className="p-0">
+        <Collapsible className="rounded-md">
+          <CollapsibleTrigger asChild>
+            <div>
+              <Button variant="ghost">
+                Click here to Add/Update your Business Address Details
+              </Button>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent >
+            <SellerProfileForm initialData={initialData} />
+          </CollapsibleContent>
+        </Collapsible>
+      </CardContent>
+    </Card>
 
 
-    </div>
+
   );
 }

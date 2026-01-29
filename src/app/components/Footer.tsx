@@ -101,7 +101,7 @@ const Footer = (props: Props) => {
 						<div>
 							<h5 className='font-semibold mb-4'>Support</h5>
 							<ul className='space-y-2 text-sm'>
-								<li>
+								{/* <li>
 									<Button
 										variant='link'
 										size='sm'
@@ -109,7 +109,7 @@ const Footer = (props: Props) => {
 										onClick={() => navigate.push('/help-support')}>
 										Help Center
 									</Button>
-								</li>
+								</li> */}
 								<li>
 									<Button
 										variant='link'

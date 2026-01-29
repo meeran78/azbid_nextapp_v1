@@ -16,6 +16,7 @@ interface ImageUploadProps {
   onChange: (images: ImageFile[]) => void;
   maxImages?: number;
   disabled?: boolean;
+  itemIndex?: number;
 }
 
 export function ImageUpload({
@@ -23,6 +24,7 @@ export function ImageUpload({
   onChange,
   maxImages = 10,
   disabled = false,
+  itemIndex = 0,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -91,7 +93,7 @@ export function ImageUpload({
       >
         <input
           type="file"
-          id="image-upload"
+          id={`image-upload-${itemIndex}`}
           multiple
           accept="image/jpeg,image/jpg,image/png,image/webp"
           onChange={(e) => handleFileSelect(e.target.files)}
@@ -99,7 +101,7 @@ export function ImageUpload({
           className="hidden"
         />
         <label
-          htmlFor="image-upload"
+          htmlFor={`image-upload-${itemIndex}`}
           className={cn(
             "cursor-pointer flex flex-col items-center gap-2",
             (disabled || images.length >= maxImages) && "cursor-not-allowed"

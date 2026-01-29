@@ -35,9 +35,9 @@ type NavigationItem = {
 
 const getNavigationItems = (roleType: string): NavigationItem[] => {
   const commonItems: NavigationItem[] = [
-    { title: "Settings", url: "/settings", icon: Settings },
-    { title: "Change Password", url: "/change-password", icon: KeyRound },
-    { title: "Help & Support", url: "/help", icon: HelpCircle },
+   
+    // { title: "Change Password", url: "/change-password", icon: KeyRound },
+    // { title: "Help & Support", url: "/help", icon: HelpCircle },
   ];
 
   switch (roleType) {
@@ -47,6 +47,8 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "My Bids", url: "/my-bids", icon: Gavel },
         { title: "My Favorites", url: "/my-favorites", icon: Heart },
         { title: "Payment", url: "/payment", icon: CreditCard },
+        { title: "Settings", url: "/buyer-settings", icon: Settings },
+        { title: "Help & Support", url: "/help-support", icon: HelpCircle },
         ...commonItems,
       ];
     case "SELLER":
@@ -54,6 +56,8 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "Dashboard", url: "/sellers-dashboard", icon: LayoutDashboard },
         { title: "My Auctions", url: "/my-auctions", icon: Package },
         { title: "Payment", url: "/payment", icon: CreditCard },
+        { title: "Settings", url: "/seller-settings", icon: Settings },
+        { title: "Help & Support", url: "/help-support", icon: HelpCircle },
         ...commonItems,
       ];
     case "ADMIN":
@@ -62,6 +66,9 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "Users", url: "/users", icon: Users },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
+        { title: "FAQs", url: "/faqs", icon: HelpCircle },
+        { title: "Settings", url: "/admin-settings", icon: Settings },
+        { title: "Help & Support", url: "/help-support", icon: HelpCircle },
         ...commonItems,
       ];
     default:
