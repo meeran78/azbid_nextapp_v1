@@ -30,6 +30,17 @@ export default async function SellerProfile() {
       name: true,
       email: true,
       image: true,
+      companyName: true,
+      companyRegistrationNumber: true,
+      companyDescription: true,
+      companyLogo: true,
+      companyBanner: true,
+      companySocialMedia: true,
+      companySocialMediaUrl: true,
+      companySocialMediaIcon: true,
+      companyLocationDescription: true,
+      newsLetterEmailSubscription: true,
+      newsLetterSMSSubscription: true,
       addressLine1: true,
       addressLine2: true,
       city: true,
@@ -37,6 +48,9 @@ export default async function SellerProfile() {
       zipcode: true,
       country: true,
       businessPhone: true,
+      businessEmail: true,
+      businessWebsite: true,
+      businessDescription: true,
       displayLocation: true,
     },
   });
@@ -45,7 +59,19 @@ export default async function SellerProfile() {
     redirect("/sign-in");
   }
 
+   
   const initialData = {
+    companyName: user.companyName ?? null,
+    companyRegistrationNumber: user.companyRegistrationNumber ?? null,
+    companyDescription: user.companyDescription ?? null,
+    companyLogo: user.companyLogo ?? null,
+    companyBanner: user.companyBanner ?? null,
+    companySocialMedia: user.companySocialMedia ?? null,
+    companySocialMediaUrl: user.companySocialMediaUrl ?? null,
+    companySocialMediaIcon: user.companySocialMediaIcon ?? null,
+    companyLocationDescription: user.companyLocationDescription ?? null,
+    newsLetterEmailSubscription: user.newsLetterEmailSubscription ?? null,
+    newsLetterSMSSubscription: user.newsLetterSMSSubscription ?? null,
     addressLine1: user.addressLine1 ?? null,
     addressLine2: user.addressLine2 ?? null,
     city: user.city ?? null,
@@ -53,6 +79,9 @@ export default async function SellerProfile() {
     zipcode: user.zipcode ?? null,
     country: user.country ?? null,
     businessPhone: user.businessPhone ?? null,
+    businessEmail: user.businessEmail ?? null,
+    businessWebsite: user.businessWebsite ?? null,
+    businessDescription: user.businessDescription ?? null,
     displayLocation: user.displayLocation ?? null,
   };
 
@@ -63,7 +92,7 @@ export default async function SellerProfile() {
           <CollapsibleTrigger asChild>
             <div>
               <Button variant="ghost">
-                Click here to Add/Update your Business Address Details
+                Click here to Update your Business Address Details
               </Button>
             </div>
           </CollapsibleTrigger>

@@ -58,11 +58,6 @@ export default function CreateStorePage() {
       errors.description = "Description must be less than 500 characters";
     }
 
-    const commission = parseFloat(formData.commissionPct);
-    if (isNaN(commission) || commission < 0 || commission > 100) {
-      errors.commissionPct = "Commission must be between 0 and 100";
-    }
-
     if (formData.logoUrl && !isValidUrl(formData.logoUrl)) {
       errors.logoUrl = "Please enter a valid URL";
     }
@@ -95,8 +90,7 @@ export default function CreateStorePage() {
       const formDataObj = new FormData();
       formDataObj.append("name", formData.name.trim());
       formDataObj.append("description", formData.description.trim());
-      formDataObj.append("logoUrl", formData.logoUrl.trim());
-      formDataObj.append("commissionPct", formData.commissionPct);
+      formDataObj.append("logoUrl", formData.logoUrl.trim());    
       formDataObj.append("status", formData.status);
 
       const { error, store } = await createStoreAction(formDataObj);
@@ -269,46 +263,6 @@ export default function CreateStorePage() {
                   </div>
                 )}
               </div>
-
-              {/* Commission Percentage */}
-              {/* <div className="space-y-2">
-                <Label htmlFor="commissionPct">
-                  Commission Percentage <span className="text-red-500">*</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="commissionPct"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    placeholder="10.5"
-                    value={formData.commissionPct}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        commissionPct: e.target.value,
-                      })
-                    }
-                    required
-                    disabled={isLoading}
-                    className={
-                      validationErrors.commissionPct ? "border-red-500" : ""
-                    }
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    %
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Platform commission percentage (0-100)
-                </p>
-                {validationErrors.commissionPct && (
-                  <p className="text-sm text-red-500">
-                    {validationErrors.commissionPct}
-                  </p>
-                )}
-              </div> */}
 
               {/* Status */}
               <div className="space-y-2">

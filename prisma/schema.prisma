@@ -48,9 +48,24 @@ enum PaymentStatus {
 }
 
 enum InvoiceStatus {
-  OPEN
+  PENDING
   PAID
+  FAILED
+  REFUNDED
+  CANCELLED
   VOID
+}
+
+model InvoiceItem {
+  id        String  @id @default(uuid())
+  invoiceId String
+  itemId    String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  item      Item    @relation(fields: [itemId], references: [id])
+
+  @@unique([invoiceId, itemId])
+  @@index([invoiceId])
+  @@index([itemId])
 }
 
 enum CategoryStatus {
@@ -87,6 +102,15 @@ model User {
   banExpires    DateTime?
 
   // NEW – business address / contact
+  companyName               String?
+  companyRegistrationNumber String?
+  companyDescription        String?
+  companyLogo               String?
+  companyBanner             String?
+  companySocialMedia        String?
+  companySocialMediaUrl     String?
+  companySocialMediaIcon    String?
+  companyLocationDescription String?
   addressLine1            String?
   addressLine2            String?
   city                    String?
@@ -103,6 +127,8 @@ model User {
   businessSocialMedia     String?
   businessSocialMediaUrl  String?
   businessSocialMediaIcon String?
+  newsLetterEmailSubscription Boolean? @default(false)
+  newsLetterSMSSubscription Boolean? @default(false)
 
   sessions Session[]
   accounts Account[]
@@ -113,9 +139,12 @@ model User {
   orders       Order[]
   favourites   StoreFavourite[] // NEW: stores this user has favourited
   storeReviews StoreReview[] // NEW: reviews this user has written
+  invoicesAsBuyer   Invoice[] @relation("InvoiceBuyer")
 
   // Seller
+  commissionPct Float?  // Commission % for sellers (0-100), applies to all their stores
   stores Store[]
+  invoicesAsSeller  Invoice[] @relation("InvoiceSeller")
 
   // Admin actions
   adminLogs AdminLog[]
@@ -184,7 +213,7 @@ model Store {
   name          String
   description   String?
   logoUrl       String?
-  commissionPct Float
+
   status        StoreStatus @default(ACTIVE)
 
   // NEW: reputation metrics
@@ -252,6 +281,8 @@ model Auction {
   softCloseExtendLimit Int     @default(10)
 
   lots Lot[]
+ 
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -282,6 +313,7 @@ model Lot {
   lastExtendedAt DateTime?
 
   items Item[]
+  invoices Invoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -314,6 +346,7 @@ model Item {
   winningBid   Bid?    @relation("WinningBid", fields: [winningBidId], references: [id])
   winningBidId String? @unique
   orders       Order[]
+  invoiceItems InvoiceItem[]
 
   createdAt DateTime @default(now())
 
@@ -366,15 +399,34 @@ model Order {
 }
 
 model Invoice {
-  id      String @id @default(uuid())
-  orderId String @unique
-  order   Order  @relation(fields: [orderId], references: [id])
+  id               String        @id @default(uuid())
+  invoiceDisplayId String?       @unique // Human-readable ID (e.g. INV-2024-00001)
 
-  number String        @unique
-  status InvoiceStatus @default(OPEN)
+  // Relations
+  orderId          String?       @unique // Optional: link to Order for backward compatibility
+  order            Order?       @relation(fields: [orderId], references: [id])
 
-  issuedAt DateTime  @default(now())
-  paidAt   DateTime?
+  buyerId          String
+  buyer            User         @relation("InvoiceBuyer", fields: [buyerId], references: [id])
+  sellerId         String
+  seller           User         @relation("InvoiceSeller", fields: [sellerId], references: [id])
+  lotId            String
+  lot              Lot          @relation(fields: [lotId], references: [id])
+
+  // Item ID(s) - many-to-many via InvoiceItem
+  invoiceItems     InvoiceItem[]
+
+  // Amounts
+  winningBidAmount Float
+  buyerPremiumPct  Float        // Buyer's Premium (%)
+  tax              Float?       // Tax if applicable
+  stripePaymentIntentId String?
+  invoiceTotal     Float
+
+  status           InvoiceStatus @default(PENDING)
+
+  issuedAt         DateTime     @default(now())
+  paidAt           DateTime?
 }
 
 // Payment (Stripe / Gateway)

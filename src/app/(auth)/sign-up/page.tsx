@@ -17,6 +17,8 @@ import { signUpEmailAction } from "@/actions/signUpEmail.action";
 import { motion } from "framer-motion";
 import { ShoppingBag, Store, Shield, Check } from "lucide-react";
 import { SignInOauthButton } from "@/app/components/SignInOauthButton";
+import { useRef } from "react";
+import LoginCompanyInfo, { type LoginCompanyInfoRef } from "@/app/components/admin/LoginCompanyInfo";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -28,6 +30,7 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const companyInfoRef = useRef<LoginCompanyInfoRef>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -62,7 +65,7 @@ export default function SignUpPage() {
     });
   }
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const errors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
@@ -99,6 +102,13 @@ export default function SignUpPage() {
       errors.role = "Please select an account type";
     }
 
+    if (formData.role === "SELLER" && companyInfoRef.current) {
+      const isValid = await companyInfoRef.current.trigger();
+      if (!isValid) {
+        errors.companyInfo = "Please fill out all required company information.";
+      }
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -112,7 +122,17 @@ export default function SignUpPage() {
     if (!validateForm()) {
       return;
     }
-
+    // Validate company info when role is SELLER
+    if (formData.role === "SELLER") {
+      const isValid = await companyInfoRef.current?.trigger();
+      if (!isValid) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          companyInfo: "Please fill out all required company information.",
+        }));
+        return;
+      }
+    }
     setIsLoading(true);
     // const formData = new FormData(e.target as HTMLFormElement);
     const formDataObj = new FormData();
@@ -121,6 +141,20 @@ export default function SignUpPage() {
     formDataObj.append("password", formData.password);
     formDataObj.append("role", formData.role); // Add role
 
+    // Append company info for SELLER
+    if (formData.role === "SELLER" && companyInfoRef.current) {
+      const companyInfo = companyInfoRef.current.getValues();
+      formDataObj.append("companyName", companyInfo.companyName?.trim() ?? "");
+      formDataObj.append("companyDescription", companyInfo.companyDescription?.trim() ?? "");
+      formDataObj.append("companyLocationDescription", companyInfo.companyLocationDescription?.trim() ?? "");
+      formDataObj.append("addressLine1", companyInfo.addressLine1?.trim() ?? "");
+      formDataObj.append("addressLine2", companyInfo.addressLine2?.trim() ?? "");
+      formDataObj.append("city", companyInfo.city?.trim() ?? "");
+      formDataObj.append("state", companyInfo.state?.trim() ?? "");
+      formDataObj.append("zipcode", companyInfo.zipcode?.trim() ?? "");
+      formDataObj.append("country", companyInfo.country?.trim() ?? "");
+      formDataObj.append("businessPhone", companyInfo.businessPhone?.trim() ?? "");
+    }
     const { error } = await signUpEmailAction(formDataObj);
 
     if (error) {
@@ -345,13 +379,23 @@ export default function SignUpPage() {
                     </motion.button>
                   );
                 })}
-              </div>
-              {validationErrors.role && (
+              </div>  {validationErrors.role && (
                 <p className="text-sm text-red-500">{validationErrors.role}</p>
               )}
+              {formData.role === "SELLER" && (
+                <div className="text-sm text-muted-foreground space-y-2 mt-4 mb-4 ">
+                  {/* <span className="text-red-500">*</span> */}
+                  <p className="text-sm text-muted-foreground text-center text-gray-500">Seller accounts are subject to approval. Please fill out the following information to complete your account creation.</p>
+                  <LoginCompanyInfo ref={companyInfoRef} />
+                </div>
+              )}{validationErrors.companyInfo && (
+                <p className="text-sm text-red-500 mt-2">{validationErrors.companyInfo}</p>
+              )}
+
             </div>
             {/* Terms and Conditions Checkbox */}
             <div className="space-y-2">
+
               <div className="flex items-start space-x-2">
                 <Checkbox
                   id="terms"

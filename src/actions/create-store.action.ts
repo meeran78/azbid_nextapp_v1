@@ -17,7 +17,7 @@ export async function createStoreAction(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const logoUrl = String(formData.get("logoUrl") || "").trim();
-  const commissionPct = parseFloat(String(formData.get("commissionPct") || "0"));
+
   const status = String(formData.get("status") || "ACTIVE") as "ACTIVE" | "SUSPENDED";
 
   // Validation
@@ -37,9 +37,9 @@ export async function createStoreAction(formData: FormData) {
     return { error: "Description must be less than 500 characters" };
   }
 
-  if (isNaN(commissionPct) || commissionPct < 0 || commissionPct > 100) {
-    return { error: "Commission percentage must be between 0 and 100" };
-  }
+  // if (isNaN(commissionPct) || commissionPct < 0 || commissionPct > 100) {
+  //   return { error: "Commission percentage must be between 0 and 100" };
+  // }
 
   if (logoUrl && !isValidUrl(logoUrl)) {
     return { error: "Please enter a valid logo URL" };
@@ -50,8 +50,7 @@ export async function createStoreAction(formData: FormData) {
       data: {
         name,
         description: description || null,
-        logoUrl: logoUrl || null,
-        commissionPct,
+        logoUrl: logoUrl || null,        
         status,
         ownerId: session.user.id,
       },

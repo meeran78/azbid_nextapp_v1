@@ -120,7 +120,7 @@ export function StoresList({ stores }: StoresListProps) {
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Commission:</span>
                                 <span className="font-medium">
-                                  {store.commissionPct}%
+                                  {store.commissionPct ? `${store.commissionPct}%` : 'N/A'}
                                 </span>
                               </div>
                               <div className="flex justify-between">

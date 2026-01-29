@@ -18,7 +18,7 @@ export async function signUpEmailAction(formData: FormData) {
   if (!selRole) return { error: "Please select an account type" };
 
   const role = selRole === "ADMIN" ? "ADMIN" : selRole === "SELLER" ? "SELLER" : "BUYER";
-  
+
   try {
     const result = await auth.api.signUpEmail({
       body: {
@@ -29,16 +29,50 @@ export async function signUpEmailAction(formData: FormData) {
         //selRole: role as any, // Type assertion to bypass validation, but hook will handle it
       },
     });
-
-    //After user creation, update the role using Prisma directly
     if (result.user?.id) {
+      const updateData: Record<string, unknown> = { role };
+
+      if (role === "SELLER") {
+        const companyName = String(formData.get("companyName") ?? "").trim() || null;
+        const companyDescription = String(formData.get("companyDescription") ?? "").trim() || null;
+        const companyLocationDescription = String(formData.get("companyLocationDescription") ?? "").trim() || null;
+        const addressLine1 = String(formData.get("addressLine1") ?? "").trim() || null;
+        const addressLine2 = String(formData.get("addressLine2") ?? "").trim() || null;
+        const city = String(formData.get("city") ?? "").trim() || null;
+        const state = String(formData.get("state") ?? "").trim() || null;
+        const zipcode = String(formData.get("zipcode") ?? "").trim() || null;
+        const country = String(formData.get("country") ?? "").trim() || null;
+        const businessPhone = String(formData.get("businessPhone") ?? "").trim() || null;
+        const displayLocation = city && state ? `${city}, ${state}` : null;
+
+        Object.assign(updateData, {
+          companyName,
+          companyDescription,
+          companyLocationDescription,
+          addressLine1,
+          addressLine2,
+          city,
+          state,
+          zipcode,
+          country,
+          businessPhone,
+          displayLocation,
+        });
+      }
       await prisma.user.update({
         where: { id: result.user.id },
-        data: { role },
+        data: updateData,
       });
-    }
+      // //After user creation, update the role using Prisma directly
+      // if (result.user?.id) {
+      //   await prisma.user.update({
+      //     where: { id: result.user.id },
+      //     data: { updateData },
+      //   });
+      // }
 
-    return { error: null };
+      return { error: null };
+    }
   } catch (err) {
     if (err instanceof APIError) {
       const errCode = err.body ? (err.body.code as ErrorCode) : "UNKNOWN";
