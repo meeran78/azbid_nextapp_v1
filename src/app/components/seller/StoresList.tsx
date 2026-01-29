@@ -17,8 +17,7 @@ interface Store {
   id: string;
   name: string;
   description: string | null;
-  logoUrl: string | null;
-  commissionPct: number;
+  logoUrl: string | null;  
   status: string;
   _count: {
     auctions: number;
@@ -117,12 +116,7 @@ export function StoresList({ stores }: StoresListProps) {
                               </p>
                             )}
                             <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Commission:</span>
-                                <span className="font-medium">
-                                  {store.commissionPct ? `${store.commissionPct}%` : 'N/A'}
-                                </span>
-                              </div>
+                             
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Auctions:</span>
                                 <span className="font-medium">{store._count.auctions}</span>

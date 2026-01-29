@@ -19,7 +19,11 @@ import {
   ChevronRight,
   Menu,
   X,
+  Store,
+  Barcode,
+  Pickaxe
 } from "lucide-react";
+
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/components/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,7 +39,7 @@ type NavigationItem = {
 
 const getNavigationItems = (roleType: string): NavigationItem[] => {
   const commonItems: NavigationItem[] = [
-   
+
     // { title: "Change Password", url: "/change-password", icon: KeyRound },
     // { title: "Help & Support", url: "/help", icon: HelpCircle },
   ];
@@ -63,13 +67,16 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
     case "ADMIN":
       return [
         { title: "Dashboard", url: "/admin-dashboard", icon: LayoutDashboard },
+        { title: "Stores Management", url: "/stores-management", icon: Store },
+        { title: "Lots Management", url: "/lots-management", icon: Barcode },
+        { title: "Auctions Managements", url: "/auctions-management", icon: Pickaxe },
         { title: "Users", url: "/users", icon: Users },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "FAQs", url: "/faqs", icon: HelpCircle },
         { title: "Settings", url: "/admin-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },
-        { title: "Store Approvals", url: "/admin-dashboard/stores", icon: Building2 },
+
         ...commonItems,
       ];
     default:
@@ -339,8 +346,8 @@ function SidebarContent({
             >
               <Link href={item.url} onClick={onClose}>
                 <motion.div
-                  whileHover={{ 
-                    scale: 1.03, 
+                  whileHover={{
+                    scale: 1.03,
                     x: 6,
                     transition: { duration: 0.2, ease: "easeOut" }
                   }}
@@ -360,10 +367,10 @@ function SidebarContent({
                       transition={{ duration: 0.3 }}
                     />
                   )}
-                  
+
                   <motion.div
                     className="relative z-10"
-                    whileHover={{ 
+                    whileHover={{
                       rotate: [0, -5, 5, -5, 0],
                       transition: { duration: 0.5 }
                     }}
@@ -376,7 +383,7 @@ function SidebarContent({
                       )}
                     />
                   </motion.div>
-                  
+
                   <AnimatePresence mode="wait">
                     {!isCollapsed && (
                       <motion.span
