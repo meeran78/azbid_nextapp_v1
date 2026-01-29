@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getSellerStores } from "@/actions/seller-dashboard.action";
 
-export async function GET() {
+export async function GET(request: Request) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -11,8 +11,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const approvedOnly = searchParams.get("approvedOnly") === "true";
+
   try {
-    const stores = await getSellerStores(session.user.id);
+    const stores = approvedOnly
+      ? await getSellerStoresForLots(session.user.id)
+      : await getSellerStores(session.user.id);
     return NextResponse.json(stores);
   } catch (error) {
     console.error("Error fetching stores:", error);

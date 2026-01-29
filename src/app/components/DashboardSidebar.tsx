@@ -10,7 +10,7 @@ import {
   Heart,
   CreditCard,
   Settings,
-  KeyRound,
+  Building2,
   HelpCircle,
   Package,
   Users,
@@ -69,6 +69,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "FAQs", url: "/faqs", icon: HelpCircle },
         { title: "Settings", url: "/admin-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },
+        { title: "Store Approvals", url: "/admin-dashboard/stores", icon: Building2 },
         ...commonItems,
       ];
     default:

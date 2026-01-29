@@ -19,11 +19,6 @@ enum UserRole {
   ADMIN
 }
 
-enum StoreStatus {
-  ACTIVE
-  SUSPENDED
-}
-
 enum AuctionStatus {
   DRAFT
   SCHEDULED
@@ -54,6 +49,12 @@ enum InvoiceStatus {
   REFUNDED
   CANCELLED
   VOID
+}
+
+enum StoreStatus {
+  PENDING   // Awaiting admin approval
+  ACTIVE
+  SUSPENDED
 }
 
 model InvoiceItem {
@@ -146,7 +147,9 @@ model User {
   commissionPct Float?  // Commission % for sellers (0-100), applies to all their stores
   stores Store[]
   invoicesAsSeller  Invoice[] @relation("InvoiceSeller")
-
+  approvedStores   Store[] @relation("ApprovedBy")
+  suspendedStores   Store[] @relation("SuspendedBy")
+  
   // Admin actions
   adminLogs AdminLog[]
 
@@ -215,18 +218,24 @@ model Store {
   description   String?
   logoUrl       String?
 
-  status        StoreStatus @default(ACTIVE)
+  status        StoreStatus @default(PENDING)   // Single definition
 
   // NEW: reputation metrics
-  averageRating    Float? // e.g. 0–5, computed from StoreReview
-  ratingsCount     Int? // number of ratings used in average
-  responseRate     Float? // 0–100 (% of messages responded to)
-  responseTimeMins Float? // optional: average first response time
-
+  averageRating    Float?
+  ratingsCount     Int?
+  responseRate     Float?
+  responseTimeMins Float?
+  approvedAt    DateTime?
+  approvedById  String?
+  approvedBy    User? @relation("ApprovedBy", fields: [approvedById], references: [id])
+  suspendedAt   DateTime?
+  suspendedById String?
+  suspendedBy   User? @relation("SuspendedBy", fields: [suspendedById], references: [id])
+  
   auctions   Auction[]
   lots       Lot[]
-  favourites StoreFavourite[] // link to who favourited this store
-  reviews    StoreReview[] // NEW: reviews for this store
+  favourites StoreFavourite[]
+  reviews    StoreReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

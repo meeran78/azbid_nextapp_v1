@@ -316,3 +316,23 @@ export async function getSellerLots(
     orderBy: { createdAt: "desc" },
   });
 }
+
+export async function getSellerStoresForLots(sellerId: string) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "SELLER") {
+    redirect("/sign-in");
+  }
+
+  return await prisma.store.findMany({
+    where: {
+      ownerId: sellerId,
+      status: "ACTIVE",  // Only approved stores
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      _count: { select: { auctions: true, lots: true } },
+    },
+  });
+}

@@ -104,7 +104,9 @@ export default function CreateLotPage() {
   useEffect(() => {
     async function fetchStores() {
       try {
-        const response = await fetch("/api/seller/stores");
+        //const response = await fetch("/api/seller/stores");
+
+        const response = await fetch("/api/seller/stores?approvedOnly=true");
         if (response.ok) {
           const data = await response.json();
           setStores(data);

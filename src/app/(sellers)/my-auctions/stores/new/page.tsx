@@ -39,8 +39,6 @@ export default function CreateStorePage() {
     name: "",
     description: "",
     logoUrl: "",
-    commissionPct: "0",
-    status: "ACTIVE" as "ACTIVE" | "SUSPENDED",
   });
 
   const validateForm = () => {
@@ -91,7 +89,7 @@ export default function CreateStorePage() {
       formDataObj.append("name", formData.name.trim());
       formDataObj.append("description", formData.description.trim());
       formDataObj.append("logoUrl", formData.logoUrl.trim());    
-      formDataObj.append("status", formData.status);
+     // formDataObj.append("status", formData.status);
 
       const { error, store } = await createStoreAction(formDataObj);
 
@@ -103,8 +101,8 @@ export default function CreateStorePage() {
         });
       } else {
         toast.success("Store Created!", {
-          description: "Your store has been created successfully.",
-          duration: 3000,
+          description: "Your store has been created and is pending approval. You'll be able to add lots once an admin approves it.",
+          duration: 4000,
         });
 
         // Redirect to dashboard after a short delay
@@ -264,38 +262,7 @@ export default function CreateStorePage() {
                 )}
               </div>
 
-              {/* Status */}
-              <div className="space-y-2">
-                <Label htmlFor="status">
-                  Status <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: "ACTIVE" | "SUSPENDED") =>
-                    setFormData({ ...formData, status: value })
-                  }
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Active stores can create auctions and lots
-                </p>
-              </div>
-
-              {/* Error Alert */}
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+              
 
               {/* Submit Button */}
               <div className="flex gap-4 pt-4">

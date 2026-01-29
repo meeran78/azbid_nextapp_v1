@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { sendEmailAction } from "@/actions/sendEmail.action";
 
 export async function createStoreAction(formData: FormData) {
   const headersList = await headers();
@@ -18,43 +19,46 @@ export async function createStoreAction(formData: FormData) {
   const description = String(formData.get("description") || "").trim();
   const logoUrl = String(formData.get("logoUrl") || "").trim();
 
-  const status = String(formData.get("status") || "ACTIVE") as "ACTIVE" | "SUSPENDED";
-
   // Validation
-  if (!name) {
-    return { error: "Store name is required" };
-  }
-
-  if (name.length < 2) {
-    return { error: "Store name must be at least 2 characters" };
-  }
-
-  if (name.length > 100) {
-    return { error: "Store name must be less than 100 characters" };
-  }
-
-  if (description && description.length > 500) {
-    return { error: "Description must be less than 500 characters" };
-  }
-
-  // if (isNaN(commissionPct) || commissionPct < 0 || commissionPct > 100) {
-  //   return { error: "Commission percentage must be between 0 and 100" };
-  // }
-
-  if (logoUrl && !isValidUrl(logoUrl)) {
-    return { error: "Please enter a valid logo URL" };
-  }
+  if (!name) return { error: "Store name is required" };
+  if (name.length < 2) return { error: "Store name must be at least 2 characters" };
+  if (name.length > 100) return { error: "Store name must be less than 100 characters" };
+  if (description && description.length > 500) return { error: "Description must be less than 500 characters" };
+  if (logoUrl && !isValidUrl(logoUrl)) return { error: "Please enter a valid logo URL" };
 
   try {
     const store = await prisma.store.create({
       data: {
         name,
         description: description || null,
-        logoUrl: logoUrl || null,        
-        status,
+        logoUrl: logoUrl || null,
+        status: "PENDING",  // Always PENDING on creation
         ownerId: session.user.id,
       },
     });
+
+    // Send email to admins
+    try {
+      const adminUsers = await prisma.user.findMany({
+        where: { role: "ADMIN", emailVerified: true },
+        select: { email: true },
+      });
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const approvalUrl = `${appUrl}/admin-dashboard/stores`;
+
+      for (const admin of adminUsers) {
+        await sendEmailAction({
+          to: admin.email,
+          subject: "New Store Pending Approval",
+          meta: {
+            description: `A new store "${store.name}" has been created by ${session.user.name} and is pending your approval. Please review and approve it in the admin dashboard.`,
+            link: approvalUrl,
+          },
+        });
+      }
+    } catch (emailErr) {
+      console.error("Error sending store approval email:", emailErr);
+    }
 
     revalidatePath("/sellers-dashboard");
     return { error: null, store };

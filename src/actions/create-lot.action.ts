@@ -130,6 +130,10 @@ export async function createLotAction(data: {
       ownerId: session.user.id,
     },
   });
+// After "Verify store ownership" block (~line 126), add:
+if (store.status !== "ACTIVE") {
+  return { error: "Store must be approved before you can add lots. Please wait for admin approval." };
+}
 
   if (!store) {
     return { error: "Store not found or access denied" };
