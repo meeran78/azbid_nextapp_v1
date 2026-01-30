@@ -285,6 +285,9 @@ model Auction {
   description String?
   status      AuctionStatus @default(DRAFT)
 
+  auctionDisplayId String? @unique
+  buyersPremium    String?
+
   startAt DateTime
   endAt   DateTime
 
