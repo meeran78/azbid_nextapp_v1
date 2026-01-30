@@ -60,7 +60,7 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
         toast.error(result.error);
       } else {
         toast.success("Lot approved and is now LIVE");
-        router.push("/admin-dashboard/lots");
+        router.push("/lots-management");
         router.refresh();
       }
     } catch (err) {
@@ -84,7 +84,7 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
         toast.success("Lot rejected. Seller has been notified.");
         setRejectDialogOpen(false);
         setAdminNotes("");
-        router.push("/admin-dashboard/lots");
+        router.push("/lots-management");
         router.refresh();
       }
     } catch (err) {

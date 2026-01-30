@@ -46,7 +46,7 @@ export default async function AdminLotDetailPage({
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/admin-dashboard/lots">Back to Lots</Link>
+          <Link href="/lots-management">Back to Lots</Link>
         </Button>
       </div>
 

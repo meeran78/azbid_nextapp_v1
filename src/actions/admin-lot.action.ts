@@ -53,8 +53,8 @@ export async function approveLotAction(lotId: string) {
     console.error("Error sending lot approval email:", emailErr);
   }
 
-  revalidatePath("/admin-dashboard/lots");
-  revalidatePath("/admin-dashboard/lots/[id]");
+  revalidatePath("/lots-management");
+  revalidatePath("/lots-management/[id]");
   return { error: null };
 }
 
@@ -104,7 +104,7 @@ export async function rejectLotAction(lotId: string, adminNotes: string) {
     console.error("Error sending lot rejection email:", emailErr);
   }
 
-  revalidatePath("/admin-dashboard/lots");
-  revalidatePath("/admin-dashboard/lots/[id]");
+  revalidatePath("/lots-management");
+  revalidatePath("/lots-management/[id]");
   return { error: null };
 }

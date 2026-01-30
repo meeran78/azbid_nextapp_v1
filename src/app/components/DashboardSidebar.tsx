@@ -111,11 +111,11 @@ export function DashboardSidebar() {
     <div className="flex flex-col h-full">
       {/* Mobile Menu Button */}
       <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-40 left-4 z-50 md:hidden"
-        onClick={toggleMobileSidebar}
-      >
+  variant="ghost"
+  size="icon"
+  className="fixed top-[calc(var(--header-height)-44px)] left-4 z-50 md:hidden"
+  onClick={toggleMobileSidebar}
+>
         {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </Button>
 
@@ -158,9 +158,10 @@ export function DashboardSidebar() {
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className={cn(
-          "hidden md:flex fixed left-0 top-[140px] h-[calc(100vh-140px)] bg-card border-r border-border z-30 flex-col shadow-lg",
+          "hidden md:flex fixed left-0 top-[var(--header-height)] h-[calc(100vh-var(--header-height)-var(--footer-height))] bg-card border-r border-border z-30 flex-col shadow-lg",
           isCollapsed && "items-center"
         )}
+        
       >
         <SidebarContent
           navigationItems={navigationItems}
