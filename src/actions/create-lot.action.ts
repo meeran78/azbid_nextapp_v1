@@ -168,7 +168,7 @@ if (store.status !== "ACTIVE") {
         }
 
         // Only allow editing drafts
-        if (existingLot.status !== "DRAFT") {
+        if (existingLot.status !== "DRAFT" && existingLot.status !== "RESEND") {
           return { error: "Cannot edit: Lot is not in draft status" };
         }
 

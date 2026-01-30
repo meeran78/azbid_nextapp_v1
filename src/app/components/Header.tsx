@@ -40,7 +40,7 @@ const Header = () => {
 
 	return (
 		<>
-			<div className='sm:block bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2 px-4'>
+			<div className='sm:block bg-gradient-to-r from-purple-600 to-orange-500 text-white py-2 px-4'>
 				<div className='max-w-7xl mx-auto flex items-center justify-between text-sm'>
 					<div className='flex items-center space-x-6'>
 						<div className='flex items-center space-x-2 animate-pulse'>
@@ -73,27 +73,28 @@ const Header = () => {
 								{/* <AnimatedLogo variant="horizontal" size="lg" className="max-h-56 max-w-32" /> */}
 								<Image src="/images/azbid-logo.jpg" alt="Logo" width={46} height={26} className='rounded-full' />
 							</div>
-							<nav className='hidden md:flex items-center space-x-6'>
+							<nav className='hidden md:flex items-center space-x-6  '>
 								{!isSeller && (
 									<>
 										<Button
 											variant='ghost'
 											size='sm'
 											onClick={() => navigate.push('/')}
-											className='hover:scale-105 transition-all duration-200'>
+											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Home
 										</Button>
 										<Button
 											variant='ghost'
 											size='sm'
 											onClick={() => navigate.push('/live-auctions')}
-											className='hover:scale-105 transition-all duration-200'>
+											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Live Auctions
 										</Button>
 										<Button
 											variant='ghost'
 											size='sm'
-											onClick={() => navigate.push('/buy-now')}>
+											onClick={() => navigate.push('/buy-now')}
+											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Buy Now
 										</Button>
 									</>
@@ -125,10 +126,10 @@ const Header = () => {
 							</nav>
 						</div>
 						{/* Desktop Login Button */}
-						<div className="flex gap-4">
+						<div className="flex items-center gap-4 ml-auto">
 							{/* Welcome message for all logged-in users */}
 							{session?.user && (
-								<p className="flex items-center gap-2">
+									<p className="hidden sm:flex items-center gap-2 text-sm">
 									<span
 										data-role={session.user.role}
 										className="size-4 rounded-full animate-pulse data-[role=BUYER]:bg-blue-600 data-[role=SELLER]:bg-purple-600 data-[role=ADMIN]:bg-red-600"
@@ -138,14 +139,20 @@ const Header = () => {
 							)}
 
 							{/* Dashboard button - only for BUYER */}
-							{session?.user && session?.user?.role === "BUYER" ? (
+							{session?.user ? (
 								<Button
 									variant='default'
 									size='sm'
 									onClick={() => {
+									  if (session?.user?.role === "BUYER") {
 										navigate.push('/buyers-dashboard');
+									  } else if (session?.user?.role === "SELLER") {
+										navigate.push('/sellers-dashboard');
+									  } else if (session?.user?.role === "ADMIN") {
+										navigate.push('/admin-dashboard');
+									  }
 									}}
-									className='md:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse hover:animate-none'>
+									className='hidden md:flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 animate-pulse hover:animate-none'>
 									<UserCircle className='h-4 w-4' />
 									<span className='font-medium'>Dashboard</span>
 								</Button>
@@ -154,8 +161,7 @@ const Header = () => {
 									variant='default'
 									size='sm'
 									onClick={() => navigate.push('/sign-in')}
-									className='hidden md:flex items-justify gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'>
-									{/* Animated background effect */}
+									className='hidden md:flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'>
 									<span className='absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000'></span>
 									<LogIn className='h-4 w-4 relative z-10 animate-bounce group-hover:animate-none' />
 									<span className='font-medium relative z-10'>Sign In</span>
@@ -164,9 +170,7 @@ const Header = () => {
 
 							{/* Sign Out button for all logged-in users */}
 							{session?.user && (
-								<div className='flex justify-center'>
-									<SignOutButton />
-								</div>
+								<SignOutButton />
 							)}
 						
 						</div>
@@ -360,7 +364,7 @@ const Header = () => {
 							) : !session?.user ? (
 								<Button
 									variant='default'
-									className='w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'
+									className='w-full bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden group'
 									onClick={() => {
 										navigate.push('/sign-in');
 										setIsMobileMenuOpen(false);
@@ -372,12 +376,12 @@ const Header = () => {
 								</Button>
 							) : null}
 
-							{/* Sign Out button for all logged-in users */}
-							{/* {session?.user && (
+							{/* Sign Out button for all logged-in users  */}
+						 {session?.user && (
 								<div className='w-full flex justify-center'>
 									<SignOutButton />
 								</div>
-							)} */}
+							)}
 
 						</div>
 					</div>

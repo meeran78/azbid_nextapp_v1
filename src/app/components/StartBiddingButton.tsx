@@ -19,7 +19,7 @@ export const StartBiddingButton = () => {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <Button className="rounded-xl bg-orange-500 px-8 py-8 text-lg font-semibold hover:bg-orange-600 transition">
+     <Button className="rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 px-8 py-8 text-lg font-semibold hover:from-purple-700 hover:to-orange-600 transition">
         <Link href={href}>Start Bidding</Link>
       </Button>
 

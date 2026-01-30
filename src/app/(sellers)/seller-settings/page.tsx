@@ -105,7 +105,7 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl">
+      <div className="container mx-auto p-6 max-w-10xl">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -115,7 +115,7 @@ export default function Settings() {
 
   if (!userData) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl">
+      <div className="container mx-auto p-6 max-w-10xl">
         <div className="text-center py-8">
           <p className="text-muted-foreground">Failed to load profile data</p>
         </div>
@@ -124,7 +124,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl space-y-6">
+    <div className="container mx-auto p-6 max-w-10xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Account Settings</h1>
         <SettingsIcon className="h-6 w-6 text-muted-foreground" />

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn, signInWith } from "@/lib/auth-client";
@@ -17,6 +18,7 @@ import { SignInOauthButton } from "@/app/components/SignInOauthButton";
 import { MagicLinkLoginForm } from "@/app/components/MagicLinkForm";
 
 export default function SignInPage() {
+  const { data: session, isPending } = useSession();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -24,25 +26,41 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
- 
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      const role = session.user.role;
+      if (role === "SELLER") {
+        router.replace("/sellers-dashboard");
+      } else if (role === "ADMIN") {
+        router.replace("/admin-dashboard");
+      } else if (role === "BUYER") {
+        router.replace("/");
+      } else {
+        router.replace("/");
+      }
+    }
+  }, [session, isPending, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-   
+
     try {
-       // Create FormData from the form values
-    const formData = new FormData();
-    formData.append("email", email);
-    formData.append("password", password);
+      // Create FormData from the form values
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("password", password);
 
       const { error, errorCode } = await signInEmailAction(formData);
 
       if (error) {
         toast.error(error);
         setIsLoading(false);
-        
+
         // Show specific toast based on error code
         switch (errorCode) {
           case "USER_NOT_FOUND":
@@ -86,16 +104,16 @@ export default function SignInPage() {
           description: "You've been successfully signed in.",
           duration: 3000,
         });
-        
-       
+
+
         // Small delay before redirect for better UX
         // Use window.location for full page reload to ensure session is refreshed
         // This ensures cookies are properly read and session updates
         // setTimeout(() => {
         //   window.location.href = "/";
         // }, 1000);
-         // Wait for session to update, then redirect based on role
-         setTimeout(async () => {
+        // Wait for session to update, then redirect based on role
+        setTimeout(async () => {
           try {
             // Fetch session directly from Better Auth API
             const response = await fetch("/api/auth/get-session", {
@@ -105,14 +123,14 @@ export default function SignInPage() {
                 "Content-Type": "application/json",
               },
             });
-            
+
             if (response.ok) {
               const sessionData = await response.json();
               const userRole = sessionData?.user?.role;
-              
+
               if (userRole === "SELLER") {
                 window.location.href = "/sellers-dashboard";
-              }  else if (userRole === "ADMIN") {
+              } else if (userRole === "ADMIN") {
                 window.location.href = "/admin-dashboard";
               } else {
                 window.location.href = "/";
@@ -142,7 +160,7 @@ export default function SignInPage() {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-white dark:bg-gray-900">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>

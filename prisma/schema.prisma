@@ -33,6 +33,7 @@ enum LotStatus {
   LIVE
   SOLD
   UNSOLD
+  RESEND
 }
 
 enum PaymentStatus {
@@ -52,7 +53,7 @@ enum InvoiceStatus {
 }
 
 enum StoreStatus {
-  PENDING   // Awaiting admin approval
+  PENDING // Awaiting admin approval
   ACTIVE
   SUSPENDED
 }
@@ -103,55 +104,58 @@ model User {
   banExpires    DateTime?
 
   // NEW – business address / contact
-  companyName               String?
-  companyRegistrationNumber String?
-  companyDescription        String?
-  companyLogo               String?
-  companyBanner             String?
-  companySocialMedia        String?
-  companySocialMediaUrl     String?
-  companySocialMediaIcon    String?
-  companyLocationDescription String?
-  addressLine1            String?
-  addressLine2            String?
-  city                    String?
-  state                   String? // will be driven by dropdown in UI (default “VA”)
-  zipcode                 String?
-  country                 String?
-  displayLocation         String? // e.g. "Richmond, VA"
-  businessPhone           String?
-  businessEmail           String?
-  businessWebsite         String?
-  businessDescription     String?
-  businessLogo            String?
-  businessBanner          String?
-  businessSocialMedia     String?
-  businessSocialMediaUrl  String?
-  businessSocialMediaIcon String?
+  companyName                 String?
+  companyRegistrationNumber   String?
+  companyDescription          String?
+  companyLogo                 String?
+  companyBanner               String?
+  companySocialMedia          String?
+  companySocialMediaUrl       String?
+  companySocialMediaIcon      String?
+  companyLocationDescription  String?
+  addressLine1                String?
+  addressLine2                String?
+  city                        String?
+  state                       String? // will be driven by dropdown in UI (default “VA”)
+  zipcode                     String?
+  country                     String?
+  displayLocation             String? // e.g. "Richmond, VA"
+  businessPhone               String?
+  businessEmail               String?
+  businessWebsite             String?
+  businessDescription         String?
+  businessLogo                String?
+  businessBanner              String?
+  businessSocialMedia         String?
+  businessSocialMediaUrl      String?
+  businessSocialMediaIcon     String?
   newsLetterEmailSubscription Boolean? @default(false)
-  newsLetterSMSSubscription Boolean? @default(false)
-  acceptedTerms Boolean @default(false)
-  
+  newsLetterSMSSubscription   Boolean? @default(false)
+  acceptedTerms               Boolean  @default(false)
+  acceptedTermsAt             DateTime? @default(now())  // When user accepted (optional)
+
   sessions Session[]
   accounts Account[]
   posts    Post[]
 
   // Buyer
-  bids         Bid[]
-  orders       Order[]
-  favourites   StoreFavourite[] // NEW: stores this user has favourited
-  storeReviews StoreReview[] // NEW: reviews this user has written
-  invoicesAsBuyer   Invoice[] @relation("InvoiceBuyer")
+  bids            Bid[]
+  orders          Order[]
+  favourites      StoreFavourite[] // NEW: stores this user has favourited
+  storeReviews    StoreReview[] // NEW: reviews this user has written
+  invoicesAsBuyer Invoice[]        @relation("InvoiceBuyer")
 
   // Seller
-  commissionPct Float?  // Commission % for sellers (0-100), applies to all their stores
-  stores Store[]
-  invoicesAsSeller  Invoice[] @relation("InvoiceSeller")
-  approvedStores   Store[] @relation("ApprovedBy")
-  suspendedStores   Store[] @relation("SuspendedBy")
-  
+  commissionPct    Float? // Commission % for sellers (0-100), applies to all their stores
+  stores           Store[]
+  invoicesAsSeller Invoice[] @relation("InvoiceSeller")
+  approvedStores   Store[]   @relation("ApprovedBy")
+  suspendedStores  Store[]   @relation("SuspendedBy")
+
+  //Lot review fields
+  reviewedLots Lot[]      @relation("LotReviewedBy")
   // Admin actions
-  adminLogs AdminLog[]
+  adminLogs    AdminLog[]
 
   //Stripe
   stripeCustomerId String? @unique
@@ -214,24 +218,24 @@ model Store {
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id])
 
-  name          String
-  description   String?
-  logoUrl       String?
+  name        String
+  description String?
+  logoUrl     String?
 
-  status        StoreStatus @default(PENDING)   // Single definition
+  status StoreStatus @default(PENDING) // Single definition
 
   // NEW: reputation metrics
   averageRating    Float?
   ratingsCount     Int?
   responseRate     Float?
   responseTimeMins Float?
-  approvedAt    DateTime?
-  approvedById  String?
-  approvedBy    User? @relation("ApprovedBy", fields: [approvedById], references: [id])
-  suspendedAt   DateTime?
-  suspendedById String?
-  suspendedBy   User? @relation("SuspendedBy", fields: [suspendedById], references: [id])
-  
+  approvedAt       DateTime?
+  approvedById     String?
+  approvedBy       User?     @relation("ApprovedBy", fields: [approvedById], references: [id])
+  suspendedAt      DateTime?
+  suspendedById    String?
+  suspendedBy      User?     @relation("SuspendedBy", fields: [suspendedById], references: [id])
+
   auctions   Auction[]
   lots       Lot[]
   favourites StoreFavourite[]
@@ -291,8 +295,6 @@ model Auction {
   softCloseExtendLimit Int     @default(10)
 
   lots Lot[]
- 
-
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,9 +303,9 @@ model Auction {
 }
 
 model Lot {
-  id        String  @id @default(uuid())
-  storeId   String
-  auctionId String?
+  id           String  @id @default(uuid())
+  storeId      String
+  auctionId    String?
   lotDisplayId String? @unique
 
   store   Store    @relation(fields: [storeId], references: [id])
@@ -313,7 +315,13 @@ model Lot {
   description String?
   status      LotStatus @default(DRAFT)
 
-// Date & Time fields
+  // Admin review fields
+  adminNotes   String? // Notes from admin (e.g. rejection reason)
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("LotReviewedBy", fields: [reviewedById], references: [id])
+
+  // Date & Time fields
   closesAt       DateTime // Closing date & time
   inspectionAt   DateTime? // Inspection date & time (optional)
   removalStartAt DateTime? // Removal start date & time (optional)
@@ -322,7 +330,7 @@ model Lot {
   extendedCount  Int       @default(0)
   lastExtendedAt DateTime?
 
-  items Item[]
+  items    Item[]
   invoices Invoice[]
 
   createdAt DateTime @default(now())
@@ -353,8 +361,8 @@ model Item {
 
   // Relations for bids and orders per item
   bids         Bid[]
-  winningBid   Bid?    @relation("WinningBid", fields: [winningBidId], references: [id])
-  winningBidId String? @unique
+  winningBid   Bid?          @relation("WinningBid", fields: [winningBidId], references: [id])
+  winningBidId String?       @unique
   orders       Order[]
   invoiceItems InvoiceItem[]
 
@@ -409,34 +417,34 @@ model Order {
 }
 
 model Invoice {
-  id               String        @id @default(uuid())
-  invoiceDisplayId String?       @unique // Human-readable ID (e.g. INV-2024-00001)
+  id               String  @id @default(uuid())
+  invoiceDisplayId String? @unique // Human-readable ID (e.g. INV-2024-00001)
 
   // Relations
-  orderId          String?       @unique // Optional: link to Order for backward compatibility
-  order            Order?       @relation(fields: [orderId], references: [id])
+  orderId String? @unique // Optional: link to Order for backward compatibility
+  order   Order?  @relation(fields: [orderId], references: [id])
 
-  buyerId          String
-  buyer            User         @relation("InvoiceBuyer", fields: [buyerId], references: [id])
-  sellerId         String
-  seller           User         @relation("InvoiceSeller", fields: [sellerId], references: [id])
-  lotId            String
-  lot              Lot          @relation(fields: [lotId], references: [id])
+  buyerId  String
+  buyer    User   @relation("InvoiceBuyer", fields: [buyerId], references: [id])
+  sellerId String
+  seller   User   @relation("InvoiceSeller", fields: [sellerId], references: [id])
+  lotId    String
+  lot      Lot    @relation(fields: [lotId], references: [id])
 
   // Item ID(s) - many-to-many via InvoiceItem
-  invoiceItems     InvoiceItem[]
+  invoiceItems InvoiceItem[]
 
   // Amounts
-  winningBidAmount Float
-  buyerPremiumPct  Float        // Buyer's Premium (%)
-  tax              Float?       // Tax if applicable
+  winningBidAmount      Float
+  buyerPremiumPct       Float // Buyer's Premium (%)
+  tax                   Float? // Tax if applicable
   stripePaymentIntentId String?
-  invoiceTotal     Float
+  invoiceTotal          Float
 
-  status           InvoiceStatus @default(PENDING)
+  status InvoiceStatus @default(PENDING)
 
-  issuedAt         DateTime     @default(now())
-  paidAt           DateTime?
+  issuedAt DateTime  @default(now())
+  paidAt   DateTime?
 }
 
 // Payment (Stripe / Gateway)
@@ -488,12 +496,12 @@ model Category {
 }
 
 model Faq {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   question  String
   answer    String
-  category  String?   // e.g. "Bidding", "Payments"
-  isActive  Boolean  @default(true)
-  sortOrder Int      @default(0)
+  category  String? // e.g. "Bidding", "Payments"
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

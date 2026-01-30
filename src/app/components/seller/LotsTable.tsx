@@ -55,11 +55,12 @@ interface LotsTableProps {
 }
 
 const statusColors: Record<string, string> = {
-  DRAFT: "bg-orange-500  border-transparent",
-  SCHEDULED: "bg-orange-500  border-transparent",
-  LIVE: "bg-green-500  border-transparent",
-  SOLD: "bg-purple-500  border-transparent",
-  UNSOLD: "bg-red-500  border-transparent",
+  DRAFT: "bg-orange-500 border-transparent",
+  SCHEDULED: "bg-orange-500 border-transparent",
+  RESEND: "bg-amber-500 border-transparent",  // Add this
+  LIVE: "bg-green-500 border-transparent",
+  SOLD: "bg-purple-500 border-transparent",
+  UNSOLD: "bg-red-500 border-transparent",
 };
 
 export function LotsTable({ lots }: LotsTableProps) {

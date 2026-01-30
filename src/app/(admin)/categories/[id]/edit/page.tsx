@@ -28,9 +28,9 @@ export default async function EditCategoryPage({
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-3xl">
+    <div className="container mx-auto p-6 max-w-10xl">
       <Button variant="ghost" asChild className="mb-4">
-        <Link href="/admin-dashboard/categories">
+        <Link href="/categories">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Categories
         </Link>

@@ -140,7 +140,7 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
           });
         }
 
-        router.push("/admin-dashboard/categories");
+        router.push("/categories");
         router.refresh();
       } catch (error: any) {
         console.error("Category form error:", error);

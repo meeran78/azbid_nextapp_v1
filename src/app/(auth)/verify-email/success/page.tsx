@@ -18,7 +18,7 @@ export default async function Page() {
       redirect("/admin-dashboard");
     }
     if (role === "BUYER") {
-      redirect("/buyers-dashboard");
+      redirect("/");
     }
     redirect("/");
   }

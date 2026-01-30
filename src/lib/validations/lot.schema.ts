@@ -100,10 +100,10 @@ export const itemSchema = z
       .min(1, "Item description is required")
       .max(1000, "Description must be less than 1000 characters"),
 
-    images: z
+      images: z
       .array(z.any())
-      .optional()
-      .default([]),
+      .min(1, "At least one image is required for each item")
+      .max(10, "Maximum 10 images per item"),
     videos: z.array(itemMediaSchema).max(5, "Maximum 5 videos per item").optional().default([]),
   })
   .refine(
@@ -119,6 +119,29 @@ export const itemSchema = z
       path: ["reservePrice"],
     }
   );
+// Client-side draft schema (relaxed validation for Save Draft)
+export const createLotDraftSchema = z
+  .object({
+    lotId: z.string().optional(),
+    title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
+    description: z
+      .string()
+      .min(1, "Description is required")
+      .max(2000, "Description must be less than 2000 characters"),
+    storeId: z.string().min(1, "Store is required"),
+    auctionId: z.string().optional().nullable(),
+    status: z.enum(["DRAFT", "SCHEDULED"]).optional(),
+    lotDisplayId: z.string().optional().nullable(),
+    closesAt: z.coerce.date({
+      required_error: "Closing date and time is required",
+    }),
+    removalStartAt: z.coerce.date().optional().nullable(),
+    inspectionAt: z.coerce.date().optional().nullable(),
+    items: z.array(itemSchema).min(1, "At least one item is required"),
+    disclaimerAccepted: z.boolean().optional(),
+  });
+// No date refinements for drafts - allow any dates
+// No disclaimer requirement for drafts
 
 export const createLotSchema = z
   .object({
@@ -126,7 +149,7 @@ export const createLotSchema = z
     title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
     description: z
       .string()
-      .min(100, "Description must be at least 500 characters")
+      .min(500, "Description must be at least 500 characters")
       .max(5000, "Description must be less than 5000 characters"),
 
     storeId: z.string().min(1, "Store is required"),

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { getSellerStores } from "@/actions/seller-dashboard.action";
+import { getSellerStores, getSellerStoresForLots } from "@/actions/seller-dashboard.action";
 
 export async function GET(request: Request) {
   const headersList = await headers();

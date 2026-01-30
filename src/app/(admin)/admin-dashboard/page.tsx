@@ -21,10 +21,7 @@ export default async function Page() {
     return (
       <div className="px-8 py-16 container mx-auto max-w-screen-lg space-y-8">
         <div className="space-y-4">
-
-
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-
           <p className="p-2 rounded-md text-lg bg-red-600 text-white font-bold">
             FORBIDDEN
           </p>

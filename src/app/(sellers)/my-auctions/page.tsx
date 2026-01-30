@@ -80,9 +80,6 @@ export default async function SellersDashboardPage({
                             className="relative"
                         >
                             {tab.toUpperCase()}
-
-
-
                         </TabsTrigger>
                     ))}
                 </TabsList>

@@ -35,7 +35,7 @@ export async function signUpEmailAction(formData: FormData) {
    if (result.user?.id) {
   const updateData: Record<string, unknown> = { 
     role,
-    acceptedTermsAt: new Date(),  // or acceptedTerms: true if using boolean
+    acceptedTerms: true,
   };
 
       if (role === "SELLER") {

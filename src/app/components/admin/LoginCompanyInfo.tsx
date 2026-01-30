@@ -34,7 +34,7 @@ const formSchema = z.object({
   state: z.string().min(1, "State/Province is required").max(50),
   zipcode: z.string().min(1, "ZIP/Postal code is required").max(20),
   country: z.string().min(1, "Country is required").max(100),
-  businessPhone: z.string().min(1, "Country is required").max(15),
+  businessPhone: z.string().min(1, "Company phone is required").max(15),
 });
 
 type FormValues = z.infer<typeof formSchema>;

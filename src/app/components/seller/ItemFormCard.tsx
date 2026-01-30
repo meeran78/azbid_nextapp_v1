@@ -195,7 +195,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        <span className="absolute top-1/2 -translate-y-1/2 text-muted-foreground">
                           $
                         </span>
                         <Input
@@ -227,7 +227,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                     <FormLabel>Retail Price </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        <span className="absolute top-1/2 -translate-y-1/2 text-muted-foreground">
                           $
                         </span>
                         <Input
@@ -259,7 +259,7 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                     <FormLabel>Reserve Price ( Must be ≤ retail price )</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        <span className="absolute  top-1/2 -translate-y-1/2 text-muted-foreground">
                           $
                         </span>
                         <Input

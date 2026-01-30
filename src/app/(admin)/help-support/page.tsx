@@ -22,7 +22,7 @@ export default async function HelpSupport() {
 
   return (
 
-    <div className="container mx-auto p-6 max-w-6xl space-y-6">
+    <div className="container mx-auto p-6 max-w-10xl space-y-6">
 
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Help & Support</h1>

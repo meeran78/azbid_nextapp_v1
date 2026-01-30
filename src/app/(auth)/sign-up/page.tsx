@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "@/lib/auth-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signInWith } from "@/lib/auth-client";
@@ -19,15 +20,10 @@ import { ShoppingBag, Store, Shield, Check } from "lucide-react";
 import { SignInOauthButton } from "@/app/components/SignInOauthButton";
 import { useRef } from "react";
 import LoginCompanyInfo, { type LoginCompanyInfoRef } from "@/app/components/admin/LoginCompanyInfo";
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
+
+
 export default function SignUpPage() {
+  const { data: session, isPending } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const adminkey = searchParams.get("adminkey");
@@ -45,7 +41,21 @@ export default function SignUpPage() {
     confirmPassword: "",
     role: "BUYER" as "BUYER" | "SELLER" | "ADMIN", // Add role with default
   });
-
+// Redirect if already logged in
+useEffect(() => {
+  if (!isPending && session?.user) {
+    const role = session.user.role;
+    if (role === "SELLER") {
+      router.replace("/sellers-dashboard");
+    } else if (role === "ADMIN") {
+      router.replace("/admin-dashboard");
+    } else if (role === "BUYER") {
+      router.replace("/");
+    } else {
+      router.replace("/");
+    }
+  }
+}, [session, isPending, router]);
   const rolediv = [
     {
       value: "BUYER",
@@ -219,7 +229,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-white dark:bg-gray-900">
 
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">

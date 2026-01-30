@@ -36,11 +36,11 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, Package, Plus, Save, Send } from "lucide-react";
 import { toast } from "sonner";
-import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
+import { createLotSchema, createLotDraftSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
 import { getLotAction } from "@/actions/get-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
-import { truncate } from "node:fs";
+
 
 export default function EditLotPage() {
   const router = useRouter();
@@ -97,7 +97,7 @@ export default function EditLotPage() {
         const lot = lotResult.lot;
 
         // Load stores
-        const storesResponse = await fetch("/api/seller/stores");
+        const storesResponse = await fetch("/api/seller/stores?approvedOnly=true");
         if (storesResponse.ok) {
           const storesData = await storesResponse.json();
           setStores(storesData);
@@ -150,8 +150,7 @@ export default function EditLotPage() {
   }, [lotId, router, form]);
 
   const onSubmit = async (data: CreateLotFormData, isDraft: boolean = false) => {
-    console.log("data", data);
-    console.log("isDraft", isDraft);
+
     setIsLoading(true);
     setError("");
 
@@ -299,7 +298,30 @@ export default function EditLotPage() {
 
   const handleSaveDraft = async () => {
     const data = form.getValues();
-    await onSubmit(data, true);
+    const result = createLotDraftSchema.safeParse(data);
+  
+    if (!result.success) {
+      const formErrors = result.error.flatten().fieldErrors;
+      Object.entries(formErrors).forEach(([path, messages]) => {
+        if (path === "items" && typeof messages === "object") {
+          Object.entries(messages as Record<string, string[]>).forEach(([idx, itemErrors]) => {
+            if (typeof itemErrors === "object" && itemErrors !== null) {
+              Object.entries(itemErrors).forEach(([field, msgs]) => {
+                const itemPath = `items.${idx}.${field}`;
+                if (Array.isArray(msgs) && msgs[0]) {
+                  form.setError(itemPath as any, { type: "manual", message: msgs[0] });
+                }
+              });
+            }
+          });
+        } else if (Array.isArray(messages) && messages[0]) {
+          form.setError(path as any, { type: "manual", message: messages[0] });
+        }
+      });
+      toast.error("Please fix the errors before saving draft");
+      return;
+    }
+    await onSubmit(result.data, true);
   };
 
   if (isLoadingLot) {
@@ -313,7 +335,7 @@ export default function EditLotPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
+    <div className="container mx-auto p-6 max-w-10xl">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -340,9 +362,9 @@ export default function EditLotPage() {
         )}
 
         <Form {...form}>
-          <form onSubmit={(e) => { e.preventDefault(); onSubmit(form.getValues(), false) }} className="space-y-6">
+          {/* <form onSubmit={(e) => { e.preventDefault(); onSubmit(form.getValues(), false) }} className="space-y-6"> */}
             {/* <form  onSubmit={form.handleSubmit((formData: CreateLotFormData) => onSubmit(formData, false) )} className="space-y-6"> */}
-
+            <form onSubmit={form.handleSubmit((data) => onSubmit(data, false))} className="space-y-6">
             {/* Lot Details Section */}
             <Card>
               <CardHeader>

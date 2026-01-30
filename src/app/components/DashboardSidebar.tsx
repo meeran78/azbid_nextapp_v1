@@ -10,7 +10,7 @@ import {
   Heart,
   CreditCard,
   Settings,
-  Building2,
+  CirclePlus,
   HelpCircle,
   Package,
   Users,
@@ -47,7 +47,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
   switch (roleType) {
     case "BUYER":
       return [
-        { title: "Dashboard", url: "/buyers-dashboard", icon: LayoutDashboard },
+        // { title: "Dashboard", url: "/buyers-dashboard", icon: LayoutDashboard },
         { title: "My Bids", url: "/my-bids", icon: Gavel },
         { title: "My Favorites", url: "/my-favorites", icon: Heart },
         { title: "Payment", url: "/payment", icon: CreditCard },
@@ -57,7 +57,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
       ];
     case "SELLER":
       return [
-        { title: "Dashboard", url: "/sellers-dashboard", icon: LayoutDashboard },
+        // { title: "Dashboard", url: "/sellers-dashboard", icon: LayoutDashboard },
         { title: "My Auctions", url: "/my-auctions", icon: Package },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "Settings", url: "/seller-settings", icon: Settings },
@@ -66,10 +66,11 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
       ];
     case "ADMIN":
       return [
-        { title: "Dashboard", url: "/admin-dashboard", icon: LayoutDashboard },
+        // { title: "Dashboard", url: "/admin-dashboard", icon: LayoutDashboard },
         { title: "Stores Management", url: "/stores-management", icon: Store },
         { title: "Lots Management", url: "/lots-management", icon: Barcode },
         { title: "Auctions Managements", url: "/auctions-management", icon: Pickaxe },
+        { title: "Category Management", url: "/categories", icon: CirclePlus },
         { title: "Users", url: "/users", icon: Users },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },

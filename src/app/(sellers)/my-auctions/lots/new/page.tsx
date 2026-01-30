@@ -36,7 +36,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, Package, Plus, Save, Send } from "lucide-react";
 import { toast } from "sonner";
-import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
+import { createLotSchema, createLotDraftSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
 
@@ -261,13 +261,40 @@ export default function CreateLotPage() {
 
   const handleSaveDraft = async () => {
     const data = form.getValues();
-    // For now, just save as draft with same submission
-    // Save as draft with relaxed validation
-    await onSubmit(data, true);
+    const result = createLotDraftSchema.safeParse(data);
+  
+    if (!result.success) {
+      const errors = result.error.flatten().fieldErrors;
+      Object.entries(errors).forEach(([path, messages]) => {
+        if (messages?.[0]) {
+          form.setError(path as `items.${number}.${string}` | "title" | "description" | "storeId" | "closesAt" | "removalStartAt" | "inspectionAt" | "disclaimerAccepted" | "lotId" | "auctionId" | "lotDisplayId", {
+            type: "manual",
+            message: messages[0],
+          });
+        }
+      });
+      // Handle nested item errors
+      const formErrors = result.error.flatten().fieldErrors;
+      if (formErrors.items) {
+        Object.entries(formErrors.items).forEach(([idx, itemErrors]) => {
+          if (typeof itemErrors === "object" && itemErrors !== null) {
+            Object.entries(itemErrors).forEach(([field, msgs]) => {
+              const path = `items.${idx}.${field}`;
+              if (Array.isArray(msgs) && msgs[0]) {
+                form.setError(path as any, { type: "manual", message: msgs[0] });
+              }
+            });
+          }
+        });
+      }
+      toast.error("Please fix the errors before saving draft");
+      return;
+    }
+    await onSubmit(result.data, true);
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
+    <div className="container mx-auto p-6 max-w-10xl">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -294,7 +321,8 @@ export default function CreateLotPage() {
         )}
 
         <Form {...form}>
-          <form onSubmit={(e) => { e.preventDefault(); onSubmit(form.getValues(), false) }} className="space-y-6">
+          {/* <form onSubmit={(e) => { e.preventDefault(); onSubmit(form.getValues(), false) }} className="space-y-6"> */}
+          <form onSubmit={form.handleSubmit((data) => onSubmit(data, false))} className="space-y-6">
             {/* Lot Details Section */}
             <Card>
               <CardHeader>
@@ -513,12 +541,14 @@ export default function CreateLotPage() {
                     onClick={() =>
                       append({
                         title: "",
-                        category: "Other",
+                        categoryId: null,
                         condition: "Used – Good",
+                        startPrice: 0,
                         retailPrice: null,
                         reservePrice: null,
                         description: "",
                         images: [],
+                        videos: [],
                       })
                     }
                   >

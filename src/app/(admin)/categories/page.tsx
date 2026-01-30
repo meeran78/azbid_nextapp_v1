@@ -22,7 +22,7 @@ export default async function CategoriesPage() {
   const categories = await getCategories();
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6 max-w-10xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Categories</h1>
@@ -31,7 +31,7 @@ export default async function CategoriesPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin-dashboard/categories/new">
+          <Link href="/categories/new">
             <Plus className="h-4 w-4 mr-2" />
             Add Category
           </Link>
