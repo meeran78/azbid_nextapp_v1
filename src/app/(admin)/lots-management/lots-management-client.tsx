@@ -194,7 +194,7 @@ export function LotsManagementClient({
                         </p>
                     ) : (
                         <>
-                            <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0">
+                           <div className="hidden md:block overflow-x-auto -mx-4 sm:-mx-6 md:mx-0">
                                 <Table className="min-w-[900px]">
                             <TableHeader>
                                 <TableRow>
@@ -312,7 +312,7 @@ export function LotsManagementClient({
             </Card>
 
             {totalPages > 1 && (
-                <div className="flex justify-center">
+               <div className="flex flex-wrap justify-center gap-2">
                     <Pagination>
                         <PaginationContent>
                             <PaginationItem>

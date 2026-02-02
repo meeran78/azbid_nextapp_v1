@@ -69,7 +69,7 @@ export default async function AdminLotsPage({
             Review and approve lots submitted by sellers
           </p>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="w-full sm:w-auto">
           <Link href="/admin-dashboard">Back to Dashboard</Link>
         </Button>
       </div>

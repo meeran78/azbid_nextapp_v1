@@ -130,12 +130,12 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
           <CardContent className="space-y-6">
             {lot.items.map((item, idx) => (
               <div key={item.id} className="border rounded-lg p-4 space-y-4">
-                <div className="flex justify-between">
-                  <h3 className="font-semibold">Item {idx + 1}: {item.title}</h3>
-                  {item.category && (
-                    <Badge variant="outline">{item.category.name}</Badge>
-                  )}
-                </div>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+  <h3 className="font-semibold text-sm sm:text-base">Item {idx + 1}: {item.title}</h3>
+  {item.category && (
+    <Badge variant="outline" className="shrink-0">{item.category.name}</Badge>
+  )}
+</div>
                 {item.description && (
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                 )}

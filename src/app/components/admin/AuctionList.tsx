@@ -128,7 +128,7 @@ export function AuctionList({ auctions }: AuctionListProps) {
                   </TableCell>
                   <TableCell>{auction.store.name}</TableCell>
                   <TableCell className="font-medium max-w-[200px] truncate" title={auction.title}>
-                    {auction.title}
+                  <p className="font-medium line-clamp-2">{auction.title}</p>
                   </TableCell>
                   <TableCell>
                     <Badge className={statusColors[auction.status] ?? "bg-gray-500"}>
