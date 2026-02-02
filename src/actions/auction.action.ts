@@ -74,6 +74,7 @@ export async function getAuctions() {
   const auctions = await prisma.auction.findMany({
     include: {
       store: { select: { id: true, name: true } },
+      lots: { select: { id: true, title: true, lotDisplayId: true } },
       _count: { select: { lots: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -95,11 +96,66 @@ export async function getAuction(id: string) {
     where: { id },
     include: {
       store: { select: { id: true, name: true } },
-      _count: { select: { lots: true } },
+      lots: {
+        include: {
+          items: {
+            include: {
+              category: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { title: "asc" },
+      },
     },
   });
 
-  return auction;
+  if (!auction) return null;
+
+  const lotCount = auction.lots.length;
+  return {
+    ...auction,
+    _count: { lots: lotCount },
+  };
+}
+
+// Get lots by store for admin (for associating lots to auction)
+// - Create: only lots with auctionId: null (available)
+// - Edit: lots with auctionId: null OR auctionId: forAuctionId (available + already in this auction)
+export async function getLotsByStoreForAdmin(
+  storeId: string,
+  options?: { forAuctionId?: string }
+) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "ADMIN") {
+    redirect("/sign-in");
+  }
+
+  const where =
+    options?.forAuctionId != null
+      ? {
+          storeId,
+          OR: [
+            { auctionId: null },
+            { auctionId: options.forAuctionId },
+          ],
+        }
+      : { storeId, auctionId: null };
+
+  const lots = await prisma.lot.findMany({
+    where,
+    select: {
+      id: true,
+      title: true,
+      lotDisplayId: true,
+      status: true,
+      _count: { select: { items: true } },
+    },
+    orderBy: { title: "asc" },
+  });
+
+  return lots;
 }
 
 // Get stores for admin (for auction form dropdown)
@@ -121,7 +177,11 @@ export async function getStoresForAdmin() {
 }
 
 // Create auction (Admin only)
-export async function createAuctionAction(data: AuctionInput) {
+// Optionally associate selected lots by updating their auctionId
+export async function createAuctionAction(
+  data: AuctionInput,
+  lotIds?: string[]
+) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -149,12 +209,34 @@ export async function createAuctionAction(data: AuctionInput) {
     },
   });
 
+  // Associate selected lots to this auction (only available lots - not already in another auction)
+  if (lotIds && lotIds.length > 0) {
+    await prisma.lot.updateMany({
+      where: {
+        id: { in: lotIds },
+        storeId: validatedData.storeId,
+        auctionId: null, // Only associate lots not already in any auction
+      },
+      data: { auctionId: auction.id },
+    });
+  }
+
   revalidatePath("/auctions-management");
+  revalidatePath("/lots-management");
   return { success: true, auction };
 }
 
 // Update auction (Admin only)
-export async function updateAuctionAction(id: string, data: AuctionInput) {
+// When auction status changes, cascade to linked lots:
+// - LIVE: SCHEDULED lots → LIVE
+// - COMPLETED: LIVE lots → UNSOLD (SOLD lots stay SOLD)
+// - CANCELLED: SCHEDULED/LIVE lots → DRAFT
+// lotIds: optionally update which lots are associated with this auction
+export async function updateAuctionAction(
+  id: string,
+  data: AuctionInput,
+  lotIds?: string[]
+) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -163,6 +245,7 @@ export async function updateAuctionAction(id: string, data: AuctionInput) {
   }
 
   const validatedData = auctionSchema.parse(data);
+  const newStatus = validatedData.status as "DRAFT" | "SCHEDULED" | "LIVE" | "COMPLETED" | "CANCELLED";
 
   const auction = await prisma.auction.update({
     where: { id },
@@ -171,7 +254,7 @@ export async function updateAuctionAction(id: string, data: AuctionInput) {
       title: validatedData.title,
       description: validatedData.description || null,
       buyersPremium: validatedData.buyersPremium || null,
-      status: validatedData.status as "DRAFT" | "SCHEDULED" | "LIVE" | "COMPLETED" | "CANCELLED",
+      status: newStatus,
       startAt: validatedData.startAt,
       endAt: validatedData.endAt,
       softCloseEnabled: validatedData.softCloseEnabled,
@@ -181,8 +264,51 @@ export async function updateAuctionAction(id: string, data: AuctionInput) {
     },
   });
 
+  // Update lot associations: un-associate lots no longer selected, associate newly selected
+  if (lotIds !== undefined) {
+    const selectedSet = new Set(lotIds);
+    // Un-associate lots that were linked to this auction but are no longer selected
+    const unassociateWhere = selectedSet.size > 0
+      ? { auctionId: id, id: { notIn: Array.from(selectedSet) } }
+      : { auctionId: id };
+    await prisma.lot.updateMany({
+      where: unassociateWhere,
+      data: { auctionId: null },
+    });
+    // Associate selected lots (only available or already in this auction - never steal from another)
+    if (selectedSet.size > 0) {
+      await prisma.lot.updateMany({
+        where: {
+          id: { in: Array.from(selectedSet) },
+          storeId: validatedData.storeId,
+          OR: [{ auctionId: null }, { auctionId: id }],
+        },
+        data: { auctionId: id },
+      });
+    }
+  }
+
+  // Cascade lot status based on auction status
+  if (newStatus === "LIVE") {
+    await prisma.lot.updateMany({
+      where: { auctionId: id, status: "SCHEDULED" },
+      data: { status: "LIVE" },
+    });
+  } else if (newStatus === "COMPLETED") {
+    await prisma.lot.updateMany({
+      where: { auctionId: id, status: "LIVE" },
+      data: { status: "UNSOLD" },
+    });
+  } else if (newStatus === "CANCELLED") {
+    await prisma.lot.updateMany({
+      where: { auctionId: id, status: { in: ["SCHEDULED", "LIVE"] } },
+      data: { status: "DRAFT" },
+    });
+  }
+
   revalidatePath("/auctions-management");
   revalidatePath(`/auctions-management/${id}/edit`);
+  revalidatePath("/lots-management");
   return { success: true, auction };
 }
 

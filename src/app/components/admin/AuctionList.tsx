@@ -25,6 +25,12 @@ const statusColors: Record<string, string> = {
   CANCELLED: "bg-red-500 text-white",
 };
 
+interface LotSummary {
+  id: string;
+  title: string;
+  lotDisplayId: string | null;
+}
+
 interface Auction {
   id: string;
   storeId: string;
@@ -40,6 +46,7 @@ interface Auction {
   softCloseExtendSec: number;
   softCloseExtendLimit: number;
   store: { id: string; name: string };
+  lots: LotSummary[];
   _count: { lots: number };
   createdAt: Date;
   updatedAt: Date;
@@ -135,7 +142,26 @@ export function AuctionList({ auctions }: AuctionListProps) {
                     {new Date(auction.endAt).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge variant="outline">{auction._count.lots} lots</Badge>
+                    <div className="space-y-1">
+                      <Badge variant="outline">{auction._count.lots} lots</Badge>
+                      {auction.lots?.length > 0 && (
+                        <div className="text-xs text-muted-foreground max-w-[180px] text-left mt-1 space-y-0.5">
+                          {auction.lots.slice(0, 3).map((lot) => (
+                            <Link
+                              key={lot.id}
+                              href={`/lots-management/${lot.id}`}
+                              className="block truncate hover:text-foreground hover:underline"
+                              title={lot.title}
+                            >
+                              {lot.lotDisplayId || lot.id.slice(0, 8)}: {lot.title}
+                            </Link>
+                          ))}
+                          {auction.lots.length > 3 && (
+                            <div className="text-muted-foreground/80">+{auction.lots.length - 3} more</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="max-w-[150px]">
                     <p className="text-sm text-muted-foreground line-clamp-2 truncate" title={auction.buyersPremium || undefined}>
@@ -191,8 +217,29 @@ export function AuctionList({ auctions }: AuctionListProps) {
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p>Start: {new Date(auction.startAt).toLocaleString()}</p>
                   <p>End: {new Date(auction.endAt).toLocaleString()}</p>
-                  <p>{auction._count.lots} lot(s)</p>
+                  <p>{auction._count?.lots ?? auction.lots?.length ?? 0} lot(s)</p>
                 </div>
+                {auction.lots && auction.lots.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Lots:</p>
+                    <ul className="text-xs space-y-0.5">
+                      {auction.lots.slice(0, 5).map((lot) => (
+                        <li key={lot.id}>
+                          <Link
+                            href={`/lots-management/${lot.id}`}
+                            className="block truncate hover:text-foreground hover:underline"
+                            title={lot.title}
+                          >
+                            {lot.lotDisplayId || lot.id.slice(0, 8)}: {lot.title}
+                          </Link>
+                        </li>
+                      ))}
+                      {auction.lots.length > 5 && (
+                        <li className="text-muted-foreground/80">+{auction.lots.length - 5} more</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
                 {auction.softCloseEnabled && (
                   <p className="text-xs text-muted-foreground">
                     Soft close: {auction.softCloseWindowSec}s / {auction.softCloseExtendSec}s / {auction.softCloseExtendLimit}

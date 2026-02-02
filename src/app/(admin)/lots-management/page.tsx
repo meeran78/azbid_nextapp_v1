@@ -27,8 +27,12 @@ export default async function AdminLotsPage({
 
   const where: Parameters<typeof prisma.lot.findMany>[0]["where"] = {};
 
-  if (statusFilter) {
-    where.status = statusFilter as "DRAFT" | "SCHEDULED" | "LIVE" | "SOLD" | "UNSOLD" | "RESEND";
+  // Exclude LIVE, SOLD, UNSOLD from lot management (review/approve workflow only)
+  const allowedStatuses = ["DRAFT", "SCHEDULED", "RESEND"] as const;
+  if (statusFilter && allowedStatuses.includes(statusFilter as (typeof allowedStatuses)[number])) {
+    where.status = statusFilter;
+  } else {
+    where.status = { notIn: ["LIVE", "SOLD", "UNSOLD"] };
   }
 
   if (searchQuery) {

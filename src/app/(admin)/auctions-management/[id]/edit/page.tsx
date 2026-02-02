@@ -54,6 +54,23 @@ export default async function EditAuctionPage({
           softCloseWindowSec: auction.softCloseWindowSec,
           softCloseExtendSec: auction.softCloseExtendSec,
           softCloseExtendLimit: auction.softCloseExtendLimit,
+          lots: (auction.lots ?? []).map((lot) => ({
+            id: lot.id,
+            title: lot.title,
+            lotDisplayId: lot.lotDisplayId,
+            status: lot.status,
+            items: lot.items.map((item) => ({
+              id: item.id,
+              title: item.title,
+              description: item.description,
+              condition: item.condition,
+              startPrice: item.startPrice,
+              reservePrice: item.reservePrice,
+              retailPrice: item.retailPrice,
+              imageUrls: item.imageUrls,
+              category: item.category,
+            })),
+          })),
         }}
         stores={stores}
       />

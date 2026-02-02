@@ -33,7 +33,7 @@ export function StoresList({ stores }: StoresListProps) {
   return (
 
 
-    <Card className="container mx-auto max-w-5xl p-2 cursor-pointer hover:scale-105 transition-all duration-200 justify-start items-center" >
+    <Card className="container mx-auto max-w-full p-2" >
       <CardContent className="p-0">
         <Collapsible className=" rounded-md">
           <CollapsibleTrigger asChild>

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
-import { approveLotAction, rejectLotAction } from "@/actions/admin-lot.action";
+import { rejectLotAction } from "@/actions/admin-lot.action";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,15 +43,12 @@ import {
 import { Package, Eye, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 
-const LOT_STATUSES = ["DRAFT", "SCHEDULED", "LIVE", "SOLD", "UNSOLD", "RESEND"] as const;
+const LOT_STATUSES = ["DRAFT", "SCHEDULED", "RESEND"] as const;
 const PAGE_SIZE = 10;
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     DRAFT: "secondary",
     SCHEDULED: "outline",
-    LIVE: "default",
-    SOLD: "default",
-    UNSOLD: "secondary",
     RESEND: "destructive",
 };
 
@@ -119,22 +116,6 @@ export function LotsManagementClient({
         const params = new URLSearchParams(searchParams.toString());
         params.set("page", String(newPage));
         router.push(`/lots-management?${params.toString()}`);
-    };
-
-    const handleApprove = async (lotId: string) => {
-        setIsSubmitting(true);
-        try {
-            const result = await approveLotAction(lotId);
-            if (result.error) toast.error(result.error);
-            else {
-                toast.success("Lot approved and is now LIVE");
-                router.refresh();
-            }
-        } catch (err) {
-            toast.error("Failed to approve lot");
-        } finally {
-            setIsSubmitting(false);
-        }
     };
 
     const handleReject = async () => {
@@ -273,14 +254,9 @@ export function LotsManagementClient({
                                                     </Link>
                                                 </Button>
                                                 {canReview(lot.status) && (
-                                                    <>
-                                                        <Button size="sm" variant="default" onClick={() => handleApprove(lot.id)} disabled={isSubmitting}>
-                                                            <Check className="h-4 w-4 mr-1" /> Make Live
-                                                        </Button>
-                                                        <Button size="sm" variant="destructive" onClick={() => setRejectLotId(lot.id)} disabled={isSubmitting}>
-                                                            <X className="h-4 w-4 mr-1" /> Send Back
-                                                        </Button>
-                                                    </>
+                                                    <Button size="sm" variant="destructive" onClick={() => setRejectLotId(lot.id)} disabled={isSubmitting}>
+                                                        <X className="h-4 w-4 mr-1" /> Send Back
+                                                    </Button>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -321,14 +297,9 @@ export function LotsManagementClient({
                                                     </Link>
                                                 </Button>
                                                 {canReview(lot.status) && (
-                                                    <>
-                                                        <Button size="sm" onClick={() => handleApprove(lot.id)} disabled={isSubmitting}>
-                                                            <Check className="h-4 w-4 mr-1" /> Make Live
-                                                        </Button>
-                                                        <Button size="sm" variant="destructive" onClick={() => setRejectLotId(lot.id)} disabled={isSubmitting}>
-                                                            <X className="h-4 w-4 mr-1" /> Send Back
-                                                        </Button>
-                                                    </>
+                                                    <Button size="sm" variant="destructive" onClick={() => setRejectLotId(lot.id)} disabled={isSubmitting}>
+                                                        <X className="h-4 w-4 mr-1" /> Send Back
+                                                    </Button>
                                                 )}
                                             </div>
                                         </CardContent>

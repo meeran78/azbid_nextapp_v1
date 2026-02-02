@@ -1,7 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useTransition, useEffect, useState } from "react";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
@@ -34,8 +34,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { ChevronDown, ChevronRight, Package } from "lucide-react";
+import {
   createAuctionAction,
   updateAuctionAction,
+  getLotsByStoreForAdmin,
   type AuctionInput,
 } from "@/actions/auction.action";
 
@@ -70,6 +79,130 @@ interface Store {
   name: string;
 }
 
+type StoreLot = {
+  id: string;
+  title: string;
+  lotDisplayId: string | null;
+  status: string;
+  _count: { items: number };
+};
+
+type AuctionLotItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  condition: string | null;
+  startPrice: number;
+  reservePrice: number | null;
+  retailPrice: number | null;
+  imageUrls?: string[];
+  category: { name: string } | null;
+};
+
+type AuctionLot = {
+  id: string;
+  title: string;
+  lotDisplayId: string | null;
+  status: string;
+  items: AuctionLotItem[];
+};
+
+function AuctionLotsAndItems({ lots }: { lots: AuctionLot[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Lots & Items ({lots.length} lots)
+        </CardTitle>
+        <CardDescription>
+          Lots associated with this auction and their items
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {lots.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No lots associated with this auction.
+          </p>
+        ) : (
+        lots.map((lot) => (
+          <Collapsible key={lot.id} defaultOpen={lots.length <= 3} className="group">
+            <div className="rounded-lg border">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-muted/50 transition-colors rounded-lg"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{lot.title}</p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {lot.lotDisplayId || lot.id.slice(0, 8)} · {lot.status}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{lot.items.length} items</Badge>
+                  </div>
+                  <Link
+                    href={`/lots-management/${lot.id}`}
+                    className="text-sm text-primary hover:underline shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View
+                  </Link>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border-t px-4 py-3 space-y-2 bg-muted/30">
+                  {lot.items.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No items</p>
+                  ) : (
+                    lot.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between gap-4 py-2 px-3 rounded-md bg-background border text-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{item.title}</p>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-0.5">
+                            {item.category && (
+                              <span>{item.category.name}</span>
+                            )}
+                            {item.condition && (
+                              <span>· {item.condition}</span>
+                            )}
+                            {item.imageUrls && item.imageUrls.length > 0 && (
+                              <span>· {item.imageUrls.length} image{item.imageUrls.length !== 1 ? "s" : ""}</span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="font-medium">
+                            ${item.startPrice.toFixed(2)}
+                          </span>
+                          {item.reservePrice != null && (
+                            <span className="text-xs text-muted-foreground block">
+                              Reserve ${item.reservePrice.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface AuctionFormProps {
   initialData?: {
     id: string;
@@ -85,6 +218,7 @@ interface AuctionFormProps {
     softCloseExtendLimit: number;
     buyersPremium?: string | null;
     auctionDisplayId?: string | null;
+    lots?: AuctionLot[];
   };
   stores: Store[];
 }
@@ -92,12 +226,15 @@ interface AuctionFormProps {
 export function AuctionForm({ initialData, stores }: AuctionFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [storeLots, setStoreLots] = useState<StoreLot[]>([]);
+  const [selectedLotIds, setSelectedLotIds] = useState<Set<string>>(new Set());
+  const [lotsLoading, setLotsLoading] = useState(false);
   const isEditing = !!initialData;
 
   const form = useForm<AuctionFormValues>({
     resolver: zodResolver(auctionFormSchema) as Resolver<AuctionFormValues>,
     defaultValues: {
-      storeId: initialData?.storeId ?? "",
+      storeId: initialData?.storeId ?? "" as string,
       title: initialData?.title ?? "",
       description: initialData?.description ?? "",
       buyersPremium: initialData?.buyersPremium ?? "",
@@ -114,6 +251,47 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
       softCloseExtendLimit: initialData?.softCloseExtendLimit ?? 10,
     },
   });
+
+  const storeId = useWatch({ control: form.control, name: "storeId", defaultValue: "" }) as string;
+
+  // Load store lots when store is selected (both new and edit)
+  // Create: only available lots (auctionId: null). Edit: available + lots already in this auction
+  useEffect(() => {
+    if (storeId) {
+      setLotsLoading(true);
+      getLotsByStoreForAdmin(storeId, isEditing && initialData ? { forAuctionId: initialData.id } : undefined)
+        .then((lots) => {
+          setStoreLots(lots);
+          // When editing same store, pre-select lots already associated with this auction
+          if (isEditing && initialData?.lots && storeId === initialData.storeId) {
+            const associatedIds = new Set(initialData.lots.map((l) => l.id));
+            setSelectedLotIds(associatedIds);
+          } else {
+            setSelectedLotIds(new Set());
+          }
+        })
+        .catch(() => {
+          setStoreLots([]);
+          setSelectedLotIds(new Set());
+        })
+        .finally(() => setLotsLoading(false));
+    } else {
+      setStoreLots([]);
+      setSelectedLotIds(new Set());
+    }
+  }, [storeId, isEditing, initialData?.lots]);
+
+  const toggleLotSelection = (lotId: string) => {
+    setSelectedLotIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(lotId)) {
+        next.delete(lotId);
+      } else {
+        next.add(lotId);
+      }
+      return next;
+    });
+  };
 
   const onSubmit = async (values: AuctionFormValues) => {
     startTransition(async () => {
@@ -133,12 +311,12 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
         };
 
         if (isEditing && initialData) {
-          await updateAuctionAction(initialData.id, data);
+          await updateAuctionAction(initialData.id, data, Array.from(selectedLotIds));
           toast.success("Auction updated", {
             description: "The auction has been updated successfully.",
           });
         } else {
-          await createAuctionAction(data);
+          await createAuctionAction(data, Array.from(selectedLotIds));
           toast.success("Auction created", {
             description: "The auction has been created successfully.",
           });
@@ -176,11 +354,11 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                   </FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    value={field.value}
+                    value={field.value || undefined}
                     disabled={stores.length === 0}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder={stores.length === 0 ? "No active stores" : "Select store"} />
                       </SelectTrigger>
                     </FormControl>
@@ -199,6 +377,58 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                 </FormItem>
               )}
             />
+
+            {storeId && (
+              <div className="space-y-4 border rounded-lg p-4">
+                <h4 className="font-medium">{isEditing ? "Associated Lots" : "Associate Lots"}</h4>
+                <FormDescription>
+                  {isEditing
+                    ? "Select lots from this store. Only available lots (not in another auction) can be added."
+                    : "Select available lots from this store. Lots already in another auction are not shown."}
+                </FormDescription>
+                {lotsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading lots...</p>
+                ) : storeLots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No lots found for this store.</p>
+                ) : (
+                  <div className="space-y-3 max-h-[280px] overflow-y-auto">
+                    {storeLots.map((lot) => (
+                      <div
+                        key={lot.id}
+                        className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedLotIds.has(lot.id) ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                        }`}
+                        onClick={() => toggleLotSelection(lot.id)}
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Checkbox
+                            checked={selectedLotIds.has(lot.id)}
+                            onCheckedChange={() => toggleLotSelection(lot.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate">{lot.title}</p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {lot.lotDisplayId || lot.id.slice(0, 8)} · {lot.status}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-sm text-muted-foreground">
+                            {lot._count.items} item{lot._count.items !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedLotIds.size > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {selectedLotIds.size} lot{selectedLotIds.size !== 1 ? "s" : ""} selected
+                  </p>
+                )}
+              </div>
+            )}
 
             <FormField
               control={form.control}
@@ -249,6 +479,10 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
               </div>
             )}
 
+            {isEditing && (
+              <AuctionLotsAndItems lots={initialData?.lots ?? []} />
+            )}
+
             {!isEditing && (
               <div className="rounded-lg border p-4 bg-muted/50">
                 <p className="text-sm font-medium">Auction Display ID</p>
@@ -288,7 +522,7 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                   <FormLabel>Status</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                     </FormControl>
@@ -328,14 +562,14 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      End Date & Time <span className="text-red-500">*</span>
+                      End Date & Time ( Must be after start date )<span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input type="datetime-local" {...field} />
                     </FormControl>
-                    <FormDescription>
+                    {/* <FormDescription>
                       Must be after start date
-                    </FormDescription>
+                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 )}
