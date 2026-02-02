@@ -44,8 +44,8 @@ export default async function StoreDetailPage({
             </p>
           ) : (
             <div className="space-y-6">
-              <h3 className="font-semibold">Active Lots ({store.lots.length})</h3>
-              <div className="space-y-6">
+              {/* <h3 className="font-semibold">Active Lots ({store.lots.length})</h3> */}
+              
                 {store.lots.map((lot) => (
                   <StoreLotCard
                     key={lot.id}
@@ -53,8 +53,8 @@ export default async function StoreDetailPage({
                     storeLogoUrl={store.logoUrl}
                   />
                 ))}
-              </div>
-            </div>
+            
+             </div>
           )}
         </CardContent>
       </Card>

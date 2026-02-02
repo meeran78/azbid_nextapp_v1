@@ -2,6 +2,21 @@
 
 import { prisma } from "@/lib/prisma";
 
+export type PublicStoreLotItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  condition: string | null;
+  imageUrls: string[];
+  startPrice: number;
+  reservePrice: number | null;
+  currentPrice: number | null;
+  retailPrice: number | null;
+  createdAt: Date;
+  category: { name: string } | null;
+  bidCount: number;
+};
+
 export type PublicStoreLot = {
   id: string;
   title: string;
@@ -15,6 +30,7 @@ export type PublicStoreLot = {
   imageUrls: string[];
   auctionDisplayId: string | null;
   buyersPremium: string | null;
+  items: PublicStoreLotItem[];
 };
 
 export type PublicStore = {
@@ -57,7 +73,20 @@ export async function getPublicStore(
         include: {
           items: {
             orderBy: { createdAt: "asc" },
-            select: { imageUrls: true },
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              condition: true,
+              imageUrls: true,
+              startPrice: true,
+              reservePrice: true,
+              currentPrice: true,
+              retailPrice: true,
+              createdAt: true,
+              category: { select: { name: true } },
+              _count: { select: { bids: true } },
+            },
           },
           auction: {
             select: { auctionDisplayId: true, buyersPremium: true },
@@ -71,10 +100,11 @@ export async function getPublicStore(
 
   if (!store) return null;
 
-  const liveItemCount = store.lots
+  const lots = store.lots ?? [];
+  const liveItemCount = lots
     .filter((l) => l.status === "LIVE")
     .reduce((sum, l) => sum + (l._count?.items ?? 0), 0);
-  const totalItemCount = store.lots.reduce(
+  const totalItemCount = lots.reduce(
     (sum, l) => sum + (l._count?.items ?? 0),
     0
   );
@@ -90,7 +120,7 @@ export async function getPublicStore(
     liveItemCount,
     totalItemCount,
     owner: store.owner,
-    lots: store.lots.map((lot) => {
+    lots: lots.map((lot) => {
       const imageUrls = lot.items.flatMap((i) => i.imageUrls ?? []).filter(Boolean);
       return {
         id: lot.id,
@@ -105,6 +135,20 @@ export async function getPublicStore(
         imageUrls,
         auctionDisplayId: lot.auction?.auctionDisplayId ?? null,
         buyersPremium: lot.auction?.buyersPremium ?? null,
+        items: lot.items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          condition: item.condition,
+          imageUrls: item.imageUrls,
+          startPrice: item.startPrice,
+          reservePrice: item.reservePrice,
+          currentPrice: item.currentPrice,
+          retailPrice: item.retailPrice,
+          createdAt: item.createdAt,
+          category: item.category,
+          bidCount: item._count?.bids ?? 0,
+        })),
       };
     }),
   };

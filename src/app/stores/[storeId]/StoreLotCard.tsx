@@ -5,6 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Package } from "lucide-react";
 import { LotCountdown } from "./LotCountdown";
+import { LotItemCard } from "./LotItemCard";
 import type { PublicStoreLot } from "@/actions/public-store.action";
 
 const REMOVAL_DISCLAIMER =
@@ -20,12 +21,17 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
   const lotNumber =
     lot.lotDisplayId ?? lot.auctionDisplayId ?? lot.id.slice(0, 8);
   const statusLower = lot.status.toLowerCase();
+  const items = lot.items ?? [];
 
   return (
-    <div className="rounded-lg border bg-card p-6 space-y-6">
+    <div className="rounded-lg border bg-card overflow-hidden">
+      <Link
+        href={lotHref}
+        className="block p-6 space-y-6 hover:bg-muted/30 transition-colors"
+      >
       {/* Lot Header: Seller image + title + status + description */}
       <div className="flex gap-4">
-        <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
+        {/* <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
           {storeLogoUrl ? (
             <Image
               src={storeLogoUrl}
@@ -39,7 +45,7 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
               <Package className="h-8 w-8 text-muted-foreground" />
             </div>
           )}
-        </div>
+        </div> */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-bold text-lg text-foreground">{lot.title}</h3>
@@ -120,7 +126,7 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
       </div>
 
       {/* Lot Images */}
-      <div>
+      {/* <div>
         <span className="text-sm font-medium text-muted-foreground block mb-2">
           Lot Images:
         </span>
@@ -148,7 +154,26 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
             </div>
           )}
         </div>
-      </div>
+      </div> */}
+    </Link>
+
+      {items.length > 0 && (
+        <div className="px-6 pb-6 pt-2 border-t">
+          <h4 className="font-semibold text-base mb-4">
+            Auction Items ({items.length})
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {items.map((item) => (
+              <LotItemCard
+                key={item.id}
+                item={item}
+                lotId={lot.id}
+                lotStatus={lot.status}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
