@@ -21,6 +21,7 @@ import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide
 import { placeBidAction } from "@/actions/bid.action";
 import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { BiddingHistoryModal } from "@/app/components/seller/BiddingHistoryModal";
 import type { PublicStoreLotItem } from "@/actions/public-store.action";
 
 const NEW_ITEM_DAYS = 7;
@@ -129,9 +130,11 @@ function ItemCarousel({
 function ItemBidForm({
   item,
   lotId,
+  onViewHistory,
 }: {
   item: PublicStoreLotItem;
   lotId: string;
+  onViewHistory: () => void;
 }) {
   const router = useRouter();
   const { data: session, isPending } = useSession();
@@ -199,9 +202,9 @@ function ItemBidForm({
   return (
     <form onSubmit={handleBid} className="space-y-3">
       <div className="flex gap-2 items-center">
-        <span className="text-sm text-muted-foreground shrink-0">
+        {/* <span className="text-sm text-muted-foreground shrink-0">
           $ Next bid: ${minBid.toFixed(2)}
-        </span>
+        </span> */}
         <div className="relative flex-1 min-w-0">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
             $
@@ -224,8 +227,17 @@ function ItemBidForm({
         >
           Place Bid
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          onClick={onViewHistory}
+        >
+          <History className="h-4 w-4" />
+         
+        </Button>
       </div>
-      <div className="flex gap-2">
+      {/* <div className="flex gap-2">
         <Button
           type="submit"
           disabled={isSubmitting}
@@ -234,13 +246,16 @@ function ItemBidForm({
           <Gavel className="h-4 w-4 mr-2" />
           Confirm Bid
         </Button>
-        <Button type="button" variant="outline" className="shrink-0" asChild>
-          <Link href={`/lots/${lotId}#item-${item.id}`}>
-            <History className="h-4 w-4 mr-2" />
-            View History
-          </Link>
-        </Button>
-      </div>
+       <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          onClick={onViewHistory}
+        >
+          <History className="h-4 w-4 mr-2" />
+          View History
+        </Button> 
+      </div>*/}
     </form>
   );
 }
@@ -252,6 +267,8 @@ interface LotItemCardProps {
 }
 
 export function LotItemCard({ item, lotId, lotStatus }: LotItemCardProps) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   return (
     <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
       <ItemCarousel item={item} lotStatus={lotStatus} />
@@ -307,8 +324,19 @@ export function LotItemCard({ item, lotId, lotStatus }: LotItemCardProps) {
               Total Bids: <span className="font-medium">{item.bidCount}</span>
             </span>
           </div>
-          <ItemBidForm item={item} lotId={lotId} />
+          <ItemBidForm
+            item={item}
+            lotId={lotId}
+            onViewHistory={() => setHistoryOpen(true)}
+          />
         </div>
+
+        <BiddingHistoryModal
+          itemId={item.id}
+          itemTitle={item.title}
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+        />
 
         <div className="flex justify-center gap-8 pt-2">
           <button

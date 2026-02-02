@@ -134,47 +134,24 @@ export async function deleteLotAction(lotId: string) {
           },
         });
 
-        // 2. Delete orders (and their related invoices/payments will cascade if configured)
-        // First, get order IDs to delete related records
+        // 2. Delete orders for this lot (Order has lotId; OrderItems cascade)
         const orders = await tx.order.findMany({
-          where: {
-            itemId: {
-              in: itemIds,
-            },
-          },
-          select: {
-            id: true,
-          },
+          where: { lotId },
+          select: { id: true },
         });
+        const orderIds = orders.map((o) => o.id);
 
-        const orderIds = orders.map((order) => order.id);
-
-        // Delete invoices and payments for these orders
         if (orderIds.length > 0) {
           await tx.invoice.deleteMany({
-            where: {
-              orderId: {
-                in: orderIds,
-              },
-            },
+            where: { orderId: { in: orderIds } },
           });
-
           await tx.payment.deleteMany({
-            where: {
-              orderId: {
-                in: orderIds,
-              },
-            },
+            where: { orderId: { in: orderIds } },
           });
         }
 
-        // Delete orders
         await tx.order.deleteMany({
-          where: {
-            itemId: {
-              in: itemIds,
-            },
-          },
+          where: { lotId },
         });
 
         // 3. Delete items

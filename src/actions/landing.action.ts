@@ -56,7 +56,7 @@ export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
         },
       },
       lots: {
-        where: { status: { in: ["LIVE", "SCHEDULED"] } },
+        where: { status: { in: ["LIVE"] } },
         include: {
           auction: { select: { endAt: true } },
           items: {
@@ -69,7 +69,7 @@ export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
         orderBy: { closesAt: "asc" },
       },
       auctions: {
-        where: { status: { in: ["LIVE", "SCHEDULED"] } },
+        where: { status: { in: ["LIVE"] } },
         select: { id: true },
       },
       _count: { select: { lots: true } },

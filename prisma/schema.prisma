@@ -334,6 +334,7 @@ model Lot {
   lastExtendedAt DateTime?
 
   items    Item[]
+  orders   Order[]
   invoices Invoice[]
 
   createdAt DateTime @default(now())
@@ -366,7 +367,7 @@ model Item {
   bids         Bid[]
   winningBid   Bid?          @relation("WinningBid", fields: [winningBidId], references: [id])
   winningBidId String?       @unique
-  orders       Order[]
+  orderItems   OrderItem[]
   invoiceItems InvoiceItem[]
 
   createdAt DateTime @default(now())
@@ -393,30 +394,52 @@ model Bid {
   @@index([userId])
 }
 
-model Order {
+model OrderItem {
   id      String @id @default(uuid())
-  buyerId String
-  itemId  String // Changed from lotId
+  orderId String
+  itemId  String
 
-  buyer User @relation(fields: [buyerId], references: [id])
-  item  Item @relation(fields: [itemId], references: [id])
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item  Item  @relation(fields: [itemId], references: [id])
 
   subtotal     Float
   buyerPremium Float
   tax          Float
   total        Float
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orderId, itemId])
+  @@index([orderId])
+  @@index([itemId])
+}
+
+model Order {
+  id      String @id @default(uuid())
+  buyerId String
+  lotId   String // Lot this order is for (all items from same lot)
+
+  buyer User @relation(fields: [buyerId], references: [id])
+  lot   Lot  @relation(fields: [lotId], references: [id])
+
+  subtotal     Float // Sum of all order items
+  buyerPremium Float
+  tax          Float
+  total        Float
+
   status PaymentStatus @default(PENDING)
 
-  invoice Invoice?
-  payment Payment?
+  orderItems OrderItem[]
+  invoice    Invoice?
+  payment    Payment?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([buyerId, itemId])
-  @@index([itemId])
+  @@unique([buyerId, lotId])
   @@index([buyerId])
+  @@index([lotId])
 }
 
 model Invoice {

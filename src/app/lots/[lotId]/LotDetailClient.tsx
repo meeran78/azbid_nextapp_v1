@@ -22,6 +22,7 @@ import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide
 import { placeBidAction } from "@/actions/bid.action";
 import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { BiddingHistoryModal } from "@/app/components/seller/BiddingHistoryModal";
 import type { PublicLot, PublicLotItem } from "@/actions/public-lot.action";
 
 interface LotDetailClientProps {
@@ -42,7 +43,7 @@ function ItemCarousel({
   item: PublicLotItem;
   lotStatus: string;
 }) {
-  const [api, setApi] = useState<EmblaCarouselType | undefined>();
+  const [api, setApi] = useState<CarouselApi>();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -50,7 +51,9 @@ function ItemCarousel({
     const onSelect = () => setSelectedIndex(api.selectedScrollSnap());
     onSelect();
     api.on("select", onSelect);
-    return () => api.off("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
   }, [api]);
 
   useEffect(() => {
@@ -136,9 +139,11 @@ function ItemCarousel({
 function ItemBidForm({
   item,
   lotId,
+  onViewHistory,
 }: {
   item: PublicLotItem;
   lotId: string;
+  onViewHistory: () => void;
 }) {
   const router = useRouter();
   const { data: session, isPending } = useSession();
@@ -245,12 +250,10 @@ function ItemBidForm({
           type="button"
           variant="outline"
           className="shrink-0"
-          asChild
+          onClick={onViewHistory}
         >
-          <Link href={`/lots/${lotId}#item-${item.id}`}>
-            <History className="h-4 w-4 mr-2" />
-            View History
-          </Link>
+          <History className="h-4 w-4 mr-2" />
+          View History
         </Button>
       </div>
     </form>
@@ -264,6 +267,7 @@ function AuctionItemCard({
   item: PublicLotItem;
   lot: PublicLot;
 }) {
+  const [historyOpen, setHistoryOpen] = useState(false);
   const bidCount = item._count?.bids ?? 0;
 
   return (
@@ -321,8 +325,19 @@ function AuctionItemCard({
               Total Bids: <span className="font-medium">{bidCount}</span>
             </span>
           </div>
-          <ItemBidForm item={item} lotId={lot.id} />
+          <ItemBidForm
+            item={item}
+            lotId={lot.id}
+            onViewHistory={() => setHistoryOpen(true)}
+          />
         </div>
+
+        <BiddingHistoryModal
+          itemId={item.id}
+          itemTitle={item.title}
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+        />
 
         <div className="flex justify-center gap-8 pt-2">
           <button

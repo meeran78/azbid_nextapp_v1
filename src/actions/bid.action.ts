@@ -9,7 +9,7 @@ const BID_INCREMENT = 1; // Minimum bid increment in dollars
 
 /**
  * Place a bid on an item. Requires signed-in user with BUYER role.
- * Item must belong to a LIVE or SCHEDULED lot.
+ * Implements soft-close: extends lot closesAt when bid placed in final window.
  */
 export async function placeBidAction(
   itemId: string,
@@ -33,7 +33,24 @@ export async function placeBidAction(
   const item = await prisma.item.findUnique({
     where: { id: itemId },
     include: {
-      lot: { select: { id: true, status: true } },
+      lot: {
+        select: {
+          id: true,
+          status: true,
+          closesAt: true,
+          extendedCount: true,
+          auctionId: true,
+          auction: {
+            select: {
+              status: true,
+              softCloseEnabled: true,
+              softCloseWindowSec: true,
+              softCloseExtendSec: true,
+              softCloseExtendLimit: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -41,12 +58,25 @@ export async function placeBidAction(
     return { error: "Item not found." };
   }
 
-  if (!["LIVE", "SCHEDULED"].includes(item.lot.status)) {
+  // 1. Validate auction + lot status (LIVE)
+  if (item.lot.status !== "LIVE") {
     return { error: "This item is not available for bidding." };
   }
 
+  const auction = item.lot.auction;
+  if (auction && auction.status !== "LIVE") {
+    return { error: "This auction is not currently live." };
+  }
+
+  // 2. Validate bid amount > currentPrice
   const currentPrice = item.currentPrice ?? item.startPrice;
   const minBid = currentPrice + BID_INCREMENT;
+
+  if (amount <= currentPrice) {
+    return {
+      error: `Bid must be greater than current price. Minimum bid is $${minBid.toFixed(2)}.`,
+    };
+  }
 
   if (amount < minBid) {
     return {
@@ -54,7 +84,30 @@ export async function placeBidAction(
     };
   }
 
-  await prisma.$transaction([
+  // 4. Check time remaining for soft-close
+  const now = new Date();
+  const remainingSeconds = Math.max(
+    0,
+    (item.lot.closesAt.getTime() - now.getTime()) / 1000
+  );
+
+  const softCloseEnabled =
+    auction?.softCloseEnabled ?? false;
+  const softCloseWindowSec = auction?.softCloseWindowSec ?? 120;
+  const softCloseExtendSec = auction?.softCloseExtendSec ?? 60;
+  const softCloseExtendLimit = auction?.softCloseExtendLimit ?? 10;
+
+  const shouldExtend =
+    softCloseEnabled &&
+    remainingSeconds <= softCloseWindowSec &&
+    item.lot.extendedCount < softCloseExtendLimit;
+
+  const newClosesAt = shouldExtend
+    ? new Date(item.lot.closesAt.getTime() + softCloseExtendSec * 1000)
+    : item.lot.closesAt;
+
+  // 3. Save bid + 5. Extend lot (if applicable) + 6. Update item currentPrice (transaction)
+  const operations: Parameters<typeof prisma.$transaction>[0] = [
     prisma.bid.create({
       data: {
         itemId,
@@ -66,7 +119,22 @@ export async function placeBidAction(
       where: { id: itemId },
       data: { currentPrice: amount },
     }),
-  ]);
+  ];
+
+  if (shouldExtend) {
+    operations.push(
+      prisma.lot.update({
+        where: { id: item.lot.id },
+        data: {
+          closesAt: newClosesAt,
+          extendedCount: { increment: 1 },
+          lastExtendedAt: now,
+        },
+      })
+    );
+  }
+
+  await prisma.$transaction(operations);
 
   revalidatePath(`/lots/${item.lot.id}`);
   return { success: true };
