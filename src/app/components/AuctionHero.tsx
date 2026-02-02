@@ -54,9 +54,12 @@ export default function AuctionHero() {
           >
 
             <StartBiddingButton />
-            <button className="rounded-xl border border-white/30 px-8 py-4 text-lg font-semibold hover:bg-white/10 transition">
+            <a
+              href="#active-stores"
+              className="rounded-xl border border-white/30 px-8 py-4 text-lg font-semibold hover:bg-white/10 transition inline-block"
+            >
               View Auctions
-            </button>
+            </a>
           </div>
         </div>
       </div>

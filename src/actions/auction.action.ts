@@ -228,7 +228,7 @@ export async function createAuctionAction(
 
 // Update auction (Admin only)
 // When auction status changes, cascade to linked lots:
-// - LIVE: SCHEDULED lots → LIVE
+// - LIVE: DRAFT/SCHEDULED lots → LIVE
 // - COMPLETED: LIVE lots → UNSOLD (SOLD lots stay SOLD)
 // - CANCELLED: SCHEDULED/LIVE lots → DRAFT
 // lotIds: optionally update which lots are associated with this auction
@@ -265,34 +265,40 @@ export async function updateAuctionAction(
   });
 
   // Update lot associations: un-associate lots no longer selected, associate newly selected
-  if (lotIds !== undefined) {
+  // When lotIds is empty, preserve current associations (avoids nullifying due to form race/not loaded)
+  if (lotIds !== undefined && lotIds.length > 0) {
     const selectedSet = new Set(lotIds);
     // Un-associate lots that were linked to this auction but are no longer selected
-    const unassociateWhere = selectedSet.size > 0
-      ? { auctionId: id, id: { notIn: Array.from(selectedSet) } }
-      : { auctionId: id };
     await prisma.lot.updateMany({
-      where: unassociateWhere,
+      where: { auctionId: id, id: { notIn: Array.from(selectedSet) } },
       data: { auctionId: null },
     });
-    // Associate selected lots (only available or already in this auction - never steal from another)
-    if (selectedSet.size > 0) {
-      await prisma.lot.updateMany({
-        where: {
-          id: { in: Array.from(selectedSet) },
-          storeId: validatedData.storeId,
-          OR: [{ auctionId: null }, { auctionId: id }],
-        },
-        data: { auctionId: id },
-      });
-    }
+    // Associate selected lots (only those belonging to same store)
+    await prisma.lot.updateMany({
+      where: {
+        id: { in: Array.from(selectedSet) },
+        storeId: validatedData.storeId,
+      },
+      data: { auctionId: id },
+    });
   }
 
   // Cascade lot status based on auction status
+  // When auction goes LIVE: all associated lots (DRAFT, SCHEDULED) → LIVE
+  // When auction goes SCHEDULED: LIVE lots → SCHEDULED
+  // When auction goes DRAFT: LIVE lots → SCHEDULED
   if (newStatus === "LIVE") {
     await prisma.lot.updateMany({
-      where: { auctionId: id, status: "SCHEDULED" },
+      where: {
+        auctionId: id,
+        status: { in: ["DRAFT", "SCHEDULED"] },
+      },
       data: { status: "LIVE" },
+    });
+  } else if (newStatus === "SCHEDULED" || newStatus === "DRAFT") {
+    await prisma.lot.updateMany({
+      where: { auctionId: id, status: "LIVE" },
+      data: { status: "SCHEDULED" },
     });
   } else if (newStatus === "COMPLETED") {
     await prisma.lot.updateMany({

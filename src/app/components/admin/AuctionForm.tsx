@@ -279,7 +279,7 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
       setStoreLots([]);
       setSelectedLotIds(new Set());
     }
-  }, [storeId, isEditing, initialData?.lots]);
+  }, [storeId, isEditing, initialData?.id, initialData?.lots]);
 
   const toggleLotSelection = (lotId: string) => {
     setSelectedLotIds((prev) => {
