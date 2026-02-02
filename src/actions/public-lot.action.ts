@@ -13,6 +13,7 @@ export type PublicLotItem = {
   currentPrice: number | null;
   retailPrice: number | null;
   category: { name: string } | null;
+  _count?: { bids: number };
 };
 
 export type PublicLot = {
@@ -97,6 +98,7 @@ export async function getPublicLot(lotId: string): Promise<PublicLot | null> {
       currentPrice: item.currentPrice,
       retailPrice: item.retailPrice,
       category: item.category,
+      _count: item._count,
     })),
   };
 }

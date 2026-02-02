@@ -176,7 +176,20 @@ function AuctionLotsAndItems({ lots }: { lots: AuctionLot[] }) {
                             )}
                           </div>
                           {item.description && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                            <Collapsible defaultOpen={false} className="group/item mt-1">
+                              <CollapsibleTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                  <ChevronRight className="h-3 w-3 shrink-0 transition-transform group-data-[state=open]/item:rotate-90" />
+                                  <span className="line-clamp-1 text-left">Description</span>
+                                </button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <p className="text-xs text-muted-foreground mt-1 pl-4">{item.description}</p>
+                              </CollapsibleContent>
+                            </Collapsible>
                           )}
                         </div>
                         <div className="shrink-0 text-right">

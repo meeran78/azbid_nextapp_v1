@@ -15,7 +15,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { X, Package, Calendar } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { X, Package, Calendar, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 
@@ -131,13 +136,32 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
             {lot.items.map((item, idx) => (
               <div key={item.id} className="border rounded-lg p-4 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-  <h3 className="font-semibold text-sm sm:text-base">Item {idx + 1}: {item.title}</h3>
-  {item.category && (
-    <Badge variant="outline" className="shrink-0">{item.category.name}</Badge>
-  )}
-</div>
+                  <h3 className="font-semibold text-sm sm:text-base">
+                    Item {idx + 1}: {item.title}
+                  </h3>
+                  {item.category && (
+                    <Badge variant="outline" className="shrink-0">
+                      {item.category.name}
+                    </Badge>
+                  )}
+                </div>
                 {item.description && (
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                  <Collapsible defaultOpen={false} className="group/desc">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]/desc:rotate-90" />
+                        <span>Description</span>
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <p className="text-sm text-muted-foreground mt-2 pl-6">
+                        {item.description}
+                      </p>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
                 <div className="flex flex-wrap gap-2 text-sm">
                   <span>Condition: {item.condition || "N/A"}</span>
