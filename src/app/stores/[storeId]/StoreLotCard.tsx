@@ -13,10 +13,19 @@ const REMOVAL_DISCLAIMER =
 
 interface StoreLotCardProps {
   lot: PublicStoreLot;
+  storeId: string;
   storeLogoUrl: string | null;
+  favouriteItemIds: string[];
+  watchedItemIds: string[];
 }
 
-export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
+export function StoreLotCard({
+  lot,
+  storeId,
+  storeLogoUrl,
+  favouriteItemIds,
+  watchedItemIds,
+}: StoreLotCardProps) {
   const lotHref = `/lots/${lot.id}`;
   const lotNumber =
     lot.lotDisplayId ?? lot.auctionDisplayId ?? lot.id.slice(0, 8);
@@ -29,9 +38,9 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
         href={lotHref}
         className="block p-6 space-y-6 hover:bg-muted/30 transition-colors"
       >
-      {/* Lot Header: Seller image + title + status + description */}
-      <div className="flex gap-4">
-        {/* <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
+        {/* Lot Header: Seller image + title + status + description */}
+        <div className="flex gap-4">
+          {/* <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
           {storeLogoUrl ? (
             <Image
               src={storeLogoUrl}
@@ -46,87 +55,88 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
             </div>
           )}
         </div> */}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-lg text-foreground">{lot.title}</h3>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${
-                statusLower === "live"
-                  ? "bg-violet-600"
-                  : "bg-muted-foreground/80"
-              }`}
-            >
-              {statusLower}
-            </span>
-          </div>
-          {lot.description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {lot.description}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Lot Details: Two columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left column */}
-        <div className="space-y-3 text-sm">
-          <div>
-            <span className="text-muted-foreground">Lot Number: </span>
-            <span className="font-medium">{lotNumber}</span>
-          </div>
-          {lot.buyersPremium && (
-            <div>
-              <span className="text-muted-foreground">
-                {lot.buyersPremium} buyer&apos;s premium is added to every
-                purchase
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-bold text-lg text-foreground">{lot.title}</h3>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${statusLower === "live"
+                    ? "bg-violet-600"
+                    : "bg-muted-foreground/80"
+                  }`}
+              >
+                {statusLower}
               </span>
             </div>
-          )}
-          {lot.inspectionAt && (
-            <div>
-              <span className="text-muted-foreground">Inspection Date: </span>
-              <span className="font-medium">
-                {format(new Date(lot.inspectionAt), "EEEE, MMMM d, yyyy h:mm a")}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-3 text-sm">
-          <div>
-            <span className="text-muted-foreground">Start Closing Date: </span>
-            <span className="font-medium">
-              {format(new Date(lot.closesAt), "EEEE, MMMM d, yyyy h:mm a")}
-            </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Items in Lot: </span>
-            <span className="font-medium text-violet-600">{lot.itemCount} items</span>
-          </div>
-          {lot.removalStartAt && (
-            <div>
-              <span className="text-muted-foreground">Removal Date: </span>
-              <span className="font-medium">
-                {format(new Date(lot.removalStartAt), "EEEE, MMMM d, yyyy h:mm a")}
-              </span>
-              <p className="text-muted-foreground text-xs mt-1">
-                {REMOVAL_DISCLAIMER}
+            {lot.description && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                {lot.description}
               </p>
-            </div>
-          )}
-          <div>
-            <span className="text-muted-foreground block mb-1.5">
-              Time to Lot Closing:
-            </span>
-            <LotCountdown closesAt={lot.closesAt} />
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Lot Images */}
-      {/* <div>
+        {/* Lot Details: Two columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left column */}
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="text-muted-foreground font-semibold">Lot Number: </span>
+              <span className="font-medium">{lotNumber}</span>
+            </div>
+            {lot.buyersPremium && (
+              <div>
+                <span className="text-muted-foreground font-semibold">
+                  {lot.buyersPremium} buyer&apos;s premium is added to every
+                  purchase
+                </span>
+              </div>
+            )}
+           <div>
+              <span className="text-muted-foreground font-semibold">Items in Lot: </span>
+              <span className="font-medium text-violet-600">{lot.itemCount} items</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground block mb-1.5 font-semibold">
+                Time to Lot Closing:
+              </span>
+              <LotCountdown closesAt={lot.closesAt} />
+            </div>
+
+          </div>
+
+          {/* Right column */}
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="text-muted-foreground font-semibold">Start Closing Date: </span>
+              <span className="font-medium">
+                {format(new Date(lot.closesAt), "EEEE, MMMM d, yyyy h:mm a")}
+              </span>
+            </div>
+            {lot.inspectionAt && (
+              <div>
+                <span className="text-muted-foreground font-semibold">Inspection Date: </span>
+                <span className="font-medium">
+                  {format(new Date(lot.inspectionAt), "EEEE, MMMM d, yyyy h:mm a")}
+                </span>
+              </div>
+            )}
+            {lot.removalStartAt && (
+              <div>
+                <span className="text-muted-foreground font-semibold">Removal Date: </span>
+                <span className="font-medium">
+                  {format(new Date(lot.removalStartAt), "EEEE, MMMM d, yyyy h:mm a")}
+                </span>
+                <p className="text-muted-foreground text-xs mt-1">
+                  {REMOVAL_DISCLAIMER}
+                </p>
+              </div>
+            )}
+           
+          </div>
+        </div>
+
+        {/* Lot Images */}
+        {/* <div>
         <span className="text-sm font-medium text-muted-foreground block mb-2">
           Lot Images:
         </span>
@@ -155,7 +165,7 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
           )}
         </div>
       </div> */}
-    </Link>
+      </Link>
 
       {items.length > 0 && (
         <div className="px-6 pb-6 pt-2 border-t">
@@ -169,6 +179,9 @@ export function StoreLotCard({ lot, storeLogoUrl }: StoreLotCardProps) {
                 item={item}
                 lotId={lot.id}
                 lotStatus={lot.status}
+                storeId={storeId}
+                isFavourited={favouriteItemIds.includes(item.id)}
+                isWatched={watchedItemIds.includes(item.id)}
               />
             ))}
           </div>

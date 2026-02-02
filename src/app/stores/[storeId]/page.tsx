@@ -3,6 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { getPublicStore } from "@/actions/public-store.action";
 import { getUserFavouriteStoreIds } from "@/actions/store-favourite.action";
+import { getUserFavouriteItemIds } from "@/actions/item-favourite.action";
+import { getUserWatchedItemIds } from "@/actions/item-watch.action";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,17 +18,20 @@ export default async function StoreDetailPage({
   params: Promise<{ storeId: string }>;
 }) {
   const { storeId } = await params;
-  const [store, favouriteIds] = await Promise.all([
-    getPublicStore(storeId),
-    getUserFavouriteStoreIds(),
-  ]);
+  const [store, favouriteIds, favouriteItemIds, watchedItemIds] =
+    await Promise.all([
+      getPublicStore(storeId),
+      getUserFavouriteStoreIds(),
+      getUserFavouriteItemIds(),
+      getUserWatchedItemIds(),
+    ]);
 
   if (!store) notFound();
 
   const isFavourited = favouriteIds.includes(storeId);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-2 py-8 max-w-3xl">
       <Button variant="ghost" asChild className="mb-6">
         <Link href="/#active-stores">
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -50,7 +55,10 @@ export default async function StoreDetailPage({
                   <StoreLotCard
                     key={lot.id}
                     lot={lot}
+                    storeId={storeId}
                     storeLogoUrl={store.logoUrl}
+                    favouriteItemIds={favouriteItemIds}
+                    watchedItemIds={watchedItemIds}
                   />
                 ))}
             

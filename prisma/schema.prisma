@@ -139,11 +139,13 @@ model User {
   posts    Post[]
 
   // Buyer
-  bids            Bid[]
-  orders          Order[]
-  favourites      StoreFavourite[] // NEW: stores this user has favourited
-  storeReviews    StoreReview[] // NEW: reviews this user has written
-  invoicesAsBuyer Invoice[]        @relation("InvoiceBuyer")
+  bids              Bid[]
+  orders            Order[]
+  favourites        StoreFavourite[] // stores this user has favourited
+  itemFavourites    ItemFavourite[]
+  itemWatches       ItemWatch[]
+  storeReviews      StoreReview[]
+  invoicesAsBuyer Invoice[] @relation("InvoiceBuyer")
 
   // Seller
   commissionPct    Float? // Commission % for sellers (0-100), applies to all their stores
@@ -261,6 +263,36 @@ model StoreFavourite {
   @@index([storeId])
 }
 
+model ItemFavourite {
+  id     String @id @default(uuid())
+  userId String
+  itemId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+}
+
+model ItemWatch {
+  id     String @id @default(uuid())
+  userId String
+  itemId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+}
+
 model StoreReview {
   id        String   @id @default(uuid())
   storeId   String
@@ -369,6 +401,8 @@ model Item {
   winningBidId String?       @unique
   orderItems   OrderItem[]
   invoiceItems InvoiceItem[]
+  favourites   ItemFavourite[]
+  watches      ItemWatch[]
 
   createdAt DateTime @default(now())
 

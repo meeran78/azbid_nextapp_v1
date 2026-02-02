@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { placeBidAction } from "@/actions/bid.action";
+import { toggleItemFavouriteAction } from "@/actions/item-favourite.action";
+import { toggleItemWatchAction } from "@/actions/item-watch.action";
 import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { BiddingHistoryModal } from "@/app/components/seller/BiddingHistoryModal";
@@ -46,7 +48,9 @@ function ItemCarousel({
     const onSelect = () => setSelectedIndex(api.selectedScrollSnap());
     onSelect();
     api.on("select", onSelect);
-    return () => api.off("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
   }, [api]);
 
   useEffect(() => {
@@ -67,12 +71,12 @@ function ItemCarousel({
         <Package className="h-16 w-16 text-muted-foreground" />
         {isNewItem(item.createdAt) && (
           <span className="absolute top-3 left-3 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-xs font-medium text-white">
-            New
+            {item.condition?.toUpperCase()}
           </span>
         )}
         {lotStatus === "LIVE" && (
-          <span className="absolute top-3 right-3 rounded-full bg-green-600 px-2.5 py-0.5 text-xs font-medium text-white">
-            LIVE
+          <span className="absolute top-3 right-3 rounded-full bg-purple-600 px-2.5 py-0.5 text-xs font-medium text-white">
+            {lotStatus?.toUpperCase()}
           </span>
         )}
       </div>
@@ -95,12 +99,12 @@ function ItemCarousel({
                 />
                 {isNewItem(item.createdAt) && (
                   <span className="absolute top-3 left-3 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-xs font-medium text-white">
-                    New
+                   {item.condition?.toUpperCase()}
                   </span>
                 )}
                 {lotStatus === "LIVE" && (
                   <span className="absolute top-3 right-3 rounded-full bg-green-600 px-2.5 py-0.5 text-xs font-medium text-white">
-                    LIVE
+                    {lotStatus?.toUpperCase()}
                   </span>
                 )}
                 {item.imageUrls.length > 1 && (
@@ -264,10 +268,124 @@ interface LotItemCardProps {
   item: PublicStoreLotItem;
   lotId: string;
   lotStatus: string;
+  storeId?: string;
+  isFavourited?: boolean;
+  isWatched?: boolean;
 }
 
-export function LotItemCard({ item, lotId, lotStatus }: LotItemCardProps) {
+const CONDITION_BADGES = {
+  "New": "bg-teal-500/90",
+  "Like New": "bg-teal-500/90",
+  "Used - Good": "bg-teal-500/90",
+  "Used - Fair": "bg-teal-500/90",
+  "Salvage": "bg-teal-500/90",
+}
+
+
+export function LotItemCard({
+  item,
+  lotId,
+  lotStatus,
+  storeId,
+  isFavourited: initialFavourited = false,
+  isWatched: initialWatched = false,
+}: LotItemCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [isFavourited, setIsFavourited] = useState(initialFavourited);
+  const [isWatched, setIsWatched] = useState(initialWatched);
+  const [isFavouriteLoading, setIsFavouriteLoading] = useState(false);
+  const [isWatchLoading, setIsWatchLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    setIsFavourited(initialFavourited);
+    setIsWatched(initialWatched);
+  }, [initialFavourited, initialWatched]);
+
+  const handleFavourite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsFavouriteLoading(true);
+    try {
+      const result = await toggleItemFavouriteAction(item.id);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        setIsFavourited(result.favourited);
+        toast.success(
+          result.favourited ? "Added to favourites" : "Removed from favourites"
+        );
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to update favourite");
+    } finally {
+      setIsFavouriteLoading(false);
+    }
+  };
+
+  const handleWatch = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsWatchLoading(true);
+    try {
+      const result = await toggleItemWatchAction(item.id);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        setIsWatched(result.watching);
+        toast.success(
+          result.watching ? "Added to watchlist" : "Removed from watchlist"
+        );
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to update watchlist");
+    } finally {
+      setIsWatchLoading(false);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const baseUrl =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_APP_URL || "";
+    const shareUrl = storeId
+      ? `${baseUrl}/stores/${storeId}#item-${item.id}`
+      : `${baseUrl}/lots/${lotId}#item-${item.id}`;
+    const shareTitle = `${item.title} | Az-Bid`;
+    const shareText = `Check out "${item.title}" on Az-Bid`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success("Shared successfully!");
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            toast.success("Link copied to clipboard!");
+          } catch {
+            toast.error("Failed to share");
+          }
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard!");
+      } catch {
+        toast.error("Failed to copy link");
+      }
+    }
+  };
 
   return (
     <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -295,7 +413,7 @@ export function LotItemCard({ item, lotId, lotStatus }: LotItemCardProps) {
                   {item.description}
                 </p>
               )}
-              {item.condition && (
+              {/* {item.condition && (
                 <p className="text-sm text-muted-foreground">
                   Condition: {item.condition}
                 </p>
@@ -304,7 +422,7 @@ export function LotItemCard({ item, lotId, lotStatus }: LotItemCardProps) {
                 <p className="text-sm text-muted-foreground">
                   Reserve: ${item.reservePrice.toFixed(2)}
                 </p>
-              )}
+              )} */}
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -341,20 +459,35 @@ export function LotItemCard({ item, lotId, lotStatus }: LotItemCardProps) {
         <div className="flex justify-center gap-8 pt-2">
           <button
             type="button"
-            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleFavourite}
+            disabled={isFavouriteLoading}
+            className={`flex flex-col items-center gap-1 text-sm transition-colors ${
+              isFavourited
+                ? "text-red-500 hover:text-red-600"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <Heart className="h-5 w-5" />
-            <span>Like</span>
+            <Heart
+              className={`h-5 w-5 ${isFavourited ? "fill-current" : ""}`}
+            />
+            <span>{isFavourited ? "Favourited" : "Favourite"}</span>
           </button>
           <button
             type="button"
-            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleWatch}
+            disabled={isWatchLoading}
+            className={`flex flex-col items-center gap-1 text-sm transition-colors ${
+              isWatched
+                ? "text-violet-600 hover:text-violet-700"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <Eye className="h-5 w-5" />
-            <span>Watch</span>
+            <Eye className={`h-5 w-5 ${isWatched ? "fill-current" : ""}`} />
+            <span>{isWatched ? "Watching" : "Watch"}</span>
           </button>
           <button
             type="button"
+            onClick={handleShare}
             className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <Share2 className="h-5 w-5" />

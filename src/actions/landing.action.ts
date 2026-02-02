@@ -37,12 +37,15 @@ export type LandingStore = {
 };
 
 /**
- * Get active stores with their LIVE/SCHEDULED lots for the landing page.
- * Public - no auth required. Returns all ACTIVE stores.
+ * Get active stores with live auctions for the landing page.
+ * Public - no auth required. Returns only ACTIVE stores that have at least one LIVE lot.
  */
 export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
   const stores = await prisma.store.findMany({
-    where: { status: "ACTIVE" },
+    where: {
+      status: "ACTIVE",
+      lots: { some: { status: "LIVE" } },
+    },
     include: {
       owner: {
         select: {
