@@ -12,6 +12,7 @@ export type PublicLotItem = {
   reservePrice: number | null;
   currentPrice: number | null;
   retailPrice: number | null;
+  createdAt: Date;
   category: { name: string } | null;
   _count?: { bids: number };
 };
@@ -66,7 +67,20 @@ export async function getPublicLot(lotId: string): Promise<PublicLot | null> {
       },
       auction: { select: { id: true, title: true, endAt: true } },
       items: {
-        include: { category: { select: { name: true } } },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          condition: true,
+          imageUrls: true,
+          startPrice: true,
+          reservePrice: true,
+          currentPrice: true,
+          retailPrice: true,
+          createdAt: true,
+          category: { select: { name: true } },
+          _count: { select: { bids: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -97,6 +111,7 @@ export async function getPublicLot(lotId: string): Promise<PublicLot | null> {
       reservePrice: item.reservePrice,
       currentPrice: item.currentPrice,
       retailPrice: item.retailPrice,
+      createdAt: item.createdAt,
       category: item.category,
       _count: item._count,
     })),

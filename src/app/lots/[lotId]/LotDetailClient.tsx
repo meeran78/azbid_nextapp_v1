@@ -8,19 +8,17 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Package, Gavel, ChevronDown, Heart, Eye, Share2 } from "lucide-react";
+import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { placeBidAction } from "@/actions/bid.action";
 import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
@@ -30,6 +28,13 @@ interface LotDetailClientProps {
   lot: PublicLot;
 }
 
+const NEW_ITEM_DAYS = 7;
+
+function isNewItem(createdAt: Date): boolean {
+  const age = Date.now() - new Date(createdAt).getTime();
+  return age < NEW_ITEM_DAYS * 24 * 60 * 60 * 1000;
+}
+
 function ItemCarousel({
   item,
   lotStatus,
@@ -37,14 +42,7 @@ function ItemCarousel({
   item: PublicLotItem;
   lotStatus: string;
 }) {
-  const [api, setApi] = useState<{
-    scrollNext: () => void;
-    canScrollNext: () => boolean;
-    scrollTo: (i: number) => void;
-    selectedScrollSnap: () => number;
-    on: (e: string, cb: () => void) => void;
-    off: (e: string, cb: () => void) => void;
-  } | undefined>();
+  const [api, setApi] = useState<EmblaCarouselType | undefined>();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
@@ -71,8 +69,15 @@ function ItemCarousel({
     return (
       <div className="relative w-full aspect-square bg-muted rounded-t-xl flex items-center justify-center">
         <Package className="h-16 w-16 text-muted-foreground" />
+        {isNewItem(item.createdAt) && (
+          <span className="absolute top-3 left-3 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-xs font-medium text-white">
+            New
+          </span>
+        )}
         {lotStatus === "LIVE" && (
-          <Badge className="absolute top-3 right-3 bg-green-600">LIVE</Badge>
+          <span className="absolute top-3 right-3 rounded-full bg-green-600 px-2.5 py-0.5 text-xs font-medium text-white">
+            LIVE
+          </span>
         )}
       </div>
     );
@@ -92,37 +97,38 @@ function ItemCarousel({
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 400px"
                 />
+                {isNewItem(item.createdAt) && (
+                  <span className="absolute top-3 left-3 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-xs font-medium text-white">
+                    New
+                  </span>
+                )}
                 {lotStatus === "LIVE" && (
-                  <Badge className="absolute top-3 right-3 bg-green-600">
+                  <span className="absolute top-3 right-3 rounded-full bg-green-600 px-2.5 py-0.5 text-xs font-medium text-white">
                     LIVE
-                  </Badge>
+                  </span>
+                )}
+                {item.imageUrls.length > 1 && (
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {item.imageUrls.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => api?.scrollTo(idx)}
+                        className={`h-2 w-2 rounded-full transition-colors ${
+                          idx === selectedIndex
+                            ? "bg-white"
+                            : "bg-white/50"
+                        }`}
+                        aria-label={`Go to image ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
             </CarouselItem>
           ))}
         </CarouselContent>
-        {item.imageUrls.length > 1 && (
-          <>
-            <CarouselPrevious className="left-2" />
-            <CarouselNext className="right-2" />
-          </>
-        )}
       </Carousel>
-      {item.imageUrls.length > 1 && (
-        <div className="flex justify-center gap-1.5 py-2">
-          {item.imageUrls.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => api?.scrollTo(i)}
-              className={`h-2 w-2 rounded-full transition-colors ${
-                i === selectedIndex ? "bg-primary" : "bg-muted-foreground/30"
-              }`}
-              aria-label={`Go to image ${i + 1}`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -168,7 +174,7 @@ function ItemBidForm({
 
   if (isPending) {
     return (
-      <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+      <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
         Loading...
       </div>
     );
@@ -176,7 +182,7 @@ function ItemBidForm({
 
   if (!session) {
     return (
-      <div className="p-4 rounded-lg border bg-muted/30">
+      <div className="rounded-lg bg-muted/30 p-4">
         <p className="text-sm text-muted-foreground mb-3">
           Sign in to place a bid on this item.
         </p>
@@ -189,7 +195,7 @@ function ItemBidForm({
 
   if (session.user.role !== "BUYER") {
     return (
-      <div className="p-4 rounded-lg border bg-muted/30">
+      <div className="rounded-lg bg-muted/30 p-4">
         <p className="text-sm text-muted-foreground">
           Only buyers can place bids. Switch to a buyer account to bid.
         </p>
@@ -199,8 +205,11 @@ function ItemBidForm({
 
   return (
     <form onSubmit={handleBid} className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      <div className="flex gap-2 items-center">
+        <span className="text-sm text-muted-foreground shrink-0">
+          $ Next bid: ${minBid.toFixed(2)}
+        </span>
+        <div className="relative flex-1 min-w-0">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
             $
           </span>
@@ -208,18 +217,138 @@ function ItemBidForm({
             type="number"
             step="0.01"
             min={minBid}
-            placeholder={`Next bid: $${minBid.toFixed(2)}`}
+            placeholder={minBid.toFixed(2)}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="pl-7"
+            className="pl-7 h-9"
           />
         </div>
-        <Button type="submit" disabled={isSubmitting} className="bg-purple-600 hover:bg-purple-700">
-          <Gavel className="h-4 w-4 mr-2" />
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          size="sm"
+          className="bg-zinc-800 hover:bg-zinc-900 text-white shrink-0"
+        >
           Place Bid
         </Button>
       </div>
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="flex-1 bg-violet-600 hover:bg-violet-700"
+        >
+          <Gavel className="h-4 w-4 mr-2" />
+          Confirm Bid
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          asChild
+        >
+          <Link href={`/lots/${lotId}#item-${item.id}`}>
+            <History className="h-4 w-4 mr-2" />
+            View History
+          </Link>
+        </Button>
+      </div>
     </form>
+  );
+}
+
+function AuctionItemCard({
+  item,
+  lot,
+}: {
+  item: PublicLotItem;
+  lot: PublicLot;
+}) {
+  const bidCount = item._count?.bids ?? 0;
+
+  return (
+    <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      <ItemCarousel item={item} lotStatus={lot.status} />
+      <div className="p-4 space-y-4">
+        {item.category && (
+          <span className="inline-block rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
+            {item.category.name}
+          </span>
+        )}
+        <Collapsible defaultOpen={false} className="group/desc">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <h3 className="font-bold text-lg truncate">{item.title}</h3>
+              <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/desc:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pt-2 space-y-2">
+              {item.description && (
+                <p className="text-sm text-muted-foreground">
+                  {item.description}
+                </p>
+              )}
+              {item.condition && (
+                <p className="text-sm text-muted-foreground">
+                  Condition: {item.condition}
+                </p>
+              )}
+              {item.reservePrice != null && (
+                <p className="text-sm text-muted-foreground">
+                  Reserve: ${item.reservePrice.toFixed(2)}
+                </p>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div
+          id={`item-${item.id}`}
+          className="rounded-lg border bg-muted/30 p-4 space-y-3"
+        >
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              Starting Bid:{" "}
+              <span className="font-bold text-violet-600">
+                ${(item.currentPrice ?? item.startPrice).toFixed(2)}
+              </span>
+            </span>
+            <span className="text-muted-foreground">
+              Total Bids: <span className="font-medium">{bidCount}</span>
+            </span>
+          </div>
+          <ItemBidForm item={item} lotId={lot.id} />
+        </div>
+
+        <div className="flex justify-center gap-8 pt-2">
+          <button
+            type="button"
+            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Heart className="h-5 w-5" />
+            <span>Like</span>
+          </button>
+          <button
+            type="button"
+            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Eye className="h-5 w-5" />
+            <span>Watch</span>
+          </button>
+          <button
+            type="button"
+            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Share2 className="h-5 w-5" />
+            <span>Share</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -235,105 +364,13 @@ export function LotDetailClient({ lot }: LotDetailClientProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Package className="h-5 w-5" />
-          Items ({lot.items.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8">
-        {lot.items.map((item, idx) => {
-          const currentPrice = item.currentPrice ?? item.startPrice;
-          const bidCount = item._count?.bids ?? 0;
-          return (
-            <div
-              key={item.id}
-              className="rounded-xl border bg-card shadow-sm overflow-hidden"
-            >
-              <div className="max-w-md mx-auto">
-                <ItemCarousel item={item} lotStatus={lot.status} />
-              </div>
-              <div className="p-4 md:p-6 space-y-4">
-                {item.category && (
-                  <Badge variant="secondary" className="rounded-md">
-                    {item.category.name}
-                  </Badge>
-                )}
-                <Collapsible defaultOpen={false} className="group/desc">
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between gap-2 text-left"
-                    >
-                      <h3 className="font-semibold text-lg truncate">
-                        {item.title}
-                      </h3>
-                      <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/desc:rotate-180" />
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="pt-2 space-y-2">
-                      {item.description && (
-                        <p className="text-sm text-muted-foreground">
-                          {item.description}
-                        </p>
-                      )}
-                      {item.condition && (
-                        <p className="text-sm text-muted-foreground">
-                          Condition: {item.condition}
-                        </p>
-                      )}
-                      {item.reservePrice != null && (
-                        <p className="text-sm text-muted-foreground">
-                          Reserve: ${item.reservePrice.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Starting Bid:{" "}
-                    <span className="font-semibold text-primary">
-                      ${item.startPrice.toFixed(2)}
-                    </span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    Total Bids: <span className="font-medium">{bidCount}</span>
-                  </span>
-                </div>
-                <div className="pt-2">
-                  <ItemBidForm item={item} lotId={lot.id} />
-                </div>
-                <div className="flex justify-center gap-6 pt-4 border-t">
-                  <button
-                    type="button"
-                    className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Heart className="h-5 w-5" />
-                    <span>Like</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Eye className="h-5 w-5" />
-                    <span>Watch</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Share2 className="h-5 w-5" />
-                    <span>Share</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <h2 className="font-semibold text-lg">Auction Items ({lot.items.length})</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {lot.items.map((item: PublicLotItem) => (
+          <AuctionItemCard key={item.id} item={item} lot={lot} />
+        ))}
+      </div>
+    </div>
   );
 }

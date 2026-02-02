@@ -1,0 +1,63 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { getPublicStore } from "@/actions/public-store.action";
+import { getUserFavouriteStoreIds } from "@/actions/store-favourite.action";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Package } from "lucide-react";
+import { StoreDetailHeader } from "./StoreDetailHeader";
+import { StoreLotCard } from "./StoreLotCard";
+
+export default async function StoreDetailPage({
+  params,
+}: {
+  params: Promise<{ storeId: string }>;
+}) {
+  const { storeId } = await params;
+  const [store, favouriteIds] = await Promise.all([
+    getPublicStore(storeId),
+    getUserFavouriteStoreIds(),
+  ]);
+
+  if (!store) notFound();
+
+  const isFavourited = favouriteIds.includes(storeId);
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <Button variant="ghost" asChild className="mb-6">
+        <Link href="/#active-stores">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Stores
+        </Link>
+      </Button>
+
+      <StoreDetailHeader store={store} isFavourited={isFavourited} />
+
+      <Card className="mt-6">
+        <CardContent className="pt-6 space-y-6">
+          {store.lots.length === 0 ? (
+            <p className="text-muted-foreground py-12 text-center">
+              No active lots at the moment.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              <h3 className="font-semibold">Active Lots ({store.lots.length})</h3>
+              <div className="space-y-6">
+                {store.lots.map((lot) => (
+                  <StoreLotCard
+                    key={lot.id}
+                    lot={lot}
+                    storeLogoUrl={store.logoUrl}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

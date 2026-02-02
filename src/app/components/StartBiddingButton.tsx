@@ -7,13 +7,13 @@ import Link from "next/link";
 export const StartBiddingButton = () => {
   const { data: session, isPending } = useSession();
 
-  if (isPending) {
-    return (
-      <Button size="lg" className="opacity-50" asChild>
-        <span>Get Started</span>
-      </Button>
-    );
-  }
+  // if (isPending) {
+  //   return (
+  //     <Button size="lg" className="opacity-50" asChild>
+  //       <span>Get Started</span>
+  //     </Button>
+  //   );
+  // }
 
   const href = session ? "/" : "/sign-in";
 
