@@ -48,8 +48,8 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
     case "BUYER":
       return [
         // { title: "Dashboard", url: "/buyers-dashboard", icon: LayoutDashboard },
-        { title: "My Bids", url: "/my-bids", icon: Gavel },
-        { title: "My Favorites", url: "/my-favorites", icon: Heart },
+        { title: "My Bids", url: "/buyers-dashboard/bids", icon: Gavel },
+        { title: "My Favorites", url: "/buyers-dashboard/favorites", icon: Heart },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "Settings", url: "/buyer-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },

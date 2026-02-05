@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,8 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/components/ui/collapsible";
+import { StoreEditDialog, type StoreForEdit } from "@/app/components/seller/StoreEditDialog";
 
 interface Store {
   id: string;
@@ -30,9 +33,26 @@ interface StoresListProps {
 }
 
 export function StoresList({ stores }: StoresListProps) {
+  const router = useRouter();
+  const [editStore, setEditStore] = useState<Store | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const handleStoreClick = (store: Store) => {
+    setEditStore(store);
+    setEditDialogOpen(true);
+  };
+
+  const storeForEdit: StoreForEdit | null = editStore
+    ? {
+        id: editStore.id,
+        name: editStore.name,
+        description: editStore.description,
+        logoUrl: editStore.logoUrl,
+      }
+    : null;
+
   return (
-
-
+    <>
     <Card className="container mx-auto max-w-full p-2" >
       <CardContent className="p-0">
         <Collapsible className=" rounded-md">
@@ -79,7 +99,18 @@ export function StoresList({ stores }: StoresListProps) {
                         transition={{ delay: index * 0.1 }}
                         whileHover={{ scale: 1.02 }}
                       >
-                        <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                        <Card
+                          className="hover:shadow-lg transition-shadow cursor-pointer h-full"
+                          onClick={() => handleStoreClick(store)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleStoreClick(store);
+                            }
+                          }}
+                        >
                           <CardHeader>
                             <div className="flex items-center gap-3">
                               {store.logoUrl ? (
@@ -138,5 +169,13 @@ export function StoresList({ stores }: StoresListProps) {
         </Collapsible>
       </CardContent>
     </Card>
+
+    <StoreEditDialog
+      store={storeForEdit}
+      open={editDialogOpen}
+      onOpenChange={setEditDialogOpen}
+      onSuccess={() => router.refresh()}
+    />
+    </>
   );
 }

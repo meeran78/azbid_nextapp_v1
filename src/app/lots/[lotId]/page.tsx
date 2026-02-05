@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getPublicLot } from "@/actions/public-lot.action";
+import { getUserFavouriteItemIds } from "@/actions/item-favourite.action";
+import { getUserWatchedItemIds } from "@/actions/item-watch.action";
 import { LotDetailClient } from "./LotDetailClient";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -11,7 +13,11 @@ export default async function LotDetailPage({
   params: Promise<{ lotId: string }>;
 }) {
   const { lotId } = await params;
-  const lot = await getPublicLot(lotId);
+  const [lot, favouriteItemIds, watchedItemIds] = await Promise.all([
+    getPublicLot(lotId),
+    getUserFavouriteItemIds(),
+    getUserWatchedItemIds(),
+  ]);
 
   if (!lot) notFound();
 
@@ -58,7 +64,11 @@ export default async function LotDetailPage({
           </div>
         </div>
 
-        <LotDetailClient lot={lot} />
+        <LotDetailClient
+          lot={lot}
+          favouriteItemIds={favouriteItemIds}
+          watchedItemIds={watchedItemIds}
+        />
       </div>
     </div>
   );

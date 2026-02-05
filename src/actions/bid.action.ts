@@ -4,8 +4,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-
-const BID_INCREMENT = 1; // Minimum bid increment in dollars
+import { getMinimumNextBid, validateBidAmount } from "@/lib/bid-increment";
 
 /**
  * Place a bid on an item. Requires signed-in user with BUYER role.
@@ -68,19 +67,16 @@ export async function placeBidAction(
     return { error: "This auction is not currently live." };
   }
 
-  // 2. Validate bid amount > currentPrice
-  const currentPrice = item.currentPrice ?? item.startPrice;
-  const minBid = currentPrice + BID_INCREMENT;
-
-  if (amount <= currentPrice) {
-    return {
-      error: `Bid must be greater than current price. Minimum bid is $${minBid.toFixed(2)}.`,
-    };
+  // 2. Validate bid amount: must be > current price and aligned with minimum increment (non-negotiable)
+  const currentPrice = Number(item.currentPrice ?? item.startPrice ?? 0);
+  const validation = validateBidAmount(amount, currentPrice);
+  if (!validation.valid) {
+    return { error: validation.error };
   }
-
+  const minBid = getMinimumNextBid(currentPrice);
   if (amount < minBid) {
     return {
-      error: `Minimum bid is $${minBid.toFixed(2)} (current: $${currentPrice.toFixed(2)} + $${BID_INCREMENT} increment).`,
+      error: `Minimum bid is $${minBid.toFixed(2)}. Bids must follow the required increment.`,
     };
   }
 

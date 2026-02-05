@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/collapsible";
 import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { placeBidAction } from "@/actions/bid.action";
+import { getMinimumNextBid } from "@/lib/bid-increment";
+import { toggleItemFavouriteAction } from "@/actions/item-favourite.action";
+import { toggleItemWatchAction } from "@/actions/item-watch.action";
 import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { BiddingHistoryModal } from "@/app/components/seller/BiddingHistoryModal";
@@ -27,6 +30,8 @@ import type { PublicLot, PublicLotItem } from "@/actions/public-lot.action";
 
 interface LotDetailClientProps {
   lot: PublicLot;
+  favouriteItemIds?: string[];
+  watchedItemIds?: string[];
 }
 
 const NEW_ITEM_DAYS = 7;
@@ -150,8 +155,8 @@ function ItemBidForm({
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentPrice = item.currentPrice ?? item.startPrice;
-  const minBid = currentPrice + 1;
+  const currentPrice = Number(item.currentPrice ?? item.startPrice ?? 0);
+  const minBid = getMinimumNextBid(currentPrice);
 
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,12 +268,96 @@ function ItemBidForm({
 function AuctionItemCard({
   item,
   lot,
+  isFavourited: initialFavourited = false,
+  isWatched: initialWatched = false,
 }: {
   item: PublicLotItem;
   lot: PublicLot;
+  isFavourited?: boolean;
+  isWatched?: boolean;
 }) {
+  const router = useRouter();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [isFavourited, setIsFavourited] = useState(initialFavourited);
+  const [isWatched, setIsWatched] = useState(initialWatched);
+  const [isFavouriteLoading, setIsFavouriteLoading] = useState(false);
+  const [isWatchLoading, setIsWatchLoading] = useState(false);
   const bidCount = item._count?.bids ?? 0;
+
+  useEffect(() => {
+    setIsFavourited(initialFavourited);
+    setIsWatched(initialWatched);
+  }, [initialFavourited, initialWatched]);
+
+  const handleFavourite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsFavouriteLoading(true);
+    try {
+      const result = await toggleItemFavouriteAction(item.id);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        setIsFavourited(result.favourited);
+        toast.success(result.favourited ? "Added to favourites" : "Removed from favourites");
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to update favourite");
+    } finally {
+      setIsFavouriteLoading(false);
+    }
+  };
+
+  const handleWatch = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsWatchLoading(true);
+    try {
+      const result = await toggleItemWatchAction(item.id);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        setIsWatched(result.watching);
+        toast.success(result.watching ? "Added to watchlist" : "Removed from watchlist");
+        router.refresh();
+      }
+    } catch {
+      toast.error("Failed to update watchlist");
+    } finally {
+      setIsWatchLoading(false);
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const shareUrl = `${baseUrl}/lots/${lot.id}#item-${item.id}`;
+    const shareTitle = `${item.title} | Az-Bid`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, text: item.title ?? "", url: shareUrl });
+        toast.success("Shared successfully!");
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            toast.success("Link copied to clipboard!");
+          } catch {
+            toast.error("Failed to share");
+          }
+        }
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard!");
+      } catch {
+        toast.error("Failed to copy link");
+      }
+    }
+  };
 
   return (
     <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -342,20 +431,29 @@ function AuctionItemCard({
         <div className="flex justify-center gap-8 pt-2">
           <button
             type="button"
-            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleFavourite}
+            disabled={isFavouriteLoading}
+            className={`flex flex-col items-center gap-1 text-sm transition-colors ${
+              isFavourited ? "text-red-500 hover:text-red-600" : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <Heart className="h-5 w-5" />
-            <span>Like</span>
+            <Heart className={`h-5 w-5 ${isFavourited ? "fill-current" : ""}`} />
+            <span>{isFavourited ? "Favourited" : "Favourite"}</span>
           </button>
           <button
             type="button"
-            className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleWatch}
+            disabled={isWatchLoading}
+            className={`flex flex-col items-center gap-1 text-sm transition-colors ${
+              isWatched ? "text-violet-600 hover:text-violet-700" : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <Eye className="h-5 w-5" />
-            <span>Watch</span>
+            <Eye className={`h-5 w-5 ${isWatched ? "fill-current" : ""}`} />
+            <span>{isWatched ? "Watching" : "Watch"}</span>
           </button>
           <button
             type="button"
+            onClick={handleShare}
             className="flex flex-col items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <Share2 className="h-5 w-5" />
@@ -367,7 +465,11 @@ function AuctionItemCard({
   );
 }
 
-export function LotDetailClient({ lot }: LotDetailClientProps) {
+export function LotDetailClient({
+  lot,
+  favouriteItemIds = [],
+  watchedItemIds = [],
+}: LotDetailClientProps) {
   if (lot.items.length === 0) {
     return (
       <Card>
@@ -383,7 +485,13 @@ export function LotDetailClient({ lot }: LotDetailClientProps) {
       <h2 className="font-semibold text-lg">Auction Items ({lot.items.length})</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {lot.items.map((item: PublicLotItem) => (
-          <AuctionItemCard key={item.id} item={item} lot={lot} />
+          <AuctionItemCard
+            key={item.id}
+            item={item}
+            lot={lot}
+            isFavourited={favouriteItemIds.includes(item.id)}
+            isWatched={watchedItemIds.includes(item.id)}
+          />
         ))}
       </div>
     </div>

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { placeBidAction } from "@/actions/bid.action";
+import { getMinimumNextBid } from "@/lib/bid-increment";
 import { toggleItemFavouriteAction } from "@/actions/item-favourite.action";
 import { toggleItemWatchAction } from "@/actions/item-watch.action";
 import { useSession } from "@/lib/auth-client";
@@ -142,11 +143,14 @@ function ItemBidForm({
 }) {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  const [amount, setAmount] = useState("");
+  const currentPrice = Number(item.currentPrice ?? item.startPrice ?? 0);
+  const minBid = getMinimumNextBid(currentPrice);
+  const [amount, setAmount] = useState(() => minBid.toFixed(2));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentPrice = item.currentPrice ?? item.startPrice;
-  const minBid = currentPrice + 1;
+  useEffect(() => {
+    setAmount(minBid.toFixed(2));
+  }, [minBid]);
 
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,6 +225,7 @@ function ItemBidForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="pl-7 h-9"
+            aria-label="Bid amount"
           />
         </div>
         <Button
