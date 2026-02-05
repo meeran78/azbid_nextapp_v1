@@ -21,15 +21,30 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ImageUpload } from "./ImageUpload";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Trash2, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { CreateLotFormData } from "@/lib/validations/lot.schema";
 
 interface ItemFormCardProps {
+  /** Current position in the list (0-based). Order # shown is index + 1. */
   index: number;
-  onRemove: () => void;
+  /** Total number of items (used for move down and display). */
+  totalCount: number;
+  onRemove: (index: number) => void;
   canRemove: boolean;
+  onMoveUp?: (index: number) => void;
+  onMoveDown?: (index: number) => void;
 }
 
 interface Category {
@@ -38,10 +53,16 @@ interface Category {
   status: "ACTIVE" | "INACTIVE";
 }
 
-export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) {
+export function ItemFormCard({ index, totalCount, onRemove, canRemove, onMoveUp, onMoveDown }: ItemFormCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const form = useFormContext<CreateLotFormData>();
+
+  const handleConfirmRemove = useCallback(() => {
+    setDeleteDialogOpen(false);
+    onRemove(index);
+  }, [index, onRemove]);
 
   const item = form.watch(`items.${index}`);
 
@@ -72,13 +93,52 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <span className="text-muted-foreground">Item #{index + 1}</span>
-              {item.title && (
+              {totalCount > 1 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  of {totalCount}
+                </span>
+              )}
+              {item?.title && (
                 <span className="text-sm font-normal text-muted-foreground">
                   - {item.title}
                 </span>
               )}
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {onMoveUp && index > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMoveUp(index);
+                  }}
+                  onPointerDownCapture={(e) => e.stopPropagation()}
+                  title="Move up"
+                  aria-label="Move item up"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              )}
+              {onMoveDown && index < totalCount - 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMoveDown(index);
+                  }}
+                  onPointerDownCapture={(e) => e.stopPropagation()}
+                  title="Move down"
+                  aria-label="Move item down"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -92,14 +152,48 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                 )}
               </Button>
               {canRemove && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={onRemove}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeleteDialogOpen(true);
+                    }}
+                    onPointerDownCapture={(e) => e.stopPropagation()}
+                    title="Remove item"
+                    aria-label="Remove item"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                  <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                    <AlertDialogContent onClick={(e) => e.stopPropagation()} onPointerDownOutside={(e) => e.stopPropagation()}>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove this item?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Item #{index + 1}
+                          {item?.title ? ` "${item.title}"` : ""} will be removed from the lot. Save the form to update the lot. You can add another item if needed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleConfirmRemove();
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Remove item
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               )}
             </div>
           </div>
@@ -315,7 +409,13 @@ export function ItemFormCard({ index, onRemove, canRemove }: ItemFormCardProps) 
                   <FormControl>
                     <ImageUpload
                       images={field.value || []}
-                      onChange={(images) => field.onChange(images)}
+                      onChange={(images) => {
+                        field.onChange(images);
+                        form.setValue(`items.${index}.images`, images, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }}
                       maxImages={10}
                       itemIndex={index}
                     />

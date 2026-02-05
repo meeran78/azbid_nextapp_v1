@@ -95,7 +95,7 @@ export default function CreateLotPage() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -562,8 +562,11 @@ export default function CreateLotPage() {
                   <ItemFormCard
                     key={field.id}
                     index={index}
-                    onRemove={() => remove(index)}
+                    totalCount={fields.length}
+                    onRemove={(idx) => remove(idx)}
                     canRemove={fields.length > 1}
+                    onMoveUp={(idx) => move(idx, idx - 1)}
+                    onMoveDown={(idx) => move(idx, idx + 1)}
                   />
                 ))}
               </CardContent>

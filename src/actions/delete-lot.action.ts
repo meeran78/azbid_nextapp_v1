@@ -184,3 +184,28 @@ export async function deleteLotAction(lotId: string) {
     };
   }
 }
+
+/**
+ * Delete image URLs from Cloudinary (e.g. when seller removes images on edit lot).
+ * Callable by SELLER or ADMIN.
+ */
+export async function deleteLotItemImagesAction(imageUrls: string[]) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || (session.user.role !== "SELLER" && session.user.role !== "ADMIN")) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!imageUrls || imageUrls.length === 0) {
+    return { error: null };
+  }
+
+  try {
+    await deleteImagesFromCloudinary(imageUrls);
+    return { error: null };
+  } catch (err: any) {
+    console.error("Error deleting images from Cloudinary:", err);
+    return { error: err.message || "Failed to delete images from Cloudinary." };
+  }
+}

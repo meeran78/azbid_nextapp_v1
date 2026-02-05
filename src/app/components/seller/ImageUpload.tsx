@@ -72,10 +72,22 @@ export function ImageUpload({
     setIsDragging(false);
   }, []);
 
-  const removeImage = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
-    onChange(newImages);
-  };
+  const removeImage = useCallback(
+    (index: number) => {
+      const newImages = images.filter((_, i) => i !== index);
+      onChange(newImages);
+    },
+    [images, onChange]
+  );
+
+  const handleRemoveClick = useCallback(
+    (e: React.MouseEvent | React.PointerEvent, index: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeImage(index);
+    },
+    [removeImage]
+  );
 
   return (
     <div className="space-y-4">
@@ -123,10 +135,11 @@ export function ImageUpload({
 
       {images.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {images.map((image, index) => (
               <motion.div
-                key={index}
+                key={image.preview || `img-${itemIndex}-${index}`}
+                layout
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
@@ -143,10 +156,14 @@ export function ImageUpload({
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 opacity-100 group-hover:opacity-100 transition-opacity shadow-md"
-                  onClick={() => removeImage(index)}
+                  className="absolute top-2 right-2 h-7 w-7 z-10 opacity-100 group-hover:opacity-100 transition-opacity shadow-md"
+                  onClick={(e) => handleRemoveClick(e, index)}
+                  onPointerDownCapture={(e) => {
+                    e.stopPropagation();
+                  }}
                   disabled={disabled}
                   title="Delete image"
+                  aria-label="Delete image"
                 >
                   <X className="h-4 w-4" />
                 </Button>

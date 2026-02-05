@@ -119,6 +119,38 @@ export const itemSchema = z
       path: ["reservePrice"],
     }
   );
+
+// Relaxed item schema for Save Draft (allows empty images per item). Cannot use .omit() on itemSchema because it has refinements.
+const itemDraftSchema = z
+  .object({
+    title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
+    categoryId: z.string().min(1, "Category is required").optional().nullable(),
+    condition: z.enum(["New", "Like New", "Used – Good", "Used – Fair", "Salvage"], {
+      required_error: "Please select a condition",
+    }),
+    startPrice: z.coerce.number().min(0, "Starting price must be positive"),
+    retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
+    reservePrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
+    description: z
+      .string()
+      .min(1, "Item description is required")
+      .max(1000, "Description must be less than 1000 characters"),
+    images: z.array(z.any()).max(10).optional().default([]),
+    videos: z.array(itemMediaSchema).max(5, "Maximum 5 videos per item").optional().default([]),
+  })
+  .refine(
+    (data) => {
+      if (data.reservePrice != null && data.retailPrice != null) {
+        return data.reservePrice <= data.retailPrice;
+      }
+      return true;
+    },
+    {
+      message: "Reserve price must be less than or equal to retail price",
+      path: ["reservePrice"],
+    }
+  );
+
 // Client-side draft schema (relaxed validation for Save Draft)
 export const createLotDraftSchema = z
   .object({
@@ -137,7 +169,7 @@ export const createLotDraftSchema = z
     }),
     removalStartAt: z.coerce.date().optional().nullable(),
     inspectionAt: z.coerce.date().optional().nullable(),
-    items: z.array(itemSchema).min(1, "At least one item is required"),
+    items: z.array(itemDraftSchema).min(1, "At least one item is required"),
     disclaimerAccepted: z.boolean().optional(),
   });
 // No date refinements for drafts - allow any dates

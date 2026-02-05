@@ -172,23 +172,39 @@ if (store.status !== "ACTIVE") {
           return { error: "Cannot edit: Lot is not in draft status" };
         }
 
-        lot = await prisma.lot.update({
-          where: { id: data.lotId },
-          data: {
-            title: validatedData.title,
-            description: validatedData.description,
-            storeId: validatedData.storeId,
-            auctionId: validatedData.auctionId || null,
-
-            status: lotStatus,
+        // Delete all existing items for this lot first, then update with new items (ensures removed items are deleted from DB).
+        // Must delete dependents first to satisfy foreign keys: Bids, OrderItems, InvoiceItems; then Items.
+        lot = await prisma.$transaction(async (tx) => {
+          const itemIds = await tx.item.findMany({
+            where: { lotId: data.lotId! },
+            select: { id: true },
+          }).then((rows) => rows.map((r) => r.id));
+          if (itemIds.length > 0) {
+            await tx.item.updateMany({
+              where: { id: { in: itemIds } },
+              data: { winningBidId: null },
+            });
+            await tx.bid.deleteMany({ where: { itemId: { in: itemIds } } });
+            await tx.orderItem.deleteMany({ where: { itemId: { in: itemIds } } });
+            await tx.invoiceItem.deleteMany({ where: { itemId: { in: itemIds } } });
+            await tx.itemFavourite.deleteMany({ where: { itemId: { in: itemIds } } });
+            await tx.itemWatch.deleteMany({ where: { itemId: { in: itemIds } } });
+            await tx.item.deleteMany({ where: { lotId: data.lotId! } });
+          }
+          return tx.lot.update({
+            where: { id: data.lotId },
+            data: {
+              title: validatedData.title,
+              description: validatedData.description,
+              storeId: validatedData.storeId,
+              auctionId: validatedData.auctionId || null,
+              status: lotStatus,
             closesAt: validatedData.closesAt,
             inspectionAt: validatedData.inspectionAt || null,
             removalStartAt: validatedData.removalStartAt || null, // Set lotDisplayId when publishing (if not already set)
             lotDisplayId: existingLot.lotDisplayId ?? validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
-            // Delete existing items and create new ones
-            items: {
-              deleteMany: {},
-              create: validatedData.items.map((item) => ({
+              items: {
+                create: validatedData.items.map((item) => ({
                 title: item.title,
                 categoryId: item.categoryId || null,
                 description: item.description || null,
@@ -199,7 +215,7 @@ if (store.status !== "ACTIVE") {
                 imageUrls: item.imageUrls || [],
               })),
             },
-          },
+            },
           include: {
             items: true,
             store: {
@@ -208,6 +224,7 @@ if (store.status !== "ACTIVE") {
               },
             },
           },
+        });
         });
 
         revalidatePath("/my-auctions");

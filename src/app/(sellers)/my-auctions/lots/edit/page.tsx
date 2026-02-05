@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { createLotSchema, createLotDraftSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
 import { getLotAction } from "@/actions/get-lot.action";
+import { deleteLotItemImagesAction } from "@/actions/delete-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
 
 
@@ -51,6 +52,8 @@ export default function EditLotPage() {
   const [isLoadingLot, setIsLoadingLot] = useState(true);
   const [stores, setStores] = useState<any[]>([]);
   const [error, setError] = useState("");
+  /** Original item imageUrls when lot was loaded (by item index). Used to delete removed images from Cloudinary on save. */
+  const [originalItemImageUrls, setOriginalItemImageUrls] = useState<string[][]>([]);
 
   const form = useForm<CreateLotFormData>({
     resolver: zodResolver(createLotSchema),
@@ -69,7 +72,7 @@ export default function EditLotPage() {
     },
   });
 
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, append, remove, replace, move } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -120,6 +123,9 @@ export default function EditLotPage() {
           } as any)),
           videos: [], // Videos not stored in DB yet
         }));
+
+        // Store original item imageUrls so we can delete removed images from Cloudinary on save
+        setOriginalItemImageUrls(lot.items.map((item) => item.imageUrls ?? []));
 
         // Populate form with lot data
         form.reset({
@@ -231,6 +237,24 @@ export default function EditLotPage() {
             }
           }
           uploadedVideoUrls[i] = urls;
+        }
+      }
+
+      // Delete from Cloudinary any images that were removed in the form (edit only)
+      if (data.lotId && originalItemImageUrls.length > 0) {
+        const urlsToDelete: string[] = [];
+        for (let i = 0; i < originalItemImageUrls.length; i++) {
+          const original = originalItemImageUrls[i] ?? [];
+          const final = uploadedImageUrls[i] ?? [];
+          const removed = original.filter((url) => !final.includes(url));
+          urlsToDelete.push(...removed);
+        }
+        if (urlsToDelete.length > 0) {
+          const deleteResult = await deleteLotItemImagesAction(urlsToDelete);
+          if (deleteResult.error) {
+            console.error("Failed to delete removed images from Cloudinary:", deleteResult.error);
+            // Don't block save - lot is still updated
+          }
         }
       }
 
@@ -597,8 +621,11 @@ export default function EditLotPage() {
                   <ItemFormCard
                     key={field.id}
                     index={index}
-                    onRemove={() => remove(index)}
+                    totalCount={fields.length}
+                    onRemove={(idx) => remove(idx)}
                     canRemove={fields.length > 1}
+                    onMoveUp={(idx) => move(idx, idx - 1)}
+                    onMoveDown={(idx) => move(idx, idx + 1)}
                   />
                 ))}
               </CardContent>

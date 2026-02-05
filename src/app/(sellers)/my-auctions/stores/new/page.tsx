@@ -16,9 +16,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import {  ArrowLeft, Building2, Upload } from "lucide-react";
+import { ArrowLeft, Building2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { createStoreAction } from "@/actions/create-store.action";
+import { deleteLotItemImagesAction } from "@/actions/delete-lot.action";
 import { Loader2 } from "lucide-react";
 export default function CreateStorePage() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function CreateStorePage() {
     logoUrl: "",
   });
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isRemovingLogo, setIsRemovingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const validateForm = () => {
@@ -67,60 +69,88 @@ export default function CreateStorePage() {
       return false;
     }
   };
-// Add upload handler
-const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  // Add upload handler
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  if (!file.type.startsWith("image/")) {
-    toast.error("Invalid file type", {
-      description: "Please select an image (JPEG, PNG, WEBP, GIF).",
-    });
-    return;
-  }
-
-  if (file.size > 10 * 1024 * 1024) {
-    toast.error("File too large", {
-      description: "Image must be less than 10MB.",
-    });
-    return;
-  }
-
-  setIsUploadingLogo(true);
-  try {
-    const formDataUpload = new FormData();
-    formDataUpload.append("file", file);
-    formDataUpload.append("folder", "stores/logos");
-
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formDataUpload,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Upload failed");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid file type", {
+        description: "Please select an image (JPEG, PNG, WEBP, GIF).",
+      });
+      return;
     }
 
-    const result = await response.json();
-    setFormData((prev) => ({ ...prev, logoUrl: result.url }));
-    setValidationErrors((prev) => {
-      const next = { ...prev };
-      delete next.logoUrl;
-      return next;
-    });
-    toast.success("Logo uploaded", {
-      description: "Your store logo has been uploaded.",
-    });
-  } catch (err: any) {
-    toast.error("Upload failed", {
-      description: err.message || "Failed to upload logo. Please try again.",
-    });
-  } finally {
-    setIsUploadingLogo(false);
-    e.target.value = "";
-  }
-};
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large", {
+        description: "Image must be less than 10MB.",
+      });
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      formDataUpload.append("folder", "stores/logos");
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formDataUpload,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Upload failed");
+      }
+
+      const result = await response.json();
+      setFormData((prev) => ({ ...prev, logoUrl: result.url }));
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next.logoUrl;
+        return next;
+      });
+      toast.success("Logo uploaded", {
+        description: "Your store logo has been uploaded.",
+      });
+    } catch (err: any) {
+      toast.error("Upload failed", {
+        description: err.message || "Failed to upload logo. Please try again.",
+      });
+    } finally {
+      setIsUploadingLogo(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!formData.logoUrl) return;
+    const urlToRemove = formData.logoUrl;
+    setIsRemovingLogo(true);
+    try {
+      if (urlToRemove.includes("cloudinary.com")) {
+        const result = await deleteLotItemImagesAction([urlToRemove]);
+        if (result.error) {
+          toast.error("Failed to delete image from Cloudinary", {
+            description: result.error,
+          });
+          return;
+        }
+      }
+      setFormData((prev) => ({ ...prev, logoUrl: "" }));
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next.logoUrl;
+        return next;
+      });
+      toast.success("Logo removed");
+    } catch (err: any) {
+      toast.error("Failed to remove logo", { description: err.message });
+    } finally {
+      setIsRemovingLogo(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,8 +167,8 @@ const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const formDataObj = new FormData();
       formDataObj.append("name", formData.name.trim());
       formDataObj.append("description", formData.description.trim());
-      formDataObj.append("logoUrl", formData.logoUrl.trim());    
-     // formDataObj.append("status", formData.status);
+      formDataObj.append("logoUrl", formData.logoUrl.trim());
+      // formDataObj.append("status", formData.status);
 
       const { error, store } = await createStoreAction(formDataObj);
 
@@ -259,71 +289,89 @@ const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
                 )}
               </div>
 
-            {/* Logo - Upload or URL */}
-<div className="space-y-2">
-  <Label htmlFor="logoUrl">Store Logo</Label>
-  <div className="flex items-center gap-2">
-    <Input
-      id="logoUrl"
-      type="url"
-      placeholder="https://example.com/logo.png or upload below"
-      value={formData.logoUrl}
-      onChange={(e) =>
-        setFormData({ ...formData, logoUrl: e.target.value })
-      }
-      disabled={isLoading}
-      className={
-        validationErrors.logoUrl ? "border-red-500" : ""
-      }
-    />
-    <input
-      ref={logoInputRef}
-      type="file"
-      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-      onChange={handleLogoUpload}
-      className="hidden"
-    />
-    <Button
-      type="button"
-      variant="outline"
-      size="icon"
-      disabled={isLoading || isUploadingLogo}
-      title="Upload Logo"
-      onClick={() => logoInputRef.current?.click()}
-    >
-    {isUploadingLogo ? (
-  <Loader2 className="h-4 w-4 animate-spin" />
-) : (
-  <Upload className="h-4 w-4" />
-)}
-    </Button>
-  </div>
-  <p className="text-xs text-muted-foreground">
-    Optional: Enter a URL or click the upload button to upload an image
-  </p>
-  {validationErrors.logoUrl && (
-    <p className="text-sm text-red-500">
-      {validationErrors.logoUrl}
-    </p>
-  )}
-  {formData.logoUrl && isValidUrl(formData.logoUrl) && (
-    <div className="mt-2">
-      <p className="text-xs text-muted-foreground mb-1">
-        Logo Preview:
-      </p>
-      <img
-        src={formData.logoUrl}
-        alt="Logo preview"
-        className="w-20 h-20 object-cover rounded-lg border"
-        onError={(e) => {
-          e.currentTarget.style.display = "none";
-        }}
-      />
-    </div>
-  )}
-</div>
+              {/* Logo - Upload or URL */}
+              <div className="space-y-2">
+                <Label htmlFor="logoUrl">Store Logo</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="logoUrl"
+                    type="url"
+                    placeholder="https://example.com/logo.png or upload below"
+                    value={formData.logoUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, logoUrl: e.target.value })
+                    }
+                    disabled={isLoading}
+                    className={
+                      validationErrors.logoUrl ? "border-red-500" : ""
+                    }
+                  />
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled={isLoading || isUploadingLogo}
+                    title="Upload Logo"
+                    onClick={() => logoInputRef.current?.click()}
+                  >
+                    {isUploadingLogo ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Optional: Enter a URL or click the upload button to upload an image
+                </p>
+                {validationErrors.logoUrl && (
+                  <p className="text-sm text-red-500">
+                    {validationErrors.logoUrl}
+                  </p>
+                )}
+                {formData.logoUrl && isValidUrl(formData.logoUrl) && (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Logo Preview:
+                    </p>
+                    <div className="relative inline-block">
+                      <img
+                        src={formData.logoUrl}
+                        alt="Logo preview"
+                        className="w-20 h-20 object-cover rounded-lg border"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-md"
+                        onClick={handleRemoveLogo}
+                        disabled={isLoading || isRemovingLogo}
+                        title="Remove logo"
+                        aria-label="Remove logo"
+                      >
+                        {isRemovingLogo ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <X className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              
+
 
               {/* Submit Button */}
               <div className="flex gap-4 pt-4">
