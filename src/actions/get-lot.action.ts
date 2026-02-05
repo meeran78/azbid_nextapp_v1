@@ -46,8 +46,8 @@ export async function getLotAction(lotId: string) {
     }
 
     // Only allow editing drafts
-    if (lot.status !== "DRAFT") {
-      return { error: "Cannot edit: Only draft lots can be edited", lot: null };
+    if (lot.status !== "DRAFT" &&  lot.status !== "RESEND") {
+      return { error: "Cannot edit: Only draft and resend lots can be edited", lot: null };
     }
 
     return { error: null, lot };

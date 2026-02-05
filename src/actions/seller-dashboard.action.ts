@@ -313,7 +313,7 @@ export async function getSellerLots(
     //     },
     //   },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { updatedAt: "desc" },
   });
 }
 

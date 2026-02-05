@@ -165,7 +165,7 @@ export function LotsTable({ lots }: LotsTableProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {lot.status === "DRAFT" && (
+                      {(lot.status === "DRAFT" || lot.status === "RESEND") && (
                         <>
                           <DropdownMenuItem onClick={() => handleEdit(lot.id)}>
                             <Edit className="h-4 w-4 mr-2" />
@@ -180,7 +180,7 @@ export function LotsTable({ lots }: LotsTableProps) {
                           </DropdownMenuItem>
                         </>
                       )}
-                      {lot.status !== "DRAFT" && (
+                      {(lot.status !== "DRAFT" && lot.status !== "RESEND") && (
                         <DropdownMenuItem disabled>
                           <span className="text-muted-foreground text-xs">
                             Only drafts can be edited or deleted

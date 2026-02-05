@@ -53,7 +53,7 @@ export default async function AdminLotsPage({
         },
         _count: { select: { items: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { status: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),

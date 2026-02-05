@@ -65,6 +65,15 @@ async function seedUsers(hashedPassword: string, now: Date) {
   }
 }
 
+function buildLongLotDescription(lotNum: number, storeName: string): string {
+  const base = `Seed lot ${lotNum} for ${storeName}. This lot is part of the development seed data used to simulate realistic auction inventory and bidding activity within the application. It contains a variety of mixed items in different cosmetic and functional conditions, intended to exercise list rendering, detail pages, bidding flows, and checkout logic across the platform. Buyers can browse images, read descriptions, place bids, and track their orders across multiple devices and sessions without affecting production data.`;
+
+  const extra =
+    " The text continues with additional explanatory and filler information to ensure that the overall description length comfortably exceeds five hundred characters. Having long-form copy here also helps verify that the UI truncation behaviour, “read more” toggles, tooltips, and responsive layouts behave correctly when content is larger than a single short paragraph. In a real deployment this text would highlight inspection dates, pickup and removal terms, payment deadlines, buyer premiums, tax rules, disclaimers, and any special notes or conditions provided by the seller so that bidders fully understand what they are purchasing before placing a bid.";
+
+  return `${base}${extra}`;
+}
+
 async function getOrCreateAdmin(hashedPassword: string, now: Date): Promise<string> {
   const admin = await prisma.user.upsert({
     where: { email: "admin@example.com" },
@@ -167,7 +176,10 @@ async function main() {
 
     const storeId = store.id;
 
-    const existingLots = await prisma.lot.count({ where: { storeId } });
+    // Count only LIVE lots so we always end up with exactly 5 active lots per active store
+    const existingLots = await prisma.lot.count({
+      where: { storeId, status: "LIVE" },
+    });
     const lotsToCreate = Math.max(0, LOTS_PER_STORE - existingLots);
 
     for (let lIdx = 0; lIdx < lotsToCreate; lIdx++) {
@@ -178,7 +190,8 @@ async function main() {
         data: {
           storeId,
           title: `Seed Lot ${lotNum} - ${storeName}`,
-          description: `Seed lot ${lotNum} with 20 items for ${storeName}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+          // Description intentionally long (500+ characters) to test UI handling of large text blocks
+          description: buildLongLotDescription(lotNum, storeName),
           status: "LIVE",
           closesAt,
           inspectionAt: futureDate(lotNum + 5, 10),

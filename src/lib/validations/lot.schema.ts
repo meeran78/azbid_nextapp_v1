@@ -162,7 +162,7 @@ export const createLotDraftSchema = z
       .max(2000, "Description must be less than 2000 characters"),
     storeId: z.string().min(1, "Store is required"),
     auctionId: z.string().optional().nullable(),
-    status: z.enum(["DRAFT", "SCHEDULED"]).optional(),
+    status: z.enum(["DRAFT", "SCHEDULED", "RESEND"]).optional(),
     lotDisplayId: z.string().optional().nullable(),
     closesAt: z.coerce.date({
       required_error: "Closing date and time is required",
