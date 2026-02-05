@@ -16,7 +16,13 @@ import Link from "next/link";
 import { deleteAuctionAction } from "@/actions/auction.action";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
 const statusColors: Record<string, string> = {
   DRAFT: "bg-gray-500 text-white",
   SCHEDULED: "bg-blue-500 text-white",
@@ -78,6 +84,10 @@ export function AuctionList({ auctions }: AuctionListProps) {
     }
   };
 
+  const handleEdit = (id: string) => {
+    router.push(`/auctions-management/${id}/edit`);
+  };
+
   if (auctions.length === 0) {
     return (
       <Card>
@@ -108,6 +118,7 @@ export function AuctionList({ auctions }: AuctionListProps) {
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
+              <TableHead className="text-right">Actions</TableHead>
                 <TableHead>Display ID</TableHead>
                 <TableHead>Store</TableHead>
                 <TableHead>Title</TableHead>
@@ -117,12 +128,41 @@ export function AuctionList({ auctions }: AuctionListProps) {
                 <TableHead className="text-center">Lots</TableHead>
                 <TableHead>Buyer&apos;s Premium</TableHead>
                 <TableHead>Soft Close</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+               
               </TableRow>
             </TableHeader>
             <TableBody>
               {auctions.map((auction) => (
                 <TableRow key={auction.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                    
+                        <>
+                          <DropdownMenuItem onClick={() => handleEdit(auction.id)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => handleDelete(auction.id, auction.title)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                     
+                     
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  </TableCell>
+                    
+                 
                   <TableCell className="font-mono text-xs">
                     {auction.auctionDisplayId || auction.id.slice(0, 8)}
                   </TableCell>
@@ -177,22 +217,7 @@ export function AuctionList({ auctions }: AuctionListProps) {
                       <span className="text-muted-foreground">Off</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/auctions-management/${auction.id}/edit`}>
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(auction.id, auction.title)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  
                 </TableRow>
               ))}
             </TableBody>

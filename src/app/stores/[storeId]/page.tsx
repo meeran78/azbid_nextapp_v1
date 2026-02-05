@@ -31,7 +31,7 @@ export default async function StoreDetailPage({
   const isFavourited = favouriteIds.includes(storeId);
 
   return (
-    <div className="container mx-auto px-2 py-8 max-w-3xl">
+    <div className="container mx-auto px-2 py-8 max-w-10xl">
       <Button variant="ghost" asChild className="mb-6">
         <Link href="/#active-stores">
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -41,8 +41,8 @@ export default async function StoreDetailPage({
 
       <StoreDetailHeader store={store} isFavourited={isFavourited} />
 
-      <Card className="mt-6">
-        <CardContent className="pt-6 space-y-6">
+      <Card className="mt-6 ">
+        <CardContent className="pt-6 space-y-6 w-full">
           {store.lots.length === 0 ? (
             <p className="text-muted-foreground py-12 text-center">
               No active lots at the moment.

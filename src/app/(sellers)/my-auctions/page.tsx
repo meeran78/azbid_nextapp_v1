@@ -12,8 +12,8 @@ import {
 import { AuctionsTable } from "@/app/components/seller/AuctionsTable";
 import { LotsTable } from "@/app/components/seller/LotsTable";
 import { StoresList } from "@/app/components/seller/StoresList";
+import { StatusFilter } from "@/app/components/seller/StatusFilter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import SellerProfile from "@/app/components/seller/SellerProfile";
@@ -88,18 +88,16 @@ export default async function SellersDashboardPage({
                     <div className="bg-card rounded-lg border p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-2xl font-semibold">Auctions</h2>
-                            <Select defaultValue="ALL">
-                                <SelectTrigger className="w-[380px]">
-                                    <SelectValue placeholder="Filter by status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ALL">All Status</SelectItem>
-                                    <SelectItem value="DRAFT">Draft</SelectItem>
-                                    <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                                    <SelectItem value="LIVE">Live</SelectItem>
-                                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <StatusFilter
+                                triggerClassName="w-[380px]"
+                                options={[
+                                    { value: "ALL", label: "All Status" },
+                                    { value: "DRAFT", label: "Draft" },
+                                    { value: "SCHEDULED", label: "Scheduled" },
+                                    { value: "LIVE", label: "Live" },
+                                    { value: "COMPLETED", label: "Completed" },
+                                ]}
+                            />
                         </div>
                         <AuctionsTable auctions={auctions} />
                     </div>
@@ -116,19 +114,17 @@ export default async function SellersDashboardPage({
                                         Create New Lot
                                     </Link>
                                 </Button>
-                                <Select defaultValue="ALL">
-                                    <SelectTrigger className="w-[180px]">
-                                        <SelectValue placeholder="Filter by status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">All Status</SelectItem>
-                                        <SelectItem value="DRAFT">Draft</SelectItem>
-                                        <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                                        <SelectItem value="LIVE">Live</SelectItem>
-                                        <SelectItem value="SOLD">Sold</SelectItem>
-                                        <SelectItem value="UNSOLD">Unsold</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <StatusFilter
+                                    triggerClassName="w-[180px]"
+                                    options={[
+                                        { value: "ALL", label: "All Status" },
+                                        { value: "DRAFT", label: "Draft" },
+                                        { value: "SCHEDULED", label: "Scheduled" },
+                                        { value: "LIVE", label: "Live" },
+                                        { value: "SOLD", label: "Sold" },
+                                        { value: "UNSOLD", label: "Unsold" },
+                                    ]}
+                                />
                             </div>
                         </div>
                         <LotsTable lots={lots} />

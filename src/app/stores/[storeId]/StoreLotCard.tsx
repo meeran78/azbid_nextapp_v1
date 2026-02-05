@@ -172,7 +172,7 @@ export function StoreLotCard({
           <h4 className="font-semibold text-base mb-4">
             Auction Items ({items.length})
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {items.map((item) => (
               <LotItemCard
                 key={item.id}

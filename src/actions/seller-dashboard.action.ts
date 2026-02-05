@@ -225,8 +225,15 @@ export async function getSellerAuctions(
     return [];
   }
 
-  const where: any = {
-    storeId: storeId ? storeId : { in: storeIds },
+  // Only filter by storeId if provided and it belongs to this seller
+  const effectiveStoreId =
+    storeId && storeIds.includes(storeId) ? storeId : undefined;
+
+  const where: {
+    storeId: string | { in: string[] };
+    status?: string;
+  } = {
+    storeId: effectiveStoreId ? effectiveStoreId : { in: storeIds },
   };
 
   if (status && status !== "ALL") {

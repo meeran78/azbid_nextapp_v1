@@ -139,6 +139,7 @@ async function main() {
 
   const LOTS_PER_STORE = 5;
   const ITEMS_PER_LOT = 20;
+  const AUCTIONS_PER_STORE = 3;
 
   for (let sIdx = 0; sIdx < sellerUsers.length; sIdx++) {
     const seller = sellerUsers[sIdx];
@@ -219,14 +220,38 @@ async function main() {
       }
     }
 
+    // Seed auctions for this store so seller dashboard "Auctions" tab has data
+    const existingAuctions = await prisma.auction.count({ where: { storeId } });
+    const auctionsToCreate = Math.max(0, AUCTIONS_PER_STORE - existingAuctions);
+    const statuses: Array<"DRAFT" | "SCHEDULED" | "LIVE"> = ["DRAFT", "SCHEDULED", "LIVE"];
+    for (let aIdx = 0; aIdx < auctionsToCreate; aIdx++) {
+      const auctionNum = existingAuctions + aIdx + 1;
+      const status = statuses[aIdx % statuses.length];
+      const startAt = futureDate(auctionNum + 1, 9);
+      const endAt = futureDate(auctionNum + 8, 18);
+      await prisma.auction.create({
+        data: {
+          storeId,
+          title: `Seed Auction ${auctionNum} - ${storeName}`,
+          description: `Development auction ${auctionNum} for ${storeName}. Use this to test the seller dashboard auctions list and admin auction management.`,
+          status,
+          startAt,
+          endAt,
+          auctionDisplayId: `FL-${new Date().getFullYear()}-${String(sIdx * 100 + auctionNum).padStart(6, "0")}`,
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
+    }
+
     console.log(
-      `Store "${storeName}": ${existingLots >= LOTS_PER_STORE ? "already has 5 lots" : `created ${lotsToCreate} lots (20 items each)`}.`
+      `Store "${storeName}": ${existingLots >= LOTS_PER_STORE ? "already has 5 lots" : `created ${lotsToCreate} lots (20 items each)`}. Auctions: ${existingAuctions >= AUCTIONS_PER_STORE ? "already has 3" : `created ${auctionsToCreate}`}.`
     );
   }
 
   console.log("\nSeed completed.");
   console.log("- 5 buyers, 5 sellers, 1 admin. Password for all: " + SEED_PASSWORD);
-  console.log("- 5 stores (ACTIVE, admin-approved), 5 lots per store, 20 items per lot.");
+  console.log("- 5 stores (ACTIVE, admin-approved), 5 lots per store, 20 items per lot, 3 auctions per store.");
 }
 
 main()
