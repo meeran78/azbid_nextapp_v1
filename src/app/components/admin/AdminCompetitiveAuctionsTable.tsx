@@ -17,8 +17,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import { Trophy, Flame } from "lucide-react";
 import type { CompetitiveAuctionRow } from "@/actions/admin-dashboard.action";
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" },
+  },
+};
 
 export function AdminCompetitiveAuctionsTable({
   auctions,
@@ -26,7 +36,12 @@ export function AdminCompetitiveAuctionsTable({
   auctions: CompetitiveAuctionRow[];
 }) {
   return (
-    <Card>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
+    <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-amber-200 dark:border-amber-800">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-amber-500" />
@@ -92,5 +107,6 @@ export function AdminCompetitiveAuctionsTable({
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

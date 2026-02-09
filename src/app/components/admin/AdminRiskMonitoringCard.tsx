@@ -16,8 +16,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { motion } from "framer-motion";
 import { AlertTriangle, CreditCard, Store, FileWarning } from "lucide-react";
 import type { AdminRiskMetrics } from "@/actions/admin-dashboard.action";
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut" as const,
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export function AdminRiskMonitoringCard({ risk }: { risk: AdminRiskMetrics }) {
   const hasRisk =
@@ -27,7 +47,12 @@ export function AdminRiskMonitoringCard({ risk }: { risk: AdminRiskMetrics }) {
     risk.pendingStores > 0;
 
   return (
-    <Card className={hasRisk ? "border-amber-500/50" : ""}>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
+      <Card className={`${hasRisk ? "border-amber-500/50" : ""} hover:shadow-lg transition-shadow duration-300`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -39,34 +64,34 @@ export function AdminRiskMonitoringCard({ risk }: { risk: AdminRiskMetrics }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex items-center gap-3 rounded-lg border p-3">
+          <motion.div variants={itemVariants} className="flex items-center gap-3 rounded-lg border p-3">
             <CreditCard className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">Failed payments</p>
               <p className="text-xl font-bold">{risk.failedPayments}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-3">
+          </motion.div>
+          <motion.div variants={itemVariants} className="flex items-center gap-3 rounded-lg border p-3">
             <Store className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">Suspended stores</p>
               <p className="text-xl font-bold">{risk.suspendedStores}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-3">
+          </motion.div>
+          <motion.div variants={itemVariants} className="flex items-center gap-3 rounded-lg border p-3">
             <FileWarning className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">Failed invoices</p>
               <p className="text-xl font-bold">{risk.failedInvoices}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-3">
+          </motion.div>
+          <motion.div variants={itemVariants} className="flex items-center gap-3 rounded-lg border p-3">
             <Store className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">Pending stores</p>
               <p className="text-xl font-bold">{risk.pendingStores}</p>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {risk.recentFailedPaymentReasons.length > 0 && (
@@ -105,5 +130,6 @@ export function AdminRiskMonitoringCard({ risk }: { risk: AdminRiskMetrics }) {
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

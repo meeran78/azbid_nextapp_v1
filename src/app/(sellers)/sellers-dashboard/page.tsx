@@ -1,12 +1,17 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { SellerTimelineCard } from "@/app/components/seller/SellerTimelineCard";
+import { SellerRevenueKPICards } from "@/app/components/seller/SellerRevenueKPICards";
+import { SoftCloseAnalyticsCard } from "@/app/components/analytics/SoftCloseAnalyticsCard";
+import { getSellerSoftCloseAnalytics } from "@/actions/soft-close-analytics.action";
+import { getSellerRevenueMetrics } from "@/actions/seller-revenue.action";
+import { getSellerTimelineEvents } from "@/actions/seller-timeline.action";
 
-import {
-  getSellerDashboardMetrics,
-
-} from "@/actions/seller-dashboard.action";
+import { getSellerDashboardMetrics } from "@/actions/seller-dashboard.action";
+import { getSellerAlertMetrics } from "@/actions/seller-alert-metrics.action";
 import { DashboardMetrics } from "@/app/components/seller/DashboardMetrics";
+import { SellerAlertMetricsCard } from "@/app/components/seller/SellerAlertMetricsCard";
 
 
 export default async function SellersDashboardPage({
@@ -25,9 +30,11 @@ export default async function SellersDashboardPage({
     redirect("/");
   }
 
-  const [metrics] = await Promise.all([
+  const [metrics, alertMetrics, revenueMetrics, timelineEvents] = await Promise.all([
     getSellerDashboardMetrics(session.user.id),
-
+    getSellerAlertMetrics(session.user.id),
+    getSellerRevenueMetrics(session.user.id),
+    getSellerTimelineEvents(session.user.id),
   ]);
 
   return (
@@ -43,6 +50,15 @@ export default async function SellersDashboardPage({
 
       {/* Metrics Cards */}
       <DashboardMetrics metrics={metrics} />
+
+      {/* Attention & Alerts */}
+      <SellerAlertMetricsCard metrics={alertMetrics} />
+
+      {/* Revenue & Financial KPIs */}
+      {revenueMetrics && <SellerRevenueKPICards m={revenueMetrics} />}
+
+      {/* Timeline */}
+      <SellerTimelineCard events={timelineEvents} />
 
 
     </div>

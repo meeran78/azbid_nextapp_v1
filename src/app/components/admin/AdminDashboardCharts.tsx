@@ -15,7 +15,25 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion } from "framer-motion";
 import type { TimeSeriesPoint } from "@/actions/admin-dashboard.action";
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: "easeOut" as const,
+    },
+  }),
+  hover: {
+    scale: 1.02,
+    transition: { duration: 0.2 },
+  },
+};
 
 const revenueConfig = {
   revenue: {
@@ -42,7 +60,14 @@ export function AdminDashboardCharts({ data }: { data: TimeSeriesPoint[] }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
+      <motion.div
+        custom={0}
+        initial="hidden"
+        animate="visible"
+        variants={cardVariants}
+        whileHover="hover"
+      >
+        <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-blue-200 dark:border-blue-800 overflow-hidden">
         <CardHeader>
           <CardTitle>Revenue over time</CardTitle>
           <CardDescription>Daily revenue from paid invoices (last 30 days)</CardDescription>
@@ -107,6 +132,7 @@ export function AdminDashboardCharts({ data }: { data: TimeSeriesPoint[] }) {
           </ChartContainer>
         </CardContent>
       </Card>
+      </motion.div>
     </div>
   );
 }

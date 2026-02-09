@@ -17,9 +17,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import { Flame, Timer, Zap } from "lucide-react";
 import { format } from "date-fns";
 import type { SoftCloseAnalytics } from "@/actions/soft-close-analytics.action";
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" },
+  },
+};
 
 type SoftCloseAnalyticsCardProps = {
   data: SoftCloseAnalytics;
@@ -138,5 +148,6 @@ export function SoftCloseAnalyticsCard({
         </div>
       </CardContent>
     </Card>
+  
   );
 }
