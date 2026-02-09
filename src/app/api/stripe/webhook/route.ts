@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, getStripeWebhookSecret } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { transferToSellerForInvoice } from "@/actions/stripe-connect.action";
 
 /**
  * Stripe webhook – event sync.
@@ -79,6 +80,10 @@ export async function POST(request: Request) {
               },
             }),
           ]);
+          const transferResult = await transferToSellerForInvoice(invoiceId);
+          if (!transferResult.transferred && transferResult.reason) {
+            console.warn("Seller payout (webhook):", transferResult.reason);
+          }
         }
         break;
       }

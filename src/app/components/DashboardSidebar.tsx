@@ -21,7 +21,8 @@ import {
   X,
   Store,
   Barcode,
-  Pickaxe
+  Pickaxe,
+  Banknote,
 } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
@@ -61,6 +62,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         // { title: "Dashboard", url: "/sellers-dashboard", icon: LayoutDashboard },
         { title: "My Auctions", url: "/my-auctions", icon: Package },
         { title: "Store Management", url: "/sellers-stores", icon: Store },
+        { title: "Payouts", url: "/my-auctions/payouts", icon: Banknote },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "Settings", url: "/seller-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },
@@ -73,7 +75,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "Lots Management", url: "/lots-management", icon: Barcode },
         { title: "Auctions Managements", url: "/auctions-management", icon: Pickaxe },
         { title: "Category Management", url: "/categories", icon: CirclePlus },
-        { title: "Users", url: "/users", icon: Users },
+        { title: "Users", url: "/users-management", icon: Users },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "FAQs", url: "/faqs", icon: HelpCircle },

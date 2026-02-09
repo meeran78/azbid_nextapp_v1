@@ -6,8 +6,10 @@ import {
     getSellerAuctions,
     getSellerLots,
 } from "@/actions/seller-dashboard.action";
+import { getSellerSoftCloseAnalytics } from "@/actions/soft-close-analytics.action";
 
 import { AuctionsTable } from "@/app/components/seller/AuctionsTable";
+import { SoftCloseAnalyticsCard } from "@/app/components/analytics/SoftCloseAnalyticsCard";
 import { LotsTable } from "@/app/components/seller/LotsTable";
 import { StatusFilter } from "@/app/components/seller/StatusFilter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,7 +37,7 @@ export default async function SellersDashboardPage({
     // Await searchParams before accessing its properties
     const params = await searchParams;
 
-    const [auctions, lots] = await Promise.all([
+    const [auctions, lots, softCloseAnalytics] = await Promise.all([
         getSellerAuctions(
             session.user.id,
             params.status,
@@ -47,6 +49,7 @@ export default async function SellersDashboardPage({
             params.storeId,
             params.auctionId
         ),
+        getSellerSoftCloseAnalytics(session.user.id),
     ]);
 
     return (
@@ -128,6 +131,10 @@ export default async function SellersDashboardPage({
                         </div>
                         <LotsTable lots={lots} />
                     </div>
+                </TabsContent>
+
+                <TabsContent value="analytics" className="space-y-4">
+                    <SoftCloseAnalyticsCard data={softCloseAnalytics} />
                 </TabsContent>
             </Tabs>
         </div>

@@ -160,7 +160,8 @@ model User {
   adminLogs    AdminLog[]
 
   //Stripe
-  stripeCustomerId String? @unique
+  stripeCustomerId     String? @unique
+  stripeConnectAccountId String? @unique // Stripe Connect Express account for seller payouts
 
   @@map("users")
 }

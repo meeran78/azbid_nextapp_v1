@@ -407,6 +407,7 @@ export async function chargeInvoiceWithStoredPayment(
           },
         }),
       ]);
+      // Seller payout is done in the payment_intent.succeeded webhook to avoid double transfer
       return { charged: true };
     }
     if (pi.status === "requires_action") {
