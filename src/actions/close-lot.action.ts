@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { triggerPaymentFlow } from "./payment.action";
+import { triggerPaymentFlow, chargeInvoiceWithStoredPayment } from "./payment.action";
 import { sendEmailAction } from "@/actions/sendEmail.action";
 
 /**
@@ -28,8 +28,15 @@ export type CloseLotResult =
   | { error: string };
 
 /**
- * Close a lot: mark as SOLD/UNSOLD, set winning bids, create orders, generate invoices.
- * Call this when lot.closesAt has passed.
+ * Close a lot. Call when lot.closesAt has passed (e.g. from a cron or job).
+ *
+ * Flow:
+ * 1. LOT CLOSE        – Mark lot as SOLD or UNSOLD
+ * 2. Determine winner – Set winningBidId/winningBidAmount on each item (highest bid wins)
+ * 3. Create Order     – One order per buyer for their won items in this lot
+ * 4. Generate Invoice  – One invoice per order (with InvoiceItems)
+ * 5. Charge stored payment method – Attempt to charge buyer’s saved card (Stripe); else leave PENDING
+ * 6. Notify buyer + seller – Email buyers (“You won – pay / payment received”) and seller (“Lot sold”)
  */
 export async function closeLot(lotId: string): Promise<CloseLotResult> {
   const lot = await prisma.lot.findUnique({
@@ -42,6 +49,7 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
       },
       store: {
         select: {
+          id: true,
           ownerId: true,
           name: true,
           owner: { select: { email: true, name: true } },
@@ -210,10 +218,14 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
     }
   });
 
-  // 5. Trigger payment flow for each invoice (create Stripe PaymentIntent)
+  // 5. Trigger payment flow then charge stored payment method for each invoice
   for (const inv of createdInvoices) {
     try {
       await triggerPaymentFlow(inv.invoiceId);
+      const charge = await chargeInvoiceWithStoredPayment(inv.invoiceId);
+      if (!charge.charged && charge.reason) {
+        console.warn(`Invoice ${inv.invoiceId} not auto-charged: ${charge.reason}`);
+      }
     } catch (err) {
       console.error(`Error triggering payment for invoice ${inv.invoiceId}:`, err);
     }
@@ -276,5 +288,8 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
   }
 
   revalidatePath(`/lots/${lotId}`);
-  return { success: true, lotStatus, ordersCreated: wonItems.length };
+  revalidatePath(`/stores/${lot.store.id}`);
+  revalidatePath(`/buyers-dashboard`);
+  revalidatePath(`/buyers-dashboard/bids`);
+  return { success: true, lotStatus, ordersCreated: createdInvoices.length };
 }

@@ -50,6 +50,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         // { title: "Dashboard", url: "/buyers-dashboard", icon: LayoutDashboard },
         { title: "My Bids", url: "/buyers-dashboard/bids", icon: Gavel },
         { title: "My Favorites", url: "/buyers-dashboard/favorites", icon: Heart },
+        { title: "Payment methods", url: "/buyers-dashboard/payment-methods", icon: CreditCard },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "Settings", url: "/buyer-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },

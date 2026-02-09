@@ -5,7 +5,7 @@ import { getBuyerOrderForPayment } from "@/actions/buyer-bids.action";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Package } from "lucide-react";
-import { PayNowButton } from "./PayNowButton";
+import { PayWithStripeForm } from "@/app/components/stripe/PayWithStripeForm";
 
 export default async function BuyerOrderPayPage({
   params,
@@ -103,7 +103,12 @@ export default async function BuyerOrderPayPage({
             </p>
           ) : invoice ? (
             <div className="pt-4">
-              <PayNowButton invoiceId={invoice.id} orderTotal={order.total} />
+              <PayWithStripeForm
+                invoiceId={invoice.id}
+                returnUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/buyers-dashboard/orders/${orderId}/pay`}
+                orderTotal={order.total}
+                onSuccess={() => window.location.reload()}
+              />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground pt-4">
