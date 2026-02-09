@@ -22,7 +22,7 @@ export default async function LotDetailPage({
   if (!lot) notFound();
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 max-w-10xl">
       <Button variant="ghost" asChild className="mb-6">
         <Link href="/">
           <ArrowLeft className="h-4 w-4 mr-2" />

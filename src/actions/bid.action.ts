@@ -8,7 +8,12 @@ import { getMinimumNextBid, validateBidAmount } from "@/lib/bid-increment";
 
 /**
  * Place a bid on an item. Requires signed-in user with BUYER role.
- * Implements soft-close: extends lot closesAt when bid placed in final window.
+ *
+ * Soft-close extension: if a bid is placed when the remaining time until lot close
+ * is within the auction's softCloseWindowSec (e.g. last 2 minutes), the lot's closesAt
+ * is extended by softCloseExtendSec (e.g. 60 seconds). This repeats for each bid in
+ * the window until softCloseExtendLimit extensions have been used, so late bids
+ * keep the lot open briefly to allow counter-bids.
  */
 export async function placeBidAction(
   itemId: string,
@@ -80,23 +85,25 @@ export async function placeBidAction(
     };
   }
 
-  // 4. Check time remaining for soft-close
+  // Soft-close: if bid is placed within the last softCloseWindowSec, extend closesAt
+  // by softCloseExtendSec (up to softCloseExtendLimit times).
   const now = new Date();
   const remainingSeconds = Math.max(
     0,
     (item.lot.closesAt.getTime() - now.getTime()) / 1000
   );
 
-  const softCloseEnabled =
-    auction?.softCloseEnabled ?? false;
+  const softCloseEnabled = auction?.softCloseEnabled ?? true;
   const softCloseWindowSec = auction?.softCloseWindowSec ?? 120;
   const softCloseExtendSec = auction?.softCloseExtendSec ?? 60;
   const softCloseExtendLimit = auction?.softCloseExtendLimit ?? 10;
 
+  const withinSoftCloseWindow = remainingSeconds <= softCloseWindowSec;
+  const underExtendLimit = item.lot.extendedCount < softCloseExtendLimit;
   const shouldExtend =
     softCloseEnabled &&
-    remainingSeconds <= softCloseWindowSec &&
-    item.lot.extendedCount < softCloseExtendLimit;
+    withinSoftCloseWindow &&
+    underExtendLimit;
 
   const newClosesAt = shouldExtend
     ? new Date(item.lot.closesAt.getTime() + softCloseExtendSec * 1000)

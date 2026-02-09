@@ -216,9 +216,9 @@ function ItemBidForm({
   return (
     <form onSubmit={handleBid} className="space-y-3">
       <div className="flex gap-2 items-center">
-        <span className="text-sm text-muted-foreground shrink-0">
+        {/* <span className="text-sm text-muted-foreground shrink-0">
           $ Next bid: ${minBid.toFixed(2)}
-        </span>
+        </span> */}
         <div className="relative flex-1 min-w-0">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
             $
@@ -241,9 +241,16 @@ function ItemBidForm({
         >
           Place Bid
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          onClick={onViewHistory}
+        > <History className="h-4 w-4 mr-2" /></Button>
+       
       </div>
       <div className="flex gap-2">
-        <Button
+         {/*<Button
           type="submit"
           disabled={isSubmitting}
           className="flex-1 bg-violet-600 hover:bg-violet-700"
@@ -259,7 +266,7 @@ function ItemBidForm({
         >
           <History className="h-4 w-4 mr-2" />
           View History
-        </Button>
+        </Button> */}
       </div>
     </form>
   );
@@ -483,7 +490,7 @@ export function LotDetailClient({
   return (
     <div className="space-y-6">
       <h2 className="font-semibold text-lg">Auction Items ({lot.items.length})</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {lot.items.map((item: PublicLotItem) => (
           <AuctionItemCard
             key={item.id}
