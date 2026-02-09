@@ -39,6 +39,174 @@ export async function getOrCreateStripeCustomer(
 }
 
 /**
+ * Check if the current buyer has a valid card stored in Stripe (required to place bids).
+ */
+export async function ensureBuyerHasValidCard(): Promise<
+  { valid: true } | { valid: false; error: string }
+> {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  if (!session?.user?.id) {
+    return { valid: false, error: "Sign in to place a bid." };
+  }
+  if (session.user.role !== "BUYER") {
+    return { valid: false, error: "Only buyers can place bids." };
+  }
+  const stripe = getStripe();
+  if (!stripe) {
+    return { valid: false, error: "Payments are not configured." };
+  }
+  const customerResult = await getOrCreateStripeCustomer(session.user.id);
+  if ("error" in customerResult) {
+    return { valid: false, error: customerResult.error };
+  }
+  const customer = await stripe.customers.retrieve(customerResult.customerId);
+  if (customer.deleted) {
+    return { valid: false, error: "Payment account is invalid." };
+  }
+  // Only card payment methods work for bid verification and off_session charge; Link etc. are not supported.
+  const cardList = await stripe.paymentMethods.list({
+    customer: (customer as Stripe.Customer).id,
+    type: "card",
+  });
+  const hasCard = cardList.data.length > 0;
+  if (!hasCard) {
+    return {
+      valid: false,
+      error: "Add a valid payment method to place bids. We'll charge it only if you win.",
+    };
+  }
+  return { valid: true };
+}
+
+/**
+ * Create a $0.50 verification PaymentIntent (manual capture) so the buyer can confirm with CVC before placing a bid.
+ * Call this when the user clicks "Place bid"; then show Stripe Elements to collect CVC. After confirm, call cancelBidVerificationAndPlaceBid.
+ */
+export async function createBidVerificationIntent(
+  itemId: string
+): Promise<
+  | { clientSecret: string; paymentIntentId: string }
+  | { error: string; requiresPaymentMethod?: boolean }
+> {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  if (!session?.user?.id || session.user.role !== "BUYER") {
+    return { error: "Sign in as a buyer to place a bid." };
+  }
+  const check = await ensureBuyerHasValidCard();
+  if (!check.valid) {
+    return {
+      error: check.error,
+      requiresPaymentMethod: check.error.includes("Add a valid payment method"),
+    };
+  }
+  const stripe = getStripe();
+  if (!stripe) return { error: "Payments are not configured." };
+  const customerResult = await getOrCreateStripeCustomer(session.user.id);
+  if ("error" in customerResult) return { error: customerResult.error };
+  const customer = await stripe.customers.retrieve(customerResult.customerId);
+  if (customer.deleted) return { error: "Payment account is invalid." };
+  // Bid verification and confirmCardPayment require a card; Link/default may be non-card.
+  const cardList = await stripe.paymentMethods.list({
+    customer: (customer as Stripe.Customer).id,
+    type: "card",
+  });
+  const pmId = cardList.data[0]?.id ?? null;
+  if (!pmId) {
+    return {
+      error: "Add a valid payment method to place bids.",
+      requiresPaymentMethod: true,
+    };
+  }
+
+  // Create a small manual-capture PaymentIntent for card verification before bidding.
+  // We pass an explicit payment_method, so we don't need automatic_payment_methods here.
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: 50, // $0.50 minimum for USD
+    currency: "usd",
+    customer: customerResult.customerId,
+    payment_method: pmId,
+    capture_method: "manual",
+    metadata: {
+      type: "bid_verification",
+      itemId,
+      userId: session.user.id,
+    },
+  });
+  return {
+    clientSecret: paymentIntent.client_secret!,
+    paymentIntentId: paymentIntent.id,
+  };
+}
+
+/**
+ * Cancel the bid-verification PaymentIntent (no charge). Call after the user has confirmed with CVC; then the client should call placeBidAction.
+ */
+export async function cancelBidVerification(
+  paymentIntentId: string
+): Promise<{ success: true } | { error: string }> {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  if (!session?.user?.id) {
+    return { error: "Session expired. Please sign in again." };
+  }
+  const stripe = getStripe();
+  if (!stripe) return { error: "Payments are not configured." };
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (pi.metadata.type !== "bid_verification" || pi.metadata.userId !== session.user.id) {
+    return { error: "Invalid verification. Please try again." };
+  }
+  if (pi.status === "requires_capture" || pi.status === "succeeded") {
+    await stripe.paymentIntents.cancel(paymentIntentId);
+  }
+  return { success: true };
+}
+
+/**
+ * After a SetupIntent succeeds, set the new payment method as the customer's default.
+ * Call this from the client when confirmSetup succeeds (or when returning from redirect) so the card is used for bids/charges.
+ */
+export async function setDefaultPaymentMethodFromSetupIntent(
+  setupIntentId: string
+): Promise<{ success: true } | { error: string }> {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  if (!session?.user?.id) {
+    return { error: "Not signed in." };
+  }
+  const stripe = getStripe();
+  if (!stripe) {
+    return { error: "Stripe is not configured." };
+  }
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, {
+    expand: ["payment_method", "customer"],
+  });
+  const customerId =
+    typeof setupIntent.customer === "string"
+      ? setupIntent.customer
+      : (setupIntent.customer as Stripe.Customer)?.id;
+  const pmId =
+    typeof setupIntent.payment_method === "string"
+      ? setupIntent.payment_method
+      : (setupIntent.payment_method as Stripe.PaymentMethod)?.id;
+  if (!customerId || !pmId) {
+    return { error: "SetupIntent missing customer or payment method." };
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { stripeCustomerId: true },
+  });
+  if (!user?.stripeCustomerId || user.stripeCustomerId !== customerId) {
+    return { error: "SetupIntent does not belong to your account." };
+  }
+  await stripe.customers.update(customerId, {
+    invoice_settings: { default_payment_method: pmId },
+  });
+  return { success: true };
+}
+
+/**
  * Create a SetupIntent for saving a card (no charge). Use clientSecret with Stripe Elements to collect card; charge later via PaymentIntent (off_session).
  */
 export async function createSetupIntent(): Promise<
@@ -198,12 +366,14 @@ export async function chargeInvoiceWithStoredPayment(
   if (customer.deleted) {
     return { charged: false, reason: "Customer no longer valid." };
   }
-  const defaultPm =
-    (customer as Stripe.Customer).invoice_settings?.default_payment_method ??
-    (customer as Stripe.Customer).default_source;
-  const pmId = typeof defaultPm === "string" ? defaultPm : defaultPm?.id ?? null;
+  // Off-session confirm requires a card; default may be Link or other type.
+  const cardList = await stripe.paymentMethods.list({
+    customer: customerId,
+    type: "card",
+  });
+  const pmId = cardList.data[0]?.id ?? null;
   if (!pmId) {
-    return { charged: false, reason: "No default payment method on file." };
+    return { charged: false, reason: "No card on file for off-session charge." };
   }
 
   try {

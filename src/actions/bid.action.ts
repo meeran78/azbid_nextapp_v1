@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getMinimumNextBid, validateBidAmount } from "@/lib/bid-increment";
+import { ensureBuyerHasValidCard } from "@/actions/payment.action";
 
 /**
  * Place a bid on an item. Requires signed-in user with BUYER role.
@@ -28,6 +29,11 @@ export async function placeBidAction(
 
   if (session.user.role !== "BUYER") {
     return { error: "Only buyers can place bids." };
+  }
+
+  const cardCheck = await ensureBuyerHasValidCard();
+  if (!cardCheck.valid) {
+    return { error: cardCheck.error };
   }
 
   if (typeof amount !== "number" || amount <= 0) {

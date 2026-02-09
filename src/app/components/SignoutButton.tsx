@@ -5,6 +5,7 @@ import { signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { clearCardVerifiedForBidSession } from "@/lib/bid-session";
 
 export const SignOutButton = () => {
   const [isPending, setIsPending] = useState(false);
@@ -24,6 +25,7 @@ export const SignOutButton = () => {
         },
         onSuccess: () => {
           toast.success("You’ve logged out. See you soon!");
+          clearCardVerifiedForBidSession();
           router.push("/");
         },
       },

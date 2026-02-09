@@ -11,8 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { createSetupIntent } from "@/actions/payment.action";
+import { createSetupIntent, setDefaultPaymentMethodFromSetupIntent } from "@/actions/payment.action";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
@@ -21,6 +22,7 @@ const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 function SetupForm({ onSuccess }: { onSuccess: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +30,7 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
     if (!stripe || !elements) return;
     setIsSubmitting(true);
     try {
-      const { error } = await stripe.confirmSetup({
+      const { error, setupIntent } = await stripe.confirmSetup({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/buyers-dashboard/payment-methods?setup=success`,
@@ -39,9 +41,20 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
       });
       if (error) {
         toast.error(error.message ?? "Failed to save card");
+        setIsSubmitting(false);
         return;
       }
+      if (setupIntent?.id) {
+        const result = await setDefaultPaymentMethodFromSetupIntent(setupIntent.id);
+        if ("error" in result) {
+          toast.error(result.error);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      toast.success("Card saved successfully.");
       onSuccess();
+      router.refresh();
     } catch (err) {
       toast.error("Something went wrong");
     } finally {
@@ -139,7 +152,7 @@ export function SaveCardForm() {
       </CardHeader>
       <CardContent>
         <Elements stripe={stripePromise} options={options}>
-          <SetupForm onSuccess={() => toast.success("Card saved. You can close this page after redirect.")} />
+          <SetupForm onSuccess={() => {}} />
         </Elements>
       </CardContent>
     </Card>

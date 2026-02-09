@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { SaveCardForm } from "@/app/components/stripe/SaveCardForm";
+import { HandleSetupReturn } from "@/app/components/stripe/HandleSetupReturn";
 
 export default function PaymentMethodsPage() {
   return (
@@ -18,7 +20,11 @@ export default function PaymentMethodsPage() {
           Save a card to pay for won auctions automatically (charge later).
         </p>
       </div>
-      <SaveCardForm />
+      <Suspense fallback={null}>
+        <HandleSetupReturn>
+          <SaveCardForm />
+        </HandleSetupReturn>
+      </Suspense>
     </div>
   );
 }

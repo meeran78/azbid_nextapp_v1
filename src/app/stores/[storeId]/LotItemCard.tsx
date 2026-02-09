@@ -18,8 +18,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
-import { placeBidAction } from "@/actions/bid.action";
 import { getMinimumNextBid } from "@/lib/bid-increment";
+import { BidConfirmCvcModal } from "@/app/components/stripe/BidConfirmCvcModal";
+import { getCardVerifiedForBidSession, clearCardVerifiedForBidSession } from "@/lib/bid-session";
+import { placeBidAction } from "@/actions/bid.action";
 import { toggleItemFavouriteAction } from "@/actions/item-favourite.action";
 import { toggleItemWatchAction } from "@/actions/item-watch.action";
 import { useSession } from "@/lib/auth-client";
@@ -147,10 +149,17 @@ function ItemBidForm({
   const minBid = getMinimumNextBid(currentPrice);
   const [amount, setAmount] = useState(() => minBid.toFixed(2));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmItemId, setConfirmItemId] = useState<string | null>(null);
+  const [confirmAmount, setConfirmAmount] = useState<number | null>(null);
 
   useEffect(() => {
     setAmount(minBid.toFixed(2));
   }, [minBid]);
+
+  useEffect(() => {
+    if (!session?.user) clearCardVerifiedForBidSession();
+  }, [session?.user]);
 
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,21 +168,27 @@ function ItemBidForm({
       toast.error(`Minimum bid is $${minBid.toFixed(2)}`);
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const result = await placeBidAction(item.id, numAmount);
-      if ("error" in result) {
-        toast.error(result.error);
-      } else {
-        toast.success("Bid placed successfully!");
-        setAmount("");
-        router.refresh();
+    if (getCardVerifiedForBidSession()) {
+      setIsSubmitting(true);
+      try {
+        const result = await placeBidAction(item.id, numAmount);
+        if ("error" in result) {
+          toast.error(result.error);
+        } else {
+          toast.success("Bid placed successfully!");
+          setAmount(minBid.toFixed(2));
+          router.refresh();
+        }
+      } catch {
+        toast.error("Failed to place bid");
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch {
-      toast.error("Failed to place bid");
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+    setConfirmItemId(item.id);
+    setConfirmAmount(numAmount);
+    setConfirmOpen(true);
   };
 
   if (isPending) {
@@ -208,6 +223,7 @@ function ItemBidForm({
   }
 
   return (
+    <>
     <form onSubmit={handleBid} className="space-y-3">
       <div className="flex gap-2 items-center">
         {/* <span className="text-sm text-muted-foreground shrink-0">
@@ -266,6 +282,17 @@ function ItemBidForm({
         </Button> 
       </div>*/}
     </form>
+      <BidConfirmCvcModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        itemId={confirmItemId}
+        amount={confirmAmount}
+        onSuccess={() => {
+          setAmount(minBid.toFixed(2));
+          router.refresh();
+        }}
+      />
+    </>
   );
 }
 

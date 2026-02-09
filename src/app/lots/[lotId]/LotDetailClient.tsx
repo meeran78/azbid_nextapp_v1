@@ -19,8 +19,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
-import { placeBidAction } from "@/actions/bid.action";
 import { getMinimumNextBid } from "@/lib/bid-increment";
+import { BidConfirmCvcModal } from "@/app/components/stripe/BidConfirmCvcModal";
+import { getCardVerifiedForBidSession, clearCardVerifiedForBidSession } from "@/lib/bid-session";
+import { placeBidAction } from "@/actions/bid.action";
 import { toggleItemFavouriteAction } from "@/actions/item-favourite.action";
 import { toggleItemWatchAction } from "@/actions/item-watch.action";
 import { useSession } from "@/lib/auth-client";
@@ -154,9 +156,16 @@ function ItemBidForm({
   const { data: session, isPending } = useSession();
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmItemId, setConfirmItemId] = useState<string | null>(null);
+  const [confirmAmount, setConfirmAmount] = useState<number | null>(null);
 
   const currentPrice = Number(item.currentPrice ?? item.startPrice ?? 0);
   const minBid = getMinimumNextBid(currentPrice);
+
+  useEffect(() => {
+    if (!session?.user) clearCardVerifiedForBidSession();
+  }, [session?.user]);
 
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,21 +174,27 @@ function ItemBidForm({
       toast.error(`Minimum bid is $${minBid.toFixed(2)}`);
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const result = await placeBidAction(item.id, numAmount);
-      if ("error" in result) {
-        toast.error(result.error);
-      } else {
-        toast.success("Bid placed successfully!");
-        setAmount("");
-        router.refresh();
+    if (getCardVerifiedForBidSession()) {
+      setIsSubmitting(true);
+      try {
+        const result = await placeBidAction(item.id, numAmount);
+        if ("error" in result) {
+          toast.error(result.error);
+        } else {
+          toast.success("Bid placed successfully!");
+          setAmount("");
+          router.refresh();
+        }
+      } catch {
+        toast.error("Failed to place bid");
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch {
-      toast.error("Failed to place bid");
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+    setConfirmItemId(item.id);
+    setConfirmAmount(numAmount);
+    setConfirmOpen(true);
   };
 
   if (isPending) {
@@ -214,33 +229,31 @@ function ItemBidForm({
   }
 
   return (
-    <form onSubmit={handleBid} className="space-y-3">
-      <div className="flex gap-2 items-center">
-        {/* <span className="text-sm text-muted-foreground shrink-0">
-          $ Next bid: ${minBid.toFixed(2)}
-        </span> */}
-        <div className="relative flex-1 min-w-0">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-            $
-          </span>
-          <Input
-            type="number"
-            step="0.01"
-            min={minBid}
-            placeholder={minBid.toFixed(2)}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="pl-7 h-9"
-          />
-        </div>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          size="sm"
-          className="bg-zinc-800 hover:bg-zinc-900 text-white shrink-0"
-        >
-          Place Bid
-        </Button>
+    <>
+      <form onSubmit={handleBid} className="space-y-3">
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1 min-w-0">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+              $
+            </span>
+            <Input
+              type="number"
+              step="0.01"
+              min={minBid}
+              placeholder={minBid.toFixed(2)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="pl-7 h-9"
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            size="sm"
+            className="bg-zinc-800 hover:bg-zinc-900 text-white shrink-0"
+          >
+            Place Bid
+          </Button>
         <Button
           type="button"
           variant="outline"
@@ -269,6 +282,17 @@ function ItemBidForm({
         </Button> */}
       </div>
     </form>
+      <BidConfirmCvcModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        itemId={confirmItemId}
+        amount={confirmAmount}
+        onSuccess={() => {
+          setAmount("");
+          router.refresh();
+        }}
+      />
+    </>
   );
 }
 
