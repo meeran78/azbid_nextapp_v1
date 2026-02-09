@@ -60,6 +60,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
       return [
         // { title: "Dashboard", url: "/sellers-dashboard", icon: LayoutDashboard },
         { title: "My Auctions", url: "/my-auctions", icon: Package },
+        { title: "Store Management", url: "/sellers-stores", icon: Store },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "Settings", url: "/seller-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },

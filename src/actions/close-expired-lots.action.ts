@@ -9,8 +9,15 @@ export type CloseExpiredLotsResult = {
 };
 
 /**
- * Find LIVE lots where closesAt has passed and close them.
- * Call this from a cron job (e.g. every minute) to auto-close lots as part of soft close.
+ * Backend job: find LIVE lots where closesAt has passed and close them.
+ *
+ * For each expired lot this calls closeLot(), which:
+ * - Marks lot SOLD/UNSOLD and sets winning bids on items
+ * - Creates Order + Invoice per winning buyer
+ * - Auto-charges buyer's saved Stripe payment method (or leaves invoice PENDING)
+ * - Sends emails to buyers and seller
+ *
+ * Invoked by the cron endpoint GET/POST /api/cron/close-lots (see vercel.json: every minute).
  */
 export async function closeExpiredLots(): Promise<CloseExpiredLotsResult> {
   const now = new Date();

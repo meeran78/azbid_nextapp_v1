@@ -216,7 +216,7 @@ export default function CreateStorePage() {
           >
             <Link href="/my-auctions">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to My Auctions
+              Back to My Stores
             </Link>
           </Button>
           <h1 className="text-3xl font-bold">Create New Store</h1>

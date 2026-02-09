@@ -3,19 +3,16 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
-
-    getSellerStores,
     getSellerAuctions,
     getSellerLots,
 } from "@/actions/seller-dashboard.action";
 
 import { AuctionsTable } from "@/app/components/seller/AuctionsTable";
 import { LotsTable } from "@/app/components/seller/LotsTable";
-import { StoresList } from "@/app/components/seller/StoresList";
 import { StatusFilter } from "@/app/components/seller/StatusFilter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Store } from "lucide-react";
 import SellerProfile from "@/app/components/seller/SellerProfile";
 import { motion } from "framer-motion";
 
@@ -38,9 +35,7 @@ export default async function SellersDashboardPage({
     // Await searchParams before accessing its properties
     const params = await searchParams;
 
-    const [stores, auctions, lots] = await Promise.all([
-
-        getSellerStores(session.user.id),
+    const [auctions, lots] = await Promise.all([
         getSellerAuctions(
             session.user.id,
             params.status,
@@ -60,15 +55,19 @@ export default async function SellersDashboardPage({
                 <div>
                     <h1 className="text-3xl font-bold">My Auctions</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage your stores, auctions, and lots
+                        Manage your auctions and lots
                     </p>
                 </div>
+                <Button variant="outline" size="sm" asChild>
+                    <Link href="/my-auctions/stores" className="flex items-center gap-2">
+                        <Store className="h-4 w-4" />
+                        Manage stores
+                    </Link>
+                </Button>
             </div>
 
             {/* Seller Profile */}
             <SellerProfile />
-            {/* Stores Section */}
-            <StoresList stores={stores} />
 
             {/* Auctions and Lots Tabs */}
             <Tabs defaultValue="lots" className="w-full space-y-4 space-x-4">

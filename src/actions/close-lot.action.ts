@@ -218,12 +218,15 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
     }
   });
 
-  // 5. Trigger payment flow then charge stored payment method for each invoice
+  // 5. Trigger payment flow then auto-charge stored payment method for each invoice
+  const autoChargedInvoiceIds = new Set<string>();
   for (const inv of createdInvoices) {
     try {
       await triggerPaymentFlow(inv.invoiceId);
       const charge = await chargeInvoiceWithStoredPayment(inv.invoiceId);
-      if (!charge.charged && charge.reason) {
+      if (charge.charged) {
+        autoChargedInvoiceIds.add(inv.invoiceId);
+      } else if (charge.reason) {
         console.warn(`Invoice ${inv.invoiceId} not auto-charged: ${charge.reason}`);
       }
     } catch (err) {
@@ -235,7 +238,6 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
   if (createdInvoices.length > 0) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    // One invoice per buyer (with multiple items)
     const buyerIds = [...new Set(createdInvoices.map((i) => i.buyerId))];
     const buyers = await prisma.user.findMany({
       where: { id: { in: buyerIds } },
@@ -247,14 +249,19 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
       if (!inv) continue;
       const totalAmount = inv.total;
       const itemsList = inv.itemTitles.map((t) => `• ${t}`).join("\n");
+      const wasCharged = autoChargedInvoiceIds.has(inv.invoiceId);
 
       try {
         await sendEmailAction({
           to: buyer.email,
-          subject: "You Won! – Payment Required",
+          subject: wasCharged
+            ? "You Won! – Payment Received"
+            : "You Won! – Payment Required",
           meta: {
-            description: `Congratulations! You won item(s) from lot "${lot.title}".\n\n${itemsList}\n\nTotal: $${totalAmount.toFixed(2)}\n\nPlease complete payment to finalize your purchase.`,
-            link: `${appUrl}/buyers-dashboard?invoiceId=${inv.invoiceId}`,
+            description: wasCharged
+              ? `Congratulations! You won item(s) from lot "${lot.title}".\n\n${itemsList}\n\nTotal: $${totalAmount.toFixed(2)}\n\nWe've charged your saved payment method. Your order is confirmed.`
+              : `Congratulations! You won item(s) from lot "${lot.title}".\n\n${itemsList}\n\nTotal: $${totalAmount.toFixed(2)}\n\nPlease complete payment to finalize your purchase.`,
+            link: `${appUrl}/buyers-dashboard/orders`,
           },
         });
       } catch (emailErr) {
@@ -262,14 +269,13 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
       }
     }
 
-    // Notify seller
     const seller = lot.store.owner;
     if (seller?.email) {
       const soldSummary = createdInvoices
-        .map(
-          (inv) =>
-            `• ${inv.itemTitles.join(", ")} – $${inv.total.toFixed(2)} (buyer invoice created)`
-        )
+        .map((inv) => {
+          const paid = autoChargedInvoiceIds.has(inv.invoiceId) ? " (paid)" : " (payment pending)";
+          return `• ${inv.itemTitles.join(", ")} – $${inv.total.toFixed(2)}${paid}`;
+        })
         .join("\n");
 
       try {
@@ -277,7 +283,7 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
           to: seller.email,
           subject: "Lot Sold – Items Sold",
           meta: {
-            description: `Your lot "${lot.title}" from store "${lot.store.name}" has sold.\n\nSold items:\n${soldSummary}\n\nBuyers have been notified to complete payment.`,
+            description: `Your lot "${lot.title}" from store "${lot.store.name}" has sold.\n\nSold items:\n${soldSummary}\n\nBuyers have been notified.`,
             link: `${appUrl}/my-auctions`,
           },
         });
