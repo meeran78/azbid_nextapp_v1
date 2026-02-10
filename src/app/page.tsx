@@ -1,6 +1,7 @@
 import AuctionHero from "@/components/AuctionHero";
 import { ActiveStoresSection } from "@/components/ActiveStoresSection";
 import { ActiveLotsSection } from "@/app/components/ActiveLotsSection";
+import { ShopByCategorySection } from "@/app/components/ShopByCategorySection";
 import HowItWorksSection from "@/app/components/HowItWorksSection";
 import HighlightedFeature from "@/app/components/HighlightedFeature";
 import SocialRedirect from "@/app/components/SocialRedirect";
@@ -26,6 +27,7 @@ export default async function Home({ searchParams }: HomeProps) {
       <AuctionHero />
       <ActiveStoresSection searchParams={searchParams} />
       <ActiveLotsSection searchParams={searchParams} />
+      <ShopByCategorySection />
       <HowItWorksSection />
       <HighlightedFeature />
     

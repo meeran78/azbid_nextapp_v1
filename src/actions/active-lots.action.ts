@@ -20,6 +20,8 @@ export type ActiveLot = {
   lotDisplayId: string | null;
   status: string;
   closesAt: Date;
+  inspectionAt: Date | null;
+  removalStartAt: Date | null;
   itemCount: number;
   imageUrls: string[];
   storeId: string;
@@ -27,6 +29,7 @@ export type ActiveLot = {
   storeLogoUrl: string | null;
   location: string | null;
   auctionDisplayId: string | null;
+  buyersPremium: string | null;
   items: ActiveLotItem[];
 };
 
@@ -41,8 +44,11 @@ export async function getActiveCategoriesForFilter(): Promise<{ id: string; name
   });
 }
 
+const DEFAULT_LOT_PAGE_SIZE = 6;
+const MAX_LOT_PAGE_SIZE = 24;
+
 /**
- * Get lots with optional filters. Public - no auth.
+ * Get lots with optional filters and pagination. Public - no auth.
  * Only includes lots from ACTIVE stores.
  */
 export async function getActiveLotsFiltered(
@@ -50,8 +56,10 @@ export async function getActiveLotsFiltered(
   statusFilter?: LotStatusFilter | null,
   location?: string | null,
   itemTitle?: string | null,
-  categoryId?: string | null
-): Promise<ActiveLot[]> {
+  categoryId?: string | null,
+  page = 1,
+  pageSize = DEFAULT_LOT_PAGE_SIZE
+): Promise<{ lots: ActiveLot[]; totalCount: number }> {
   const hasLotName = lotName?.trim();
   const hasLocation = location?.trim();
   const hasItemTitle = itemTitle?.trim();
@@ -100,42 +108,51 @@ export async function getActiveLotsFiltered(
     where.items = { some: { OR: itemConditions } };
   }
 
-  const lots = await prisma.lot.findMany({
-    where,
-    include: {
-      store: {
-        select: {
-          id: true,
-          name: true,
-          logoUrl: true,
-          owner: {
-            select: {
-              displayLocation: true,
-              city: true,
-              state: true,
-              country: true,
+  const take = Math.min(MAX_LOT_PAGE_SIZE, Math.max(1, pageSize));
+  const skip = (Math.max(1, page) - 1) * take;
+
+  const [totalCount, lots] = await Promise.all([
+    prisma.lot.count({ where }),
+    prisma.lot.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true,
+            owner: {
+              select: {
+                displayLocation: true,
+                city: true,
+                state: true,
+                country: true,
+              },
             },
           },
         },
-      },
-      items: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          title: true,
-          imageUrls: true,
-          startPrice: true,
-          currentPrice: true,
-          category: { select: { name: true } },
+        items: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            title: true,
+            imageUrls: true,
+            startPrice: true,
+            currentPrice: true,
+            category: { select: { name: true } },
+          },
         },
+        auction: { select: { auctionDisplayId: true, buyersPremium: true } },
+        _count: { select: { items: true } },
       },
-      auction: { select: { auctionDisplayId: true, buyersPremium: true } },
-      _count: { select: { items: true } },
-    },
-    orderBy: { closesAt: "asc" },
-  });
+      orderBy: { closesAt: "asc" },
+    }),
+  ]);
 
-  return lots.map((lot) => {
+  return {
+    lots: lots.map((lot) => {
     const imageUrls = lot.items.flatMap((i) => i.imageUrls ?? []).filter(Boolean);
     const owner = lot.store.owner;
     const location = owner
@@ -168,5 +185,7 @@ export async function getActiveLotsFiltered(
         category: item.category,
       })),
     };
-  });
+  }),
+    totalCount,
+  };
 }

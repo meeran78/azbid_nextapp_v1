@@ -38,16 +38,21 @@ export type LandingStore = {
 
 export type StoreStatusFilter = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
 
+const DEFAULT_STORE_PAGE_SIZE = 6;
+const MAX_STORE_PAGE_SIZE = 24;
+
 /**
- * Get stores with optional search, status filter, and location filter.
+ * Get stores with optional search, status filter, location filter, and pagination.
  * Public - no auth required.
  * When status is ACTIVE (or default), only returns stores that have at least one LIVE lot.
  */
 export async function getActiveStoresWithLotsFiltered(
   search?: string | null,
   statusFilter?: StoreStatusFilter | null,
-  location?: string | null
-): Promise<LandingStore[]> {
+  location?: string | null,
+  page = 1,
+  pageSize = DEFAULT_STORE_PAGE_SIZE
+): Promise<{ stores: LandingStore[]; totalCount: number }> {
   const status = statusFilter && statusFilter !== "ALL" ? statusFilter : undefined;
   const hasSearch = search?.trim();
   const hasLocation = location?.trim();
@@ -96,43 +101,54 @@ export async function getActiveStoresWithLotsFiltered(
     };
   }
 
-  const stores = await prisma.store.findMany({
-    where,
-    include: {
-      owner: {
-        select: {
-          name: true,
-          displayLocation: true,
-          addressLine1: true,
-          city: true,
-          state: true,
-          zipcode: true,
-          businessPhone: true,
-        },
-      },
-      lots: {
-        where: { status: { in: ["LIVE"] } },
-        include: {
-          auction: { select: { endAt: true } },
-          items: {
-            take: 1,
-            orderBy: { createdAt: "asc" },
-            select: { imageUrls: true },
-          },
-          _count: { select: { items: true } },
-        },
-        orderBy: { closesAt: "asc" },
-      },
-      auctions: {
-        where: { status: { in: ["LIVE"] } },
-        select: { id: true },
-      },
-      _count: { select: { lots: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const take = Math.min(MAX_STORE_PAGE_SIZE, Math.max(1, pageSize));
+  const skip = (Math.max(1, page) - 1) * take;
 
-  return mapStoresToLanding(stores as StoreWithRelations[]);
+  const [totalCount, stores] = await Promise.all([
+    prisma.store.count({ where }),
+    prisma.store.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        owner: {
+          select: {
+            name: true,
+            displayLocation: true,
+            addressLine1: true,
+            city: true,
+            state: true,
+            zipcode: true,
+            businessPhone: true,
+          },
+        },
+        lots: {
+          where: { status: { in: ["LIVE"] } },
+          include: {
+            auction: { select: { endAt: true } },
+            items: {
+              take: 1,
+              orderBy: { createdAt: "asc" },
+              select: { imageUrls: true },
+            },
+            _count: { select: { items: true } },
+          },
+          orderBy: { closesAt: "asc" },
+        },
+        auctions: {
+          where: { status: { in: ["LIVE"] } },
+          select: { id: true },
+        },
+        _count: { select: { lots: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  return {
+    stores: mapStoresToLanding(stores as StoreWithRelations[]),
+    totalCount,
+  };
 }
 
 /**
@@ -140,7 +156,8 @@ export async function getActiveStoresWithLotsFiltered(
  * Public - no auth required. Returns only ACTIVE stores that have at least one LIVE lot.
  */
 export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
-  return getActiveStoresWithLotsFiltered(null, "ACTIVE", null);
+  const { stores } = await getActiveStoresWithLotsFiltered(null, "ACTIVE", null, 1, 999);
+  return stores;
 }
 
 type StoreWithRelations = {
