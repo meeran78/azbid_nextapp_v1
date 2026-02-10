@@ -36,16 +36,68 @@ export type LandingStore = {
   auctionCloseDate: Date | null;
 };
 
+export type StoreStatusFilter = "ALL" | "ACTIVE" | "PENDING" | "SUSPENDED";
+
 /**
- * Get active stores with live auctions for the landing page.
- * Public - no auth required. Returns only ACTIVE stores that have at least one LIVE lot.
+ * Get stores with optional search, status filter, and location filter.
+ * Public - no auth required.
+ * When status is ACTIVE (or default), only returns stores that have at least one LIVE lot.
  */
-export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
+export async function getActiveStoresWithLotsFiltered(
+  search?: string | null,
+  statusFilter?: StoreStatusFilter | null,
+  location?: string | null
+): Promise<LandingStore[]> {
+  const status = statusFilter && statusFilter !== "ALL" ? statusFilter : undefined;
+  const hasSearch = search?.trim();
+  const hasLocation = location?.trim();
+
+  const where: {
+    status?: "ACTIVE" | "PENDING" | "SUSPENDED";
+    lots?: { some: { status: "LIVE" } };
+    OR?: Array<
+      | { name: { contains: string; mode: "insensitive" } }
+      | { description: { contains: string; mode: "insensitive" } | null }
+      | { owner: { name: { contains: string; mode: "insensitive" } } }
+    >;
+    owner?: {
+      OR: Array<
+        | { city: { contains: string; mode: "insensitive" } | null }
+        | { state: { contains: string; mode: "insensitive" } | null }
+        | { country: { contains: string; mode: "insensitive" } | null }
+        | { displayLocation: { contains: string; mode: "insensitive" } | null }
+      >;
+    };
+  } = {};
+
+  if (status) where.status = status;
+  // When showing only ACTIVE stores, require at least one LIVE lot for relevance
+  if (status === "ACTIVE" || !statusFilter) where.lots = { some: { status: "LIVE" } };
+
+  if (hasSearch) {
+    const term = hasSearch.trim();
+    where.OR = [
+      { name: { contains: term, mode: "insensitive" } },
+      { description: { contains: term, mode: "insensitive" } },
+      { owner: { name: { contains: term, mode: "insensitive" } } },
+    ];
+  }
+
+  if (hasLocation) {
+    const loc = hasLocation.trim();
+    where.owner = {
+      ...(where.owner as object),
+      OR: [
+        { city: { contains: loc, mode: "insensitive" } },
+        { state: { contains: loc, mode: "insensitive" } },
+        { country: { contains: loc, mode: "insensitive" } },
+        { displayLocation: { contains: loc, mode: "insensitive" } },
+      ],
+    };
+  }
+
   const stores = await prisma.store.findMany({
-    where: {
-      status: "ACTIVE",
-      lots: { some: { status: "LIVE" } },
-    },
+    where,
     include: {
       owner: {
         select: {
@@ -80,6 +132,49 @@ export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
     orderBy: { name: "asc" },
   });
 
+  return mapStoresToLanding(stores as StoreWithRelations[]);
+}
+
+/**
+ * Get active stores with live auctions for the landing page (no filters).
+ * Public - no auth required. Returns only ACTIVE stores that have at least one LIVE lot.
+ */
+export async function getActiveStoresWithLots(): Promise<LandingStore[]> {
+  return getActiveStoresWithLotsFiltered(null, "ACTIVE", null);
+}
+
+type StoreWithRelations = {
+  id: string;
+  name: string;
+  description: string | null;
+  logoUrl: string | null;
+  averageRating: number | null;
+  ratingsCount: number | null;
+  responseRate: number | null;
+  owner: {
+    name: string;
+    displayLocation: string | null;
+    addressLine1: string | null;
+    city: string | null;
+    state: string | null;
+    zipcode: string | null;
+    businessPhone: string | null;
+  };
+  lots: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    lotDisplayId: string | null;
+    closesAt: Date;
+    status: string;
+    auction: { endAt: Date | null } | null;
+    items: Array<{ imageUrls: string[] }>;
+    _count: { items: number };
+  }>;
+  auctions: Array<{ id: string }>;
+};
+
+function mapStoresToLanding(stores: StoreWithRelations[]): LandingStore[] {
   return stores.map((store) => {
     const lots: LandingStoreLot[] = store.lots.map((lot) => {
       const firstItem = lot.items[0];
