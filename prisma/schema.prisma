@@ -131,8 +131,12 @@ model User {
   businessSocialMediaIcon     String?
   newsLetterEmailSubscription Boolean? @default(false)
   newsLetterSMSSubscription   Boolean? @default(false)
-  acceptedTerms               Boolean  @default(false)
-  acceptedTermsAt             DateTime? @default(now())  // When user accepted (optional)
+  // Buyer bidding notification preferences
+  notifyOnOutbid              Boolean? @default(true)
+  notifyOnWin                  Boolean? @default(true)
+  notifyOnLotEndingSoon        Boolean? @default(true)
+  acceptedTerms                Boolean  @default(false)
+  acceptedTermsAt              DateTime? @default(now())  // When user accepted (optional)
 
   sessions Session[]
   accounts Account[]

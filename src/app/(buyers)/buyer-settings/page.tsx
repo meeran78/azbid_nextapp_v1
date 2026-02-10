@@ -2,27 +2,22 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  Settings as SettingsIcon,
-  FileCheck,
-  ArrowRight,
-  Banknote,
-  Store,
-} from "lucide-react";
-import { getSellerSettingsData } from "@/actions/seller-settings.action";
-import { SellerSettingsProfileSection } from "@/app/components/seller/SellerSettingsProfileSection";
-import { SellerSettingsSecuritySection } from "@/app/components/seller/SellerSettingsSecuritySection";
+import { Settings as SettingsIcon, CreditCard, FileCheck, ArrowRight } from "lucide-react";
+import { getBuyerSettingsData } from "@/actions/buyer-settings.action";
+import { BuyerSettingsProfileSection } from "@/app/components/buyer/BuyerSettingsProfileSection";
+import { BuyerSettingsNotificationsSection } from "@/app/components/buyer/BuyerSettingsNotificationsSection";
+import { BuyerSettingsSecuritySection } from "@/app/components/buyer/BuyerSettingsSecuritySection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
-export default async function SellerSettingsPage() {
+export default async function BuyerSettingsPage() {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
   if (!session) redirect("/sign-in");
-  if (session.user.role !== "SELLER") redirect("/");
+  if (session.user.role !== "BUYER") redirect("/");
 
-  const data = await getSellerSettingsData();
+  const data = await getBuyerSettingsData();
   if (!data) {
     return (
       <div className="container mx-auto p-6 max-w-4xl">
@@ -35,49 +30,45 @@ export default async function SellerSettingsPage() {
     <div className="container mx-auto p-6 max-w-4xl space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Seller Settings</h1>
+          <h1 className="text-3xl font-bold">Buyer Settings</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your profile, payouts, stores, and account security
+            Manage your profile, notifications, payment methods, and account security
           </p>
         </div>
         <SettingsIcon className="h-8 w-8 text-muted-foreground" />
       </div>
 
       {/* 1. Profile & preferences */}
-      <SellerSettingsProfileSection profile={data.profile} />
+      <BuyerSettingsProfileSection profile={data.profile} />
 
-      {/* 2. Payouts & store */}
+      {/* 2. Bidding notifications */}
+      <BuyerSettingsNotificationsSection initialPrefs={data.notificationPrefs} />
+
+      {/* 3. Payment methods */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Banknote className="h-5 w-5" />
-            Payouts & store
+            <CreditCard className="h-5 w-5" />
+            Saved payment methods
           </CardTitle>
           <CardDescription>
-            Connect Stripe to receive payouts from sold lots. Manage your stores and auctions.
+            Add or remove cards used for bidding and paying for won auctions. A valid card is required to place bids.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        <CardContent>
           <Button variant="outline" asChild className="gap-2">
-            <Link href="/my-auctions/payouts">
-              Payouts (Stripe Connect)
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="gap-2">
-            <Link href="/sellers-stores">
-              <Store className="h-4 w-4" />
-              Store management
+            <Link href="/buyers-dashboard/payment-methods">
+              Manage payment methods
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </CardContent>
       </Card>
 
-      {/* 3. Security & account access */}
-      <SellerSettingsSecuritySection />
+      {/* 4. Security & account access */}
+      <BuyerSettingsSecuritySection />
 
-      {/* 4. Compliance & terms */}
+      {/* 5. Compliance */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -102,18 +93,18 @@ export default async function SellerSettingsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
-              <Link href="/terms-conditions" target="_blank" rel="noopener noreferrer">
+              <Link href="/terms" target="_blank" rel="noopener noreferrer">
                 View terms of service
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer">
+              <Link href="/privacy" target="_blank" rel="noopener noreferrer">
                 Privacy policy
               </Link>
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Data export and account deletion can be requested by contacting support.
+            Data export and account deletion can be requested from the same account section or by contacting support.
           </p>
         </CardContent>
       </Card>

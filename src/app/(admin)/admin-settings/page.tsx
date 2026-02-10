@@ -6,23 +6,42 @@ import {
   Settings as SettingsIcon,
   FileCheck,
   ArrowRight,
-  Banknote,
   Store,
+  Barcode,
+  Pickaxe,
+  Users,
+  HelpCircle,
+  BarChart3,
 } from "lucide-react";
-import { getSellerSettingsData } from "@/actions/seller-settings.action";
-import { SellerSettingsProfileSection } from "@/app/components/seller/SellerSettingsProfileSection";
-import { SellerSettingsSecuritySection } from "@/app/components/seller/SellerSettingsSecuritySection";
+import { getAdminSettingsData } from "@/actions/admin-settings.action";
+import { AdminSettingsProfileSection } from "@/app/components/admin/AdminSettingsProfileSection";
+import { AdminSettingsSecuritySection } from "@/app/components/admin/AdminSettingsSecuritySection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
-export default async function SellerSettingsPage() {
+const adminLinks = [
+  { title: "Stores Management", href: "/stores-management", icon: Store },
+  { title: "Lots Management", href: "/lots-management", icon: Barcode },
+  { title: "Auctions Management", href: "/auctions-management", icon: Pickaxe },
+  { title: "Users", href: "/users-management", icon: Users },
+  { title: "Analytics", href: "/analytics", icon: BarChart3 },
+  { title: "FAQs", href: "/faqs", icon: HelpCircle },
+];
+
+export default async function AdminSettingsPage() {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
   if (!session) redirect("/sign-in");
-  if (session.user.role !== "SELLER") redirect("/");
+  if (session.user.role !== "ADMIN") {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <p className="text-destructive font-medium">Access denied. Admin only.</p>
+      </div>
+    );
+  }
 
-  const data = await getSellerSettingsData();
+  const data = await getAdminSettingsData();
   if (!data) {
     return (
       <div className="container mx-auto p-6 max-w-4xl">
@@ -35,47 +54,44 @@ export default async function SellerSettingsPage() {
     <div className="container mx-auto p-6 max-w-4xl space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Seller Settings</h1>
+          <h1 className="text-3xl font-bold">Admin Settings</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your profile, payouts, stores, and account security
+            Manage your profile, platform tools, and account security
           </p>
         </div>
         <SettingsIcon className="h-8 w-8 text-muted-foreground" />
       </div>
 
       {/* 1. Profile & preferences */}
-      <SellerSettingsProfileSection profile={data.profile} />
+      <AdminSettingsProfileSection profile={data.profile} />
 
-      {/* 2. Payouts & store */}
+      {/* 2. Admin tools – quick links */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Banknote className="h-5 w-5" />
-            Payouts & store
-          </CardTitle>
+          <CardTitle>Platform management</CardTitle>
           <CardDescription>
-            Connect Stripe to receive payouts from sold lots. Manage your stores and auctions.
+            Quick access to stores, lots, auctions, users, analytics, and FAQs.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild className="gap-2">
-            <Link href="/my-auctions/payouts">
-              Payouts (Stripe Connect)
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="gap-2">
-            <Link href="/sellers-stores">
-              <Store className="h-4 w-4" />
-              Store management
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+        <CardContent>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {adminLinks.map(({ title, href, icon: Icon }) => (
+              <Button key={href} variant="outline" className="justify-between gap-2" asChild>
+                <Link href={href}>
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    {title}
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0" />
+                </Link>
+              </Button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
       {/* 3. Security & account access */}
-      <SellerSettingsSecuritySection />
+      <AdminSettingsSecuritySection />
 
       {/* 4. Compliance & terms */}
       <Card>
