@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useState } from "react";
 
 type StoreLotPaginationProps = {
   storeId: string;
@@ -26,6 +28,18 @@ export function StoreLotPagination({
   totalLotCount,
   perPage,
 }: StoreLotPaginationProps) {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+
+  const handleNav = useCallback(
+    (page: number) => {
+      if (page < 1 || page > totalPages) return;
+      setIsPending(true);
+      router.push(buildHref(storeId, page, perPage));
+    },
+    [storeId, perPage, totalPages, router]
+  );
+
   if (totalLotCount <= 0 || totalPages <= 1) return null;
 
   const from = (currentPage - 1) * perPage + 1;
@@ -35,7 +49,8 @@ export function StoreLotPagination({
     <nav
       role="navigation"
       aria-label="Store lots pagination"
-      className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t"
+      aria-busy={isPending}
+      className={`flex flex-wrap items-center justify-between gap-4 pt-4 border-t transition-opacity duration-200 ${isPending ? "pointer-events-none opacity-60" : ""}`}
     >
       <p className="text-sm text-muted-foreground">
         Showing {from}-{to} of {totalLotCount} lots
@@ -44,6 +59,10 @@ export function StoreLotPagination({
         {currentPage > 1 ? (
           <Link
             href={buildHref(storeId, currentPage - 1, perPage)}
+            onClick={(e) => {
+              e.preventDefault();
+              if (!isPending) handleNav(currentPage - 1);
+            }}
             className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
             aria-label="Go to previous page"
           >
@@ -65,6 +84,10 @@ export function StoreLotPagination({
         {currentPage < totalPages ? (
           <Link
             href={buildHref(storeId, currentPage + 1, perPage)}
+            onClick={(e) => {
+              e.preventDefault();
+              if (!isPending) handleNav(currentPage + 1);
+            }}
             className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
             aria-label="Go to next page"
           >

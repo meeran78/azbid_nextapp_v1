@@ -38,53 +38,70 @@ export type PublicLot = {
   };
   auction: { id: string; title: string; endAt: Date } | null;
   items: PublicLotItem[];
+  /** Total item count (for pagination). Only set when items are paginated. */
+  totalItemCount?: number;
 };
 
+const DEFAULT_LOT_ITEMS_PER_PAGE = 2;
+
 /**
- * Get a lot by ID for public viewing. Only returns lots with status LIVE or SCHEDULED.
+ * Get a lot by ID for public viewing. Only returns lots with status LIVE.
+ * Optionally paginate items with itemPage and itemPerPage.
  * Returns null if not found or not publicly viewable.
  */
-export async function getPublicLot(lotId: string): Promise<PublicLot | null> {
-  const lot = await prisma.lot.findUnique({
-    where: {
-      id: lotId,
-      status: { in: ["LIVE"] },
-    },
-    include: {
-      store: {
-        include: {
-          owner: {
-            select: {
-              name: true,
-              displayLocation: true,
-              addressLine1: true,
-              city: true,
-              state: true,
-              zipcode: true,
+export async function getPublicLot(
+  lotId: string,
+  itemPage = 1,
+  itemPerPage = DEFAULT_LOT_ITEMS_PER_PAGE
+): Promise<PublicLot | null> {
+  const itemSkip = (Math.max(1, itemPage) - 1) * Math.max(1, Math.min(24, itemPerPage));
+  const itemTake = Math.max(1, Math.min(24, itemPerPage));
+
+  const [lot, totalItems] = await Promise.all([
+    prisma.lot.findUnique({
+      where: {
+        id: lotId,
+        status: { in: ["LIVE"] },
+      },
+      include: {
+        store: {
+          include: {
+            owner: {
+              select: {
+                name: true,
+                displayLocation: true,
+                addressLine1: true,
+                city: true,
+                state: true,
+                zipcode: true,
+              },
             },
           },
         },
-      },
-      auction: { select: { id: true, title: true, endAt: true } },
-      items: {
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          condition: true,
-          imageUrls: true,
-          startPrice: true,
-          reservePrice: true,
-          currentPrice: true,
-          retailPrice: true,
-          createdAt: true,
-          category: { select: { name: true } },
-          _count: { select: { bids: true } },
+        auction: { select: { id: true, title: true, endAt: true } },
+        items: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            condition: true,
+            imageUrls: true,
+            startPrice: true,
+            reservePrice: true,
+            currentPrice: true,
+            retailPrice: true,
+            createdAt: true,
+            category: { select: { name: true } },
+            _count: { select: { bids: true } },
+          },
+          orderBy: { createdAt: "asc" },
+          skip: itemSkip,
+          take: itemTake,
         },
-        orderBy: { createdAt: "asc" },
       },
-    },
-  });
+    }),
+    prisma.item.count({ where: { lotId } }),
+  ]);
 
   if (!lot) return null;
 
@@ -115,5 +132,6 @@ export async function getPublicLot(lotId: string): Promise<PublicLot | null> {
       category: item.category,
       _count: item._count,
     })),
+    totalItemCount: totalItems,
   };
 }

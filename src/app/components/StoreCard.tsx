@@ -65,7 +65,7 @@ export function StoreCard({ store, isFavourited: initialFavourited }: StoreCardP
   const responseRate = store.responseRate ?? 0;
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow relative">
+    <Card className="overflow-hidden relative transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5">
       <div className="absolute top-3 right-3 z-10">
         <span className="h-2.5 w-2.5 rounded-full bg-green-500 block" title="Online" />
       </div>

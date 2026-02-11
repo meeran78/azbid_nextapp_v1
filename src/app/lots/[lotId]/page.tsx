@@ -7,19 +7,30 @@ import { LotDetailClient } from "./LotDetailClient";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
+const DEFAULT_ITEM_PER_PAGE = 9;
+
 export default async function LotDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lotId: string }>;
+  searchParams: Promise<{ item_page?: string; item_per_page?: string }> | { item_page?: string; item_per_page?: string };
 }) {
   const { lotId } = await params;
+  const resolved = searchParams instanceof Promise ? await searchParams : searchParams ?? {};
+  const itemPage = Math.max(1, parseInt(resolved.item_page ?? "1", 10) || 1);
+  const itemPerPage = Math.min(24, Math.max(1, parseInt(resolved.item_per_page ?? String(DEFAULT_ITEM_PER_PAGE), 10) || DEFAULT_ITEM_PER_PAGE));
+
   const [lot, favouriteItemIds, watchedItemIds] = await Promise.all([
-    getPublicLot(lotId),
+    getPublicLot(lotId, itemPage, itemPerPage),
     getUserFavouriteItemIds(),
     getUserWatchedItemIds(),
   ]);
 
   if (!lot) notFound();
+
+  const totalItemCount = lot.totalItemCount ?? lot.items.length;
+  const totalItemPages = Math.max(1, Math.ceil(totalItemCount / itemPerPage));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-10xl">
@@ -68,6 +79,10 @@ export default async function LotDetailPage({
           lot={lot}
           favouriteItemIds={favouriteItemIds}
           watchedItemIds={watchedItemIds}
+          totalItemCount={totalItemCount}
+          itemPage={itemPage}
+          itemPerPage={itemPerPage}
+          totalItemPages={totalItemPages}
         />
       </div>
     </div>

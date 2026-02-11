@@ -77,7 +77,7 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
             {lots.map((lot) => (
               <ActiveLotCard key={lot.id} lot={lot} />
             ))}

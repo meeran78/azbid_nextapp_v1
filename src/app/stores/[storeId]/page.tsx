@@ -58,7 +58,7 @@ export default async function StoreDetailPage({
             </p>
           ) : (
             <>
-              <div className="space-y-6">
+              <div className="space-y-6 min-h-[320px]">
                 {store.lots.map((lot) => (
                   <StoreLotCard
                     key={lot.id}

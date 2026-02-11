@@ -33,7 +33,7 @@ export function StoreLotCard({
   const items = lot.items ?? [];
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
+    <div className="rounded-lg border bg-card overflow-hidden transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-0.5">
       <Link
         href={lotHref}
         className="block p-6 space-y-6 hover:bg-muted/30 transition-colors"

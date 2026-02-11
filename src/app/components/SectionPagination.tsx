@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useTransition } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   PaginationContent,
@@ -66,6 +66,7 @@ export function SectionPagination({
 }: SectionPaginationProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
   const pageKey = `${paramPrefix}_page`;
   const perPageKey = `${paramPrefix}_per_page`;
   const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
@@ -88,6 +89,15 @@ export function SectionPagination({
       return `${pathname || "/"}?${q}`;
     },
     [baseParams, pageKey, perPageKey, perPage, pathname]
+  );
+
+  const handleNav = useCallback(
+    (href: string) => {
+      startTransition(() => {
+        router.push(href);
+      });
+    },
+    [router]
   );
 
   const pageNumbers = useMemo(() => {
@@ -113,9 +123,10 @@ export function SectionPagination({
         </span>
         <Select
           value={String(perPage)}
+          disabled={isPending}
           onValueChange={(v) => {
             const next = Number(v);
-            router.push(buildHref(1, next));
+            startTransition(() => router.push(buildHref(1, next)));
           }}
         >
           <SelectTrigger className="w-[72px] h-8">
@@ -133,10 +144,19 @@ export function SectionPagination({
       </div>
 
       {totalPages > 1 && (
-        <nav role="navigation" aria-label="pagination" className="flex items-center gap-2">
+        <nav
+          role="navigation"
+          aria-label="pagination"
+          aria-busy={isPending}
+          className={`flex items-center gap-2 transition-opacity duration-200 ${isPending ? "pointer-events-none opacity-60" : ""}`}
+        >
           {currentPage > 1 ? (
             <Link
               href={buildHref(currentPage - 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleNav(buildHref(currentPage - 1));
+              }}
               className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
               aria-label="Go to previous page"
             >
@@ -160,6 +180,12 @@ export function SectionPagination({
                   <PaginationLink
                     href={buildHref(p)}
                     isActive={p === currentPage}
+                    onClick={(e) => {
+                      if (p !== currentPage) {
+                        e.preventDefault();
+                        handleNav(buildHref(p));
+                      }
+                    }}
                     className={
                       p === currentPage
                         ? "size-8 min-w-8 rounded-md bg-background border border-input text-foreground font-medium hover:bg-muted/50 hover:text-foreground"
@@ -175,6 +201,10 @@ export function SectionPagination({
           {currentPage < totalPages ? (
             <Link
               href={buildHref(currentPage + 1)}
+              onClick={(e) => {
+                e.preventDefault();
+                handleNav(buildHref(currentPage + 1));
+              }}
               className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
               aria-label="Go to next page"
             >

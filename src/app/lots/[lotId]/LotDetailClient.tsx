@@ -29,11 +29,16 @@ import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { BiddingHistoryModal } from "@/app/components/seller/BiddingHistoryModal";
 import type { PublicLot, PublicLotItem } from "@/actions/public-lot.action";
+import { LotItemsPagination } from "./LotItemsPagination";
 
 interface LotDetailClientProps {
   lot: PublicLot;
   favouriteItemIds?: string[];
   watchedItemIds?: string[];
+  totalItemCount?: number;
+  itemPage?: number;
+  itemPerPage?: number;
+  totalItemPages?: number;
 }
 
 const NEW_ITEM_DAYS = 7;
@@ -500,8 +505,14 @@ export function LotDetailClient({
   lot,
   favouriteItemIds = [],
   watchedItemIds = [],
+  totalItemCount,
+  itemPage = 1,
+  itemPerPage = 9,
+  totalItemPages = 1,
 }: LotDetailClientProps) {
-  if (lot.items.length === 0) {
+  const itemCountLabel = totalItemCount != null ? totalItemCount : lot.items.length;
+
+  if (lot.items.length === 0 && (totalItemCount ?? 0) === 0) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
@@ -513,8 +524,8 @@ export function LotDetailClient({
 
   return (
     <div className="space-y-6">
-      <h2 className="font-semibold text-lg">Auction Items ({lot.items.length})</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <h2 className="font-semibold text-lg">Auction Items ({itemCountLabel})</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[320px]">
         {lot.items.map((item: PublicLotItem) => (
           <AuctionItemCard
             key={item.id}
@@ -525,6 +536,15 @@ export function LotDetailClient({
           />
         ))}
       </div>
+      {totalItemCount != null && totalItemPages > 1 && (
+        <LotItemsPagination
+          lotId={lot.id}
+          currentPage={itemPage}
+          totalPages={totalItemPages}
+          totalItemCount={totalItemCount}
+          perPage={itemPerPage}
+        />
+      )}
     </div>
   );
 }
