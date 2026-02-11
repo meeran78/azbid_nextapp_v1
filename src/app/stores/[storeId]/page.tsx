@@ -10,8 +10,9 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { StoreDetailHeader } from "./StoreDetailHeader";
 import { StoreLotCard } from "./StoreLotCard";
 import { StoreLotPagination } from "./StoreLotPagination";
+import { StoreReviewsSection } from "./StoreReviewsSection";
 
-const DEFAULT_PER_PAGE = 6;
+const DEFAULT_PER_PAGE = 4;
 
 export default async function StoreDetailPage({
   params,
@@ -81,6 +82,8 @@ export default async function StoreDetailPage({
           )}
         </CardContent>
       </Card>
+
+      <StoreReviewsSection storeId={storeId} />
     </div>
   );
 }

@@ -58,6 +58,12 @@ enum StoreStatus {
   SUSPENDED
 }
 
+enum StoreReviewStatus {
+  PENDING   // Awaiting moderation
+  APPROVED  // Shown in store rating & aggregate
+  REJECTED  // Hidden, not counted
+}
+
 model InvoiceItem {
   id        String  @id @default(uuid())
   invoiceId String
@@ -161,7 +167,8 @@ model User {
   //Lot review fields
   reviewedLots Lot[]      @relation("LotReviewedBy")
   // Admin actions
-  adminLogs    AdminLog[]
+  adminLogs       AdminLog[]
+  moderatedReviews StoreReview[] @relation("StoreReviewModeratedBy")
 
   //Stripe
   stripeCustomerId     String? @unique
@@ -299,18 +306,30 @@ model ItemWatch {
 }
 
 model StoreReview {
-  id        String   @id @default(uuid())
+  id        String           @id @default(uuid())
   storeId   String
-  userId    String // buyer who left the review
-  rating    Int // e.g. 1–5
+  userId    String           // buyer who left the review (verified via completed order)
+  orderId   String           @unique // one review per completed order; restricts to verified purchase
+  rating    Int              // 1–5
   comment   String?
-  createdAt DateTime @default(now())
+  status    StoreReviewStatus @default(PENDING)
 
-  store Store @relation(fields: [storeId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  moderatedAt   DateTime?
+  moderatedById String?
+  moderatedBy   User?   @relation("StoreReviewModeratedBy", fields: [moderatedById], references: [id])
+  rejectReason  String? // optional reason shown to buyer when rejected
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
   @@index([userId])
+  @@index([storeId, status])
+  @@index([status])
 }
 
 model Auction {
@@ -470,8 +489,9 @@ model Order {
   status PaymentStatus @default(PENDING)
 
   orderItems OrderItem[]
-  invoice    Invoice?
-  payment    Payment?
+  invoice     Invoice?
+  payment     Payment?
+  storeReview StoreReview?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

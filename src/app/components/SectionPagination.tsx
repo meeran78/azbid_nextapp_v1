@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useTransition } from "react";
+import { useCallback, useEffect, useRef, useTransition } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -100,19 +95,6 @@ export function SectionPagination({
     [router]
   );
 
-  const pageNumbers = useMemo(() => {
-    const list: number[] = [];
-    const add = (p: number) => {
-      if (p >= 1 && p <= totalPages && list[list.length - 1] !== p) list.push(p);
-    };
-    add(1);
-    if (currentPage > 3) list.push(-1);
-    for (let p = Math.max(1, currentPage - 2); p <= Math.min(totalPages, currentPage + 2); p++) add(p);
-    if (currentPage < totalPages - 2) list.push(-2);
-    if (totalPages > 1) add(totalPages);
-    return list;
-  }, [currentPage, totalPages]);
-
   if (totalCount <= 0) return null;
 
   return (
@@ -148,7 +130,7 @@ export function SectionPagination({
           role="navigation"
           aria-label="pagination"
           aria-busy={isPending}
-          className={`flex items-center gap-2 transition-opacity duration-200 ${isPending ? "pointer-events-none opacity-60" : ""}`}
+          className={`flex items-center gap-3 transition-opacity duration-200 ${isPending ? "pointer-events-none opacity-60" : ""}`}
         >
           {currentPage > 1 ? (
             <Link
@@ -169,35 +151,9 @@ export function SectionPagination({
               <span>Previous</span>
             </span>
           )}
-          <PaginationContent className="gap-1.5 mx-0">
-            {pageNumbers.map((p) =>
-              p < 0 ? (
-                <PaginationItem key={p}>
-                  <span className="flex size-8 items-center justify-center text-muted-foreground">…</span>
-                </PaginationItem>
-              ) : (
-                <PaginationItem key={p}>
-                  <PaginationLink
-                    href={buildHref(p)}
-                    isActive={p === currentPage}
-                    onClick={(e) => {
-                      if (p !== currentPage) {
-                        e.preventDefault();
-                        handleNav(buildHref(p));
-                      }
-                    }}
-                    className={
-                      p === currentPage
-                        ? "size-8 min-w-8 rounded-md bg-background border border-input text-foreground font-medium hover:bg-muted/50 hover:text-foreground"
-                        : "min-w-0 h-8 px-0 bg-transparent border-0 text-muted-foreground hover:text-foreground hover:bg-transparent shadow-none font-medium"
-                    }
-                  >
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              )
-            )}
-          </PaginationContent>
+          <span className="min-w-[5rem] text-center text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
           {currentPage < totalPages ? (
             <Link
               href={buildHref(currentPage + 1)}

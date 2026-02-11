@@ -23,6 +23,7 @@ import {
   Barcode,
   Pickaxe,
   Banknote,
+  MessageSquare,
 } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
@@ -76,6 +77,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "Auctions Managements", url: "/auctions-management", icon: Pickaxe },
         { title: "Category Management", url: "/categories", icon: CirclePlus },
         { title: "Users", url: "/users-management", icon: Users },
+        { title: "Store Reviews", url: "/reviews-management", icon: MessageSquare },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "FAQs", url: "/faqs", icon: HelpCircle },
