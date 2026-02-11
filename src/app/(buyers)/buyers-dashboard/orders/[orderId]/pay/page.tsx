@@ -4,7 +4,7 @@ import Image from "next/image";
 import { getBuyerOrderForPayment } from "@/actions/buyer-bids.action";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Package } from "lucide-react";
+import { ArrowLeft, Package, Store, User, Mail, Phone, MapPin, CreditCard, CheckCircle } from "lucide-react";
 import { PayWithStripeForm } from "@/app/components/stripe/PayWithStripeForm";
 
 export default async function BuyerOrderPayPage({
@@ -18,8 +18,11 @@ export default async function BuyerOrderPayPage({
   if (!order) notFound();
 
   const invoice = order.invoice;
+  const payment = order.payment;
   const isPaid =
     order.status === "PAID" || (invoice && invoice.status === "PAID");
+  const seller = order.lot?.store?.owner;
+  const store = order.lot?.store;
 
   return (
     <div className="container mx-auto p-6 max-w-2xl space-y-6">
@@ -36,6 +39,114 @@ export default async function BuyerOrderPayPage({
           Lot: {order.lot.title}
         </p>
       </div>
+
+      {/* Seller details for winning items */}
+      {store && seller && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Store className="h-5 w-5" />
+              Seller & winning items from
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start gap-2">
+              <Store className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">{store.name}</p>
+                <p className="text-sm text-muted-foreground">Store</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">{seller.companyName ?? seller.name}</p>
+                <p className="text-sm text-muted-foreground">Seller</p>
+              </div>
+            </div>
+            {(seller.businessEmail ?? seller.email) && (
+              <div className="flex items-center gap-2 text-sm">
+                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                <a
+                  href={`mailto:${seller.businessEmail ?? seller.email}`}
+                  className="text-violet-600 hover:underline"
+                >
+                  {seller.businessEmail ?? seller.email}
+                </a>
+              </div>
+            )}
+            {seller.businessPhone && (
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                <a
+                  href={`tel:${seller.businessPhone}`}
+                  className="text-violet-600 hover:underline"
+                >
+                  {seller.businessPhone}
+                </a>
+              </div>
+            )}
+            {seller.displayLocation && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span>{seller.displayLocation}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment tracking */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <CreditCard className="h-5 w-5" />
+            Payment details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isPaid && payment && (
+            <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-medium">
+                <CheckCircle className="h-5 w-5" />
+                Payment completed
+              </div>
+              <dl className="text-sm space-y-1">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Date</dt>
+                  <dd>{payment.createdAt ? new Date(payment.createdAt).toLocaleString() : "—"}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Amount</dt>
+                  <dd>${payment.amount.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Method</dt>
+                  <dd>{payment.provider}</dd>
+                </div>
+                {payment.providerRef && (
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Reference</dt>
+                    <dd className="font-mono text-xs truncate max-w-[180px]" title={payment.providerRef}>
+                      {payment.providerRef}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+          {isPaid && !payment && (
+            <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+              This order has been paid.
+            </p>
+          )}
+          {!isPaid && (
+            <p className="text-sm text-muted-foreground">
+              Pending payment. Complete payment below to finalize this order.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -97,11 +208,7 @@ export default async function BuyerOrderPayPage({
             </div>
           </div>
 
-          {isPaid ? (
-            <p className="text-sm text-green-600 font-medium pt-4">
-              This order has been paid.
-            </p>
-          ) : invoice ? (
+          {!isPaid && invoice ? (
             <div className="pt-4">
               <PayWithStripeForm
                 invoiceId={invoice.id}
@@ -110,11 +217,11 @@ export default async function BuyerOrderPayPage({
                 onSuccess={() => window.location.reload()}
               />
             </div>
-          ) : (
+          ) : !isPaid ? (
             <p className="text-sm text-muted-foreground pt-4">
               No invoice found for this order. Please contact support.
             </p>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>

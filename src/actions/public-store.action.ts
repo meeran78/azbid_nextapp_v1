@@ -51,61 +51,80 @@ export type PublicStore = {
     businessPhone: string | null;
   };
   lots: PublicStoreLot[];
+  /** Total count of lots (LIVE + SCHEDULED). When using pagination, lots.length may be less. */
+  totalLotCount?: number;
 };
 
+const DEFAULT_STORE_LOT_PAGE_SIZE = 6;
+
 export async function getPublicStore(
-  storeId: string
+  storeId: string,
+  page = 1,
+  pageSize = DEFAULT_STORE_LOT_PAGE_SIZE
 ): Promise<PublicStore | null> {
-  const store = await prisma.store.findFirst({
-    where: { id: storeId, status: "ACTIVE" },
-    include: {
-      owner: {
-        select: {
-          name: true,
-          displayLocation: true,
-          city: true,
-          state: true,
-          businessPhone: true,
+  type CountArgs = NonNullable<Parameters<typeof prisma.lot.count>[0]>;
+  type LotWhereInput = CountArgs["where"];
+  const lotWhere = { storeId, status: { in: ["LIVE", "SCHEDULED"] } } as LotWhereInput;
+  const [totalLotCount, lotStats, store] = await Promise.all([
+    prisma.lot.count({ where: lotWhere }),
+    prisma.lot.findMany({
+      where: lotWhere,
+      select: { status: true, _count: { select: { items: true } } },
+    }),
+    prisma.store.findFirst({
+      where: { id: storeId, status: "ACTIVE" },
+      include: {
+        owner: {
+          select: {
+            name: true,
+            displayLocation: true,
+            city: true,
+            state: true,
+            businessPhone: true,
+          },
         },
-      },
-      lots: {
-        where: { status: { in: ["LIVE", "SCHEDULED"] } },
-        include: {
-          items: {
-            orderBy: { createdAt: "asc" },
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              condition: true,
-              imageUrls: true,
-              startPrice: true,
-              reservePrice: true,
-              currentPrice: true,
-              retailPrice: true,
-              createdAt: true,
-              category: { select: { name: true } },
-              _count: { select: { bids: true } },
+        lots: {
+          where: { status: { in: ["LIVE", "SCHEDULED"] as ("LIVE" | "SCHEDULED")[] } },
+          skip: (Math.max(1, page) - 1) * Math.max(1, Math.min(24, pageSize)),
+          take: Math.max(1, Math.min(24, pageSize)),
+          include: {
+            items: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                condition: true,
+                imageUrls: true,
+                startPrice: true,
+                reservePrice: true,
+                currentPrice: true,
+                retailPrice: true,
+                createdAt: true,
+                category: { select: { name: true } },
+                _count: { select: { bids: true } },
+              },
             },
+            auction: {
+              select: { auctionDisplayId: true, buyersPremium: true },
+            },
+            _count: { select: { items: true } },
           },
-          auction: {
-            select: { auctionDisplayId: true, buyersPremium: true },
-          },
-          _count: { select: { items: true } },
+          orderBy: { closesAt: "asc" },
         },
-        orderBy: { closesAt: "asc" },
       },
-    },
-  });
+    }),
+  ]);
 
   if (!store) return null;
 
   const lots = store.lots ?? [];
-  const liveItemCount = lots
+  type LotStatRow = { status: string; _count: { items: number } };
+  const liveItemCount = (lotStats as LotStatRow[])
     .filter((l) => l.status === "LIVE")
-    .reduce((sum, l) => sum + (l._count?.items ?? 0), 0);
-  const totalItemCount = lots.reduce(
-    (sum, l) => sum + (l._count?.items ?? 0),
+    .reduce((sum, l) => sum + l._count.items, 0);
+  const totalItemCount = (lotStats as unknown as LotStatRow[]).reduce(
+    (sum, l) => sum + l._count.items,
     0
   );
 
@@ -120,6 +139,7 @@ export async function getPublicStore(
     liveItemCount,
     totalItemCount,
     owner: store.owner,
+    totalLotCount,
     lots: lots.map((lot) => {
       const imageUrls = lot.items.flatMap((i) => i.imageUrls ?? []).filter(Boolean);
       return {
@@ -131,7 +151,7 @@ export async function getPublicStore(
         closesAt: lot.closesAt,
         inspectionAt: lot.inspectionAt,
         removalStartAt: lot.removalStartAt,
-        itemCount: lot._count?.items ?? 0,
+        itemCount: (lot as { _count?: { items: number } })._count?.items ?? 0,
         imageUrls,
         auctionDisplayId: lot.auction?.auctionDisplayId ?? null,
         buyersPremium: lot.auction?.buyersPremium ?? null,

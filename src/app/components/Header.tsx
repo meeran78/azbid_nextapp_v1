@@ -83,7 +83,7 @@ const Header = () => {
 											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Home
 										</Button>
-										<Button
+										{/* <Button
 											variant='ghost'
 											size='sm'
 											onClick={() => navigate.push('/live-auctions')}
@@ -96,7 +96,7 @@ const Header = () => {
 											onClick={() => navigate.push('/buy-now')}
 											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Buy Now
-										</Button>
+										</Button> */}
 									</>
 								)}
 								<Button

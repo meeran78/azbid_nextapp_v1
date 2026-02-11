@@ -1,14 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  Pagination,
   PaginationContent,
   PaginationItem,
   PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
   Select,
@@ -134,37 +133,61 @@ export function SectionPagination({
       </div>
 
       {totalPages > 1 && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href={currentPage > 1 ? buildHref(currentPage - 1) : "#"}
-                aria-disabled={currentPage <= 1}
-                className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
+        <nav role="navigation" aria-label="pagination" className="flex items-center gap-2">
+          {currentPage > 1 ? (
+            <Link
+              href={buildHref(currentPage - 1)}
+              className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
+              aria-label="Go to previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Previous</span>
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled>
+              <ChevronLeft className="h-4 w-4" />
+              <span>Previous</span>
+            </span>
+          )}
+          <PaginationContent className="gap-1.5 mx-0">
             {pageNumbers.map((p) =>
               p < 0 ? (
                 <PaginationItem key={p}>
-                  <span className="flex size-9 items-center justify-center">…</span>
+                  <span className="flex size-8 items-center justify-center text-muted-foreground">…</span>
                 </PaginationItem>
               ) : (
                 <PaginationItem key={p}>
-                  <PaginationLink href={buildHref(p)} isActive={p === currentPage}>
+                  <PaginationLink
+                    href={buildHref(p)}
+                    isActive={p === currentPage}
+                    className={
+                      p === currentPage
+                        ? "size-8 min-w-8 rounded-md bg-background border border-input text-foreground font-medium hover:bg-muted/50 hover:text-foreground"
+                        : "min-w-0 h-8 px-0 bg-transparent border-0 text-muted-foreground hover:text-foreground hover:bg-transparent shadow-none font-medium"
+                    }
+                  >
                     {p}
                   </PaginationLink>
                 </PaginationItem>
               )
             )}
-            <PaginationItem>
-              <PaginationNext
-                href={currentPage < totalPages ? buildHref(currentPage + 1) : "#"}
-                aria-disabled={currentPage >= totalPages}
-                className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
           </PaginationContent>
-        </Pagination>
+          {currentPage < totalPages ? (
+            <Link
+              href={buildHref(currentPage + 1)}
+              className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
+              aria-label="Go to next page"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled="true">
+              <span>Next</span>
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          )}
+        </nav>
       )}
     </div>
   );

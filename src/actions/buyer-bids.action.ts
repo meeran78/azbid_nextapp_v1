@@ -282,7 +282,8 @@ export async function getBuyerLostBids(): Promise<BuyerLostBid[]> {
 }
 
 /**
- * Get order + invoice for a buyer (for Pay now page).
+ * Get order + invoice + seller + payment for a buyer (for Pay now page).
+ * Includes seller (store owner) details and payment tracking for winning items.
  */
 export async function getBuyerOrderForPayment(orderId: string) {
   const headersList = await headers();
@@ -293,13 +294,36 @@ export async function getBuyerOrderForPayment(orderId: string) {
   const order = await prisma.order.findFirst({
     where: { id: orderId, buyerId: session.user.id },
     include: {
-      lot: { select: { id: true, title: true } },
+      lot: {
+        select: {
+          id: true,
+          title: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+              owner: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  businessEmail: true,
+                  businessPhone: true,
+                  displayLocation: true,
+                  companyName: true,
+                },
+              },
+            },
+          },
+        },
+      },
       orderItems: {
         include: {
           item: { select: { id: true, title: true, imageUrls: true } },
         },
       },
       invoice: true,
+      payment: true,
     },
   });
 
