@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendEmailAction } from "@/actions/sendEmail.action";
+import { notifyBuyersLotNowLive } from "@/actions/lot-live-notification.action";
 
 export async function approveLotAction(lotId: string) {
   const headersList = await headers();
@@ -51,6 +52,12 @@ export async function approveLotAction(lotId: string) {
     });
   } catch (emailErr) {
     console.error("Error sending lot approval email:", emailErr);
+  }
+
+  try {
+    await notifyBuyersLotNowLive(lotId);
+  } catch (notifyErr) {
+    console.error("Error notifying buyers lot now live:", notifyErr);
   }
 
   revalidatePath("/lots-management");

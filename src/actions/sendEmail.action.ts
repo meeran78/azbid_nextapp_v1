@@ -29,7 +29,7 @@ export async function sendEmailAction({
         html: `
     <div style="${styles.container}">
       <h1 style="${styles.heading}">${subject}</h1>
-      <p style="${styles.paragraph}">${meta.description}</p>
+      <p style="${styles.paragraph}">${String(meta.description).replace(/\n/g, "<br/>")}</p>
       <a href="${meta.link}" style="${styles.link}">Click Here</a>
     </div>
     `,

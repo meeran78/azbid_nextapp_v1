@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { notifyBuyersLotNowLive } from "@/actions/lot-live-notification.action";
 
 const auctionSchema = z
   .object({
@@ -288,6 +289,13 @@ export async function updateAuctionAction(
   // When auction goes SCHEDULED: LIVE lots → SCHEDULED
   // When auction goes DRAFT: LIVE lots → SCHEDULED
   if (newStatus === "LIVE") {
+    const lotsGoingLive = await prisma.lot.findMany({
+      where: {
+        auctionId: id,
+        status: { in: ["DRAFT", "SCHEDULED"] },
+      },
+      select: { id: true },
+    });
     await prisma.lot.updateMany({
       where: {
         auctionId: id,
@@ -295,6 +303,13 @@ export async function updateAuctionAction(
       },
       data: { status: "LIVE" },
     });
+    for (const lot of lotsGoingLive) {
+      try {
+        await notifyBuyersLotNowLive(lot.id);
+      } catch (err) {
+        console.error(`[updateAuctionAction] notifyBuyersLotNowLive(${lot.id}):`, err);
+      }
+    }
   } else if (newStatus === "SCHEDULED" || newStatus === "DRAFT") {
     await prisma.lot.updateMany({
       where: { auctionId: id, status: "LIVE" },
