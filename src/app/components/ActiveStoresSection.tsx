@@ -44,8 +44,9 @@ export async function ActiveStoresSection({ searchParams }: ActiveStoresSectionP
 								🏪 TRUSTED SELLERS
 							</Badge>
 						</div>
+        
       <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
-      Browse By <span className='italic'>Seller</span>
+      Browse By <span className="text-violet-600 dark:text-violet-400 italic">Seller</span>
       </h2>
       <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
         Browse our trusted sellers. View stores, favourite your favourites, and explore live auctions.
