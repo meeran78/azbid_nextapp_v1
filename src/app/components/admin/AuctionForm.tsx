@@ -39,6 +39,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import Link from "next/link";
 import { ChevronDown, ChevronRight, Package } from "lucide-react";
 import {
@@ -562,27 +563,33 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                       Start Date & Time <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input type="datetime-local" {...field} />
+                      <DateTimePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="mm/dd/yyyy --:-- --"
+                        aria-label="Start date and time"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="endAt"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      End Date & Time ( Must be after start date )<span className="text-red-500">*</span>
+                      End Date & Time <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input type="datetime-local" {...field} />
+                      <DateTimePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="mm/dd/yyyy --:-- --"
+                        aria-label="End date and time"
+                      />
                     </FormControl>
-                    {/* <FormDescription>
-                      Must be after start date
-                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 )}

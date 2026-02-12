@@ -113,9 +113,9 @@ export function AuctionList({ auctions }: AuctionListProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        {/* Desktop: table */}
-        <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0">
-          <Table className="min-w-[900px]">
+        {/* Desktop: table — constrained width + horizontal scroll for smaller screens */}
+        <div className="hidden md:block w-full max-w-full min-w-0 overflow-x-auto">
+          <Table className="min-w-[800px] lg:min-w-[960px] md:min-w-[1024px] xl:min-w-[1280px]">
             <TableHeader>
               <TableRow>
               <TableHead className="text-right">Actions</TableHead>

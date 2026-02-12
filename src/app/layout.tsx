@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 
 //Shandcn UI Components
 import { Toaster } from "@/components/ui/sonner";
+import { getLiveScheduledAuctionsCount } from "@/actions/auction.action";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,17 +25,19 @@ export const metadata: Metadata = {
   description: "Experience the future of online auctions. Bid smarter, win better.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const liveAuctionCount = await getLiveScheduledAuctionsCount();
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-          <Header />
+        <Header liveAuctionCount={liveAuctionCount} />
         {children}
         <Footer />
         <Toaster position="top-center" richColors />

@@ -151,12 +151,15 @@ function ItemCarousel({
 function ItemBidForm({
   item,
   lotId,
+  lotStatus,
   onViewHistory,
 }: {
   item: PublicLotItem;
   lotId: string;
+  lotStatus: string;
   onViewHistory: () => void;
 }) {
+  const isScheduled = (lotStatus ?? "").toUpperCase() === "SCHEDULED";
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const [amount, setAmount] = useState("");
@@ -229,6 +232,25 @@ function ItemBidForm({
         <p className="text-sm text-muted-foreground">
           Only buyers can place bids. Switch to a buyer account to bid.
         </p>
+      </div>
+    );
+  }
+
+  if (isScheduled) {
+    return (
+      <div className="rounded-lg bg-muted/30 p-4 space-y-2">
+        <p className="text-sm text-muted-foreground">
+          Bidding opens when this lot goes live. You can favourite or add to watchlist now.
+        </p>
+        <div className="flex gap-2">
+          <Button type="button" size="sm" disabled className="bg-zinc-800 text-white shrink-0" title="Bidding opens when the lot goes live">
+            Place Bid
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled className="shrink-0" title="Bidding opens when the lot goes live">
+            <History className="h-4 w-4 mr-2" />
+            View History
+          </Button>
+        </div>
       </div>
     );
   }
@@ -453,6 +475,7 @@ function AuctionItemCard({
           <ItemBidForm
             item={item}
             lotId={lot.id}
+            lotStatus={lot.status}
             onViewHistory={() => setHistoryOpen(true)}
           />
         </div>

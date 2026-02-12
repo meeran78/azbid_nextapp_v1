@@ -6,6 +6,22 @@ import { Badge } from "@/components/ui/badge";
 
 const DEFAULT_LOT_PER_PAGE = 6;
 
+/** Display order for lot status (lower index = shown first). */
+const LOT_STATUS_ORDER: Record<string, number> = {
+  LIVE: 0,
+  SCHEDULED: 1,
+  DRAFT: 2,
+  SOLD: 3,
+  UNSOLD: 4,
+  RESEND: 5,
+};
+
+function sortLotsByStatus<T extends { status: string }>(lots: T[]): T[] {
+  return [...lots].sort(
+    (a, b) => (LOT_STATUS_ORDER[a.status] ?? 99) - (LOT_STATUS_ORDER[b.status] ?? 99)
+  );
+}
+
 type ActiveLotsSectionProps = {
   searchParams?:
     | {
@@ -78,7 +94,7 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[400px]">
-            {lots.map((lot) => (
+            {sortLotsByStatus(lots).map((lot) => (
               <ActiveLotCard key={lot.id} lot={lot} />
             ))}
           </div>

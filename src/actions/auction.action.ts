@@ -347,3 +347,10 @@ export async function deleteAuctionAction(id: string) {
   revalidatePath("/auctions-management");
   return { success: true };
 }
+
+/** Count of auctions that are LIVE or SCHEDULED (for header/banners). */
+export async function getLiveScheduledAuctionsCount(): Promise<number> {
+  return prisma.auction.count({
+    where: { status: { in: ["LIVE", "SCHEDULED"] } },
+  });
+}

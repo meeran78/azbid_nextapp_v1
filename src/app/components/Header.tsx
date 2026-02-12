@@ -24,8 +24,10 @@ import { LogIn, UserCircle } from 'lucide-react';
 
 import { SignOutButton } from "@/app/components/SignoutButton";
 
-const Header = () => {
-	const [activeAuctions, setActiveAuctions] = useState(425);
+type HeaderProps = { liveAuctionCount?: number };
+
+const Header = ({ liveAuctionCount = 0 }: HeaderProps) => {
+	const [activeAuctions, setActiveAuctions] = useState(liveAuctionCount);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [showCart, setShowCart] = useState(false);
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -33,6 +35,10 @@ const Header = () => {
 	const { data: session } = useSession();
 	const isSeller = session?.user?.role === "SELLER";
 	const navigate = useRouter();
+
+	useEffect(() => {
+		setActiveAuctions(liveAuctionCount);
+	}, [liveAuctionCount]);
 
 	useEffect(() => {
 		console.log(session);

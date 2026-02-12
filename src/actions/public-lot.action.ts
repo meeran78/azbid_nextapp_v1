@@ -61,7 +61,7 @@ export async function getPublicLot(
     prisma.lot.findUnique({
       where: {
         id: lotId,
-        status: { in: ["LIVE"] },
+        status: { in: ["LIVE", "SCHEDULED"] },
       },
       include: {
         store: {
