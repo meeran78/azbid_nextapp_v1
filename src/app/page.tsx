@@ -4,7 +4,7 @@ import { ActiveLotsSection } from "@/app/components/ActiveLotsSection";
 import { ShopByCategorySection } from "@/app/components/ShopByCategorySection";
 import HowItWorksSection from "@/app/components/HowItWorksSection";
 import HighlightedFeature from "@/app/components/HighlightedFeature";
-import SocialRedirect from "@/app/components/SocialRedirect";
+// import SocialRedirect from "@/app/components/SocialRedirect";
 import SocialMediaLinks from "@/app/components/SocialMediaLinks";
 type HomeSearchParams = {
   q?: string;
