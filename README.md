@@ -19,6 +19,7 @@ A modern, full-featured online auction platform built with Next.js 16, featuring
 
 ### Platform Features
 - **Live Auctions**: Real-time auction browsing and bidding
+- **Auction lifecycle**: Soft close (extend-on-bid), cron-based lot close, automatic order and invoice creation, Stripe auto-charge with optional 3DS, and seller payouts via Stripe Connect (see [Auction & Payment Flow](#auction--payment-flow-complete) below)
 - **Buy Now**: Instant purchase option for select items
 - **User Profiles**: Comprehensive user profile management
 - **Email Notifications**: Automated email notifications for important events
@@ -98,6 +99,11 @@ Before you begin, ensure you have the following installed:
         # Admin Configuration
         ADMIN_EMAILS="admin1@example.com;admin2@example.com"
 
+        # Stripe (payments and seller payouts)
+        STRIPE_SECRET_KEY="sk_..."
+        STRIPE_WEBHOOK_SECRET="whsec_..."   # For /api/stripe/webhook
+        PLATFORM_COMMISSION_PCT="10"        # Optional; default 10. Per-seller override via User.commissionPct
+
         # Sanity (optional)
         NEXT_PUBLIC_SANITY_PROJECT_ID="your-sanity-project-id"
         NEXT_PUBLIC_SANITY_DATASET="production"
@@ -118,9 +124,159 @@ Before you begin, ensure you have the following installed:
 6. **Open your browser**
     Navigate to http://localhost:3000
 
+## Auction & Payment Flow (Complete)
+
+This section describes the full lifecycle from bidding through lot close, order creation, payment, and seller payout.
+
+### 1. Bidding and soft close
+
+**Location:** `src/actions/bid.action.ts`
+
+- Buyers place bids on items in LIVE lots. Each bid updates the item’s `currentPrice` and creates a `Bid` record.
+- **Soft close:** If a bid lands in the “soft close window” (e.g. last 2 minutes before `closesAt`), the lot’s close time can be extended so last-second bids get a fair chance.
+  - **Window:** `remainingSeconds = (lot.closesAt - now) / 1000`; if `remainingSeconds <= softCloseWindowSec` (default 120), the lot is in the window.
+  - **Limit:** `lot.extendedCount < softCloseExtendLimit` (default 10 extensions).
+  - **Extension:** If the auction has soft close enabled, `closesAt` is extended by `softCloseExtendSec` (default 60) and `extendedCount` is incremented.
+- Auction settings come from `lot.auction` (softCloseEnabled, softCloseWindowSec, softCloseExtendSec, softCloseExtendLimit). If the lot has no auction, defaults are used so standalone lots still get soft close.
+- All updates (bid create, item price, optional lot extension) run in a **single Prisma transaction**.
+
+**Schema:** Lot has `extendedCount`, `lastExtendedAt`; Auction has the four soft-close fields. Admins configure them in the Auction form.
+
+---
+
+### 2. Lot close (cron)
+
+**Location:** `src/app/api/cron/close-lots/route.ts` → `src/actions/close-expired-lots.action.ts`
+
+- A cron job (e.g. every minute via `vercel.json`) calls `closeExpiredLots()`.
+- It finds lots with `status: "LIVE"` and `closesAt <= now` (after any soft-close extensions).
+- For each such lot it calls `closeLot(lotId)`. Errors are collected and returned.
+
+---
+
+### 3. Order and invoice creation
+
+**Location:** `src/actions/close-lot.action.ts` (`closeLot`)
+
+When a lot closes:
+
+1. **LOT CLOSE** – Lot is marked SOLD (if there are winning bids) or UNSOLD.
+2. **Winners** – For each item, the top bid (by amount) is taken; `winningBidId` and `winningBidAmount` are set on the item.
+3. **Group by buyer** – Won items are grouped by buyer. One **Order** per (buyer, lot) with status PENDING, and one **OrderItem** per won item (subtotal, buyer premium, tax, total).
+4. **Invoice** – One **Invoice** per order: `invoiceDisplayId`, `orderId`, `buyerId`, `sellerId`, `lotId`, `winningBidAmount`, `buyerPremiumPct`, `tax`, `invoiceTotal`, status PENDING. **InvoiceItems** link the invoice to each won item. Buyer premium % comes from `lot.auction?.buyersPremium` (e.g. `"12%"` → 12); if no auction, premium is 0.
+5. **Payment flow** – For each created invoice (see below).
+6. **Notifications** – Buyers receive “You won – pay” or “Payment received”; seller receives “Lot sold” with a summary.
+
+All DB writes for lot/items/orders/invoices are done in a **single transaction**; Stripe PaymentIntents are created **after** the transaction.
+
+---
+
+### 4. Payment flow (Stripe)
+
+**Location:** `src/actions/payment.action.ts`, `src/app/api/stripe/webhook/route.ts`
+
+#### 4.1 Invoices below $0.50
+
+- If `invoiceTotal < 0.50`, the platform **does not** create a PaymentIntent or attempt charge (Stripe minimum is 50¢).
+- In `closeLot`, such invoices are skipped for payment; the buyer is notified and can contact support. On the order pay page, a message explains the total is below the card minimum and the Stripe form is not shown.
+
+#### 4.2 triggerPaymentFlow(invoiceId)
+
+- Loads the invoice and buyer. If the invoice already has a `stripePaymentIntentId`, returns success (and optionally the existing client secret).
+- Otherwise creates a Stripe **PaymentIntent** for `invoice.invoiceTotal` (USD), attached to the buyer’s Stripe customer, with `metadata: { invoiceId }` and `automatic_payment_methods: { enabled: true }`.
+- Saves `stripePaymentIntentId` on the Invoice.
+- Returns `clientSecret` for the frontend (e.g. Pay page) to confirm payment or complete 3DS.
+
+#### 4.3 chargeInvoiceWithStoredPayment(invoiceId) (auto-charge at lot close)
+
+- Ensures a PaymentIntent exists (calls `triggerPaymentFlow` if needed).
+- **Payment method:** Uses the buyer’s **default** payment method when set (`customer.invoice_settings.default_payment_method`), provided it is a card; otherwise uses the first card on file. This matches the card set after SetupIntent (e.g. when adding a card in payment methods).
+- Calls `stripe.paymentIntents.confirm(paymentIntentId, { payment_method: pmId, off_session: true })`.
+- **If status is `succeeded`:** In one transaction, updates Invoice (status PAID, `paidAt`, `paymentRequiresAction: false`), Order (PAID), and Payment (upsert). Seller payout is **not** performed here; it is done only in the webhook.
+- **If status is `requires_action` (e.g. 3DS):** The invoice is updated with `paymentRequiresAction: true`. The buyer can complete verification on the order pay page; the pay page shows a message that the bank requires additional verification and displays the Stripe form so they can finish 3DS.
+- **Other statuses:** Returns a reason (e.g. “Payment requires customer action”) and the invoice stays PENDING.
+
+#### 4.4 Webhook: payment_intent.succeeded
+
+- Stripe sends `payment_intent.succeeded` when the charge succeeds (either from the sync confirm or after the buyer completes 3DS on the pay page).
+- The handler reads `metadata.invoiceId`, loads the Invoice and Order, and in a transaction updates Invoice (PAID, `paidAt`, `paymentRequiresAction: false`), Order (PAID), and Payment (upsert).
+- It then calls **transferToSellerForInvoice(invoiceId)** to send the seller’s share to their Stripe Connect account. This is the **only** place seller payout runs, so it is consistent and avoids double transfer when both the sync path and the webhook run.
+
+---
+
+### 5. Seller payout and commission
+
+**Location:** `src/actions/stripe-connect.action.ts`, `src/actions/seller-revenue.action.ts`
+
+#### 5.1 When payout runs
+
+- Only after an invoice is **PAID**, from the Stripe webhook handler (`payment_intent.succeeded`). The handler calls `transferToSellerForInvoice(invoiceId)`.
+
+#### 5.2 Idempotency
+
+- Each Invoice has an optional **sellerPayoutTransferId**. If it is already set, `transferToSellerForInvoice` does **not** create a new transfer; it returns success with that transfer ID. So duplicate webhook deliveries do not double-pay the seller.
+- After a successful Stripe Transfer, the invoice is updated with `sellerPayoutTransferId: transfer.id`.
+
+#### 5.3 Commission source (priority)
+
+1. **Per-seller:** `User.commissionPct` (0–100), if set.
+2. **Platform:** `process.env.PLATFORM_COMMISSION_PCT` (parsed as number), if valid.
+3. **Default:** 10% in code (`DEFAULT_COMMISSION_PCT`).
+
+Commission is validated and clamped to 0–100; invalid or NaN values fall back to the next source or the default.
+
+#### 5.4 Payout formula
+
+- **Seller receives:** `winningBidAmount × (1 − commissionPct/100)` (in cents, USD), transferred to the seller’s Stripe Connect Express account.
+- **Platform keeps:** Commission on the hammer (`winningBidAmount × commissionPct/100`) **plus** all buyer premium. The buyer pays `invoiceTotal` (hammer + buyer premium); only the seller’s share of the hammer is transferred.
+
+Seller revenue metrics (e.g. “Platform commission paid”, “paid payout”) use the same commission resolution and formulas so reporting matches actual transfers.
+
+---
+
+### 6. Flow summary diagram
+
+```
+Cron (every minute)
+    → closeExpiredLots() finds LIVE lots with closesAt <= now
+    → For each: closeLot(lotId)
+
+closeLot(lotId)
+    → Mark lot SOLD/UNSOLD
+    → Set winningBidId/winningBidAmount on each item
+    → Create Order + OrderItems + Invoice + InvoiceItems per buyer (one transaction)
+    → For each invoice with total >= $0.50:
+          triggerPaymentFlow(invoiceId)     → create PaymentIntent, save ID on Invoice
+          chargeInvoiceWithStoredPayment()  → confirm with default/first card (off_session)
+              → If succeeded: Invoice/Order PAID, Payment upsert
+              → If requires_action: set paymentRequiresAction = true (buyer completes 3DS on pay page)
+    → Stripe sends payment_intent.succeeded (sync or after 3DS)
+    → Webhook: mark Invoice/Order PAID, Payment upsert; transferToSellerForInvoice() (idempotent)
+    → Email buyers and seller
+```
+
+---
+
+### 7. Key files reference
+
+| Area | File(s) |
+|------|--------|
+| Soft close (extend on bid) | `src/actions/bid.action.ts` |
+| Cron (expired lots) | `src/app/api/cron/close-lots/route.ts`, `src/actions/close-expired-lots.action.ts` |
+| Order & invoice creation | `src/actions/close-lot.action.ts` |
+| PaymentIntent & auto-charge | `src/actions/payment.action.ts` |
+| Stripe webhook & seller transfer | `src/app/api/stripe/webhook/route.ts` |
+| Seller payout & commission | `src/actions/stripe-connect.action.ts` |
+| Seller revenue metrics | `src/actions/seller-revenue.action.ts` |
+| Buyer pay page (3DS, small total) | `src/app/(buyers)/buyers-dashboard/orders/[orderId]/pay/page.tsx` |
+
+---
+
 ## Project Structure
-    **Proejct Structure**
-    azbid_nextapp_v1/
+
+**Project Structure**
+
+azbid_nextapp_v1/
     ├── src/
     │   ├── app/                    # Next.js App Router pages
     │   │   ├── (admin)/            # Admin routes
@@ -196,15 +352,25 @@ Before you begin, ensure you have the following installed:
     ADMIN - Platform administrators
 ## 🚀 Available Scripts
 
-## Developmentpnpm dev              
-## Start development server (generates Prisma client)# Productionpnpm build            
-## Build for production (generates Prisma client)pnpm start            
-## Start production server# Databasepnpm dlx prisma generate        
-## Generate Prisma Clientpnpm dlx prisma migrate dev      
-## Run migrations in developmentpnpm dlx prisma migrate deploy   
-## Run migrations in productionpnpm dlx prisma studio           
-## Open Prisma Studio# Lintingpnpm lint             
-## Run ESLint# Sanitypnpm dlx sanity@latest loginpnpm create sanity@latest --project 3zqt6l7q --dataset production --template clean --typescript --output-path studio-azbid
+### Development
+- `pnpm dev` – Start development server (generates Prisma client)
+
+### Production
+- `pnpm build` – Build for production (generates Prisma client)
+- `pnpm start` – Start production server
+
+### Database
+- `pnpm dlx prisma generate` – Generate Prisma Client
+- `pnpm dlx prisma migrate dev` – Run migrations in development
+- `pnpm dlx prisma migrate deploy` – Run migrations in production
+- `pnpm dlx prisma studio` – Open Prisma Studio
+
+### Linting
+- `pnpm lint` – Run ESLint
+
+### Sanity
+- `pnpm dlx sanity@latest login`
+- `pnpm create sanity@latest --project 3zqt6l7q --dataset production --template clean --typescript --output-path studio-azbid`
 
 ## 🎨 UI Components
     This project uses Shadcn/ui components built on Radix UI. Components are located in src/app/components/ui/.
@@ -237,44 +403,60 @@ Before you begin, ensure you have the following installed:
     Run pnpm build before deployment
     Run migrations: pnpm dlx prisma migrate deploy
 ## 🧪 Development Tips
-    Hot Reload: Changes to components auto-reload
-    Prisma Studio: Use pnpm dlx prisma studio to view/edit database
-    Type Safety: Full TypeScript support throughout
-    Error Pages: Custom error pages with animations
-    Loading States: Custom loading pages
+
+- **Hot Reload:** Changes to components auto-reload
+- **Prisma Studio:** Use `pnpm dlx prisma studio` to view/edit database
+- **Type Safety:** Full TypeScript support throughout
+- **Error Pages:** Custom error pages with animations
+- **Loading States:** Custom loading pages
 ## 📝 Environment Variables Reference
-    Variable	Description	Required
-    DATABASE_URL	PostgreSQL connection string	✅
-    NEXT_PUBLIC_APP_URL	Public app URL	✅
-    BETTER_AUTH_SECRET	Auth secret key	✅
-    BETTER_AUTH_URL	Auth base URL	✅
-    SMTP_HOST	SMTP server host	✅
-    SMTP_PORT	SMTP server port	✅
-    SMTP_USER	SMTP username	✅
-    SMTP_PASSWORD	SMTP password	✅
-    GOOGLE_CLIENT_ID	Google OAuth client ID	❌
-    GOOGLE_CLIENT_SECRET	Google OAuth secret	❌
-    GITHUB_CLIENT_ID	GitHub OAuth client ID	❌
-    GITHUB_CLIENT_SECRET	GitHub OAuth secret	❌
-    ADMIN_EMAILS	Semicolon-separated admin emails	❌
-    NEXT_PUBLIC_SANITY_PROJECT_ID	Sanity project ID	❌
-    NEXT_PUBLIC_SANITY_DATASET	Sanity dataset name	❌
-    SANITY_API_TOKEN	Sanity API token	❌
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| DATABASE_URL | PostgreSQL connection string | ✅ |
+| NEXT_PUBLIC_APP_URL | Public app URL | ✅ |
+| BETTER_AUTH_SECRET | Auth secret key | ✅ |
+| BETTER_AUTH_URL | Auth base URL | ✅ |
+| SMTP_HOST | SMTP server host | ✅ |
+| SMTP_PORT | SMTP server port | ✅ |
+| SMTP_USER | SMTP username | ✅ |
+| SMTP_PASSWORD | SMTP password | ✅ |
+| STRIPE_SECRET_KEY | Stripe secret key (payments, Connect, transfers) | ✅ for payments |
+| STRIPE_WEBHOOK_SECRET | Webhook signing secret for `/api/stripe/webhook` | ✅ for payouts |
+| PLATFORM_COMMISSION_PCT | Default platform commission % (0–100); overridden by User.commissionPct | ❌ (default 10) |
+| GOOGLE_CLIENT_ID | Google OAuth client ID | ❌ |
+| GOOGLE_CLIENT_SECRET | Google OAuth secret | ❌ |
+| GITHUB_CLIENT_ID | GitHub OAuth client ID | ❌ |
+| GITHUB_CLIENT_SECRET | GitHub OAuth secret | ❌ |
+| ADMIN_EMAILS | Semicolon-separated admin emails | ❌ |
+| NEXT_PUBLIC_SANITY_PROJECT_ID | Sanity project ID | ❌ |
+| NEXT_PUBLIC_SANITY_DATASET | Sanity dataset name | ❌ |
+| SANITY_API_TOKEN | Sanity API token | ❌ |
+
 ## 🐛 Troubleshooting
-    Prisma Client Not Generated
-    pnpm dlx prisma generate
-    Database Connection Issues
-    Verify DATABASE_URL is correct
-    Ensure PostgreSQL is running
-    Check database credentials
-    Authentication Errors
-    Verify BETTER_AUTH_SECRET is set
-    Check BETTER_AUTH_URL matches your domain
-    Ensure email configuration is correct
-    Build Errors
-    Run pnpm dlx prisma generate before building
-    Check all environment variables are set
-    Verify TypeScript errors are resolved
+
+### Prisma Client Not Generated
+Run `pnpm dlx prisma generate`.
+
+### Database Connection Issues
+- Verify DATABASE_URL is correct
+- Ensure PostgreSQL is running
+- Check database credentials
+
+### Authentication Errors
+- Verify BETTER_AUTH_SECRET is set
+- Check BETTER_AUTH_URL matches your domain
+- Ensure email configuration is correct
+
+### Build Errors
+- Run `pnpm dlx prisma generate` before building
+- Check all environment variables are set
+- Verify TypeScript errors are resolved
+
+### Stripe / payments
+- Ensure STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set for payments and seller payouts
+- Configure the webhook in Stripe Dashboard to point to `https://your-domain/api/stripe/webhook` and listen for `payment_intent.succeeded` (and optionally `payment_intent.payment_failed`, `setup_intent.succeeded`)
+
 ## 📚 Additional Resources
     Next.js Documentation
     Better Auth Documentation
