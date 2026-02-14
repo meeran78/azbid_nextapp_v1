@@ -218,9 +218,14 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
     }
   });
 
-  // 5. Trigger payment flow then auto-charge stored payment method for each invoice
+  // 5. Trigger payment flow then auto-charge stored payment method for each invoice (skip if below Stripe minimum)
+  const STRIPE_MIN_AMOUNT = 0.5;
   const autoChargedInvoiceIds = new Set<string>();
   for (const inv of createdInvoices) {
+    if (inv.total < STRIPE_MIN_AMOUNT) {
+      console.warn(`Invoice ${inv.invoiceId} total $${inv.total.toFixed(2)} below Stripe minimum ($${STRIPE_MIN_AMOUNT}); buyer must contact support.`);
+      continue;
+    }
     try {
       await triggerPaymentFlow(inv.invoiceId);
       const charge = await chargeInvoiceWithStoredPayment(inv.invoiceId);

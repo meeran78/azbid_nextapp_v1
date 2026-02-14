@@ -17,11 +17,14 @@ export type SellerRevenueMetrics = {
   pendingBuyerPaymentsCount: number;
 };
 
+/** Clamp commission to 0–100; treat NaN/invalid as default (aligned with stripe-connect). */
 function getCommissionPct(sellerCommissionPct: number | null): number {
-  if (sellerCommissionPct != null) return sellerCommissionPct;
+  if (sellerCommissionPct != null && Number.isFinite(sellerCommissionPct)) {
+    return Math.min(100, Math.max(0, sellerCommissionPct));
+  }
   if (typeof process.env.PLATFORM_COMMISSION_PCT === "string") {
     const n = Number.parseFloat(process.env.PLATFORM_COMMISSION_PCT);
-    if (!Number.isNaN(n)) return n;
+    if (Number.isFinite(n)) return Math.min(100, Math.max(0, n));
   }
   return DEFAULT_COMMISSION_PCT;
 }

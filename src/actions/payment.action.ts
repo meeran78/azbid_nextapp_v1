@@ -362,16 +362,23 @@ export async function chargeInvoiceWithStoredPayment(
     return { charged: false, reason: "No PaymentIntent for invoice." };
   }
 
-  const customer = await stripe.customers.retrieve(customerId);
+  const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
   if (customer.deleted) {
     return { charged: false, reason: "Customer no longer valid." };
   }
-  // Off-session confirm requires a card; default may be Link or other type.
+  // Prefer customer's default payment method (set after SetupIntent), then first card.
+  const defaultPmId =
+    typeof customer.invoice_settings?.default_payment_method === "string"
+      ? customer.invoice_settings.default_payment_method
+      : (customer.invoice_settings?.default_payment_method as Stripe.PaymentMethod)?.id ?? null;
   const cardList = await stripe.paymentMethods.list({
     customer: customerId,
     type: "card",
   });
-  const pmId = cardList.data[0]?.id ?? null;
+  const defaultIsCard = defaultPmId
+    ? cardList.data.some((pm) => pm.id === defaultPmId)
+    : false;
+  const pmId = defaultIsCard ? defaultPmId! : cardList.data[0]?.id ?? null;
   if (!pmId) {
     return { charged: false, reason: "No card on file for off-session charge." };
   }
@@ -385,7 +392,7 @@ export async function chargeInvoiceWithStoredPayment(
       await prisma.$transaction([
         prisma.invoice.update({
           where: { id: invoiceId },
-          data: { status: "PAID", paidAt: new Date() },
+          data: { status: "PAID", paidAt: new Date(), paymentRequiresAction: false },
         }),
         prisma.order.update({
           where: { id: invoice.order.id },
@@ -411,6 +418,10 @@ export async function chargeInvoiceWithStoredPayment(
       return { charged: true };
     }
     if (pi.status === "requires_action") {
+      await prisma.invoice.update({
+        where: { id: invoiceId },
+        data: { paymentRequiresAction: true },
+      });
       return { charged: false, reason: "Payment requires customer action (e.g. 3DS)." };
     }
     return { charged: false, reason: `PaymentIntent status: ${pi.status}` };

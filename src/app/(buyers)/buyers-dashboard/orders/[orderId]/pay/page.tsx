@@ -142,7 +142,9 @@ export default async function BuyerOrderPayPage({
           )}
           {!isPaid && (
             <p className="text-sm text-muted-foreground">
-              Pending payment. Complete payment below to finalize this order.
+              {invoice?.paymentRequiresAction
+                ? "Your bank requires additional verification (3D Secure). Complete the form below to finish payment."
+                : "Pending payment. Complete payment below to finalize this order."}
             </p>
           )}
         </CardContent>
@@ -209,14 +211,20 @@ export default async function BuyerOrderPayPage({
           </div>
 
           {!isPaid && invoice ? (
-            <div className="pt-4">
-              <PayWithStripeForm
-                invoiceId={invoice.id}
-                returnUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/buyers-dashboard/orders/${orderId}/pay`}
-                orderTotal={order.total}
-                onSuccess={() => window.location.reload()}
-              />
-            </div>
+            order.total < 0.5 ? (
+              <p className="text-sm text-amber-600 dark:text-amber-400 pt-4">
+                This order total (${order.total.toFixed(2)}) is below the minimum for card payment ($0.50). Please contact support to complete payment.
+              </p>
+            ) : (
+              <div className="pt-4">
+                <PayWithStripeForm
+                  invoiceId={invoice.id}
+                  returnUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/buyers-dashboard/orders/${orderId}/pay`}
+                  orderTotal={order.total}
+                  onSuccess={() => window.location.reload()}
+                />
+              </div>
+            )
           ) : !isPaid ? (
             <p className="text-sm text-muted-foreground pt-4">
               No invoice found for this order. Please contact support.

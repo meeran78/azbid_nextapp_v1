@@ -524,9 +524,11 @@ model Invoice {
   buyerPremiumPct       Float // Buyer's Premium (%)
   tax                   Float? // Tax if applicable
   stripePaymentIntentId String?
+  sellerPayoutTransferId String? // Stripe Transfer ID once seller payout sent; prevents double transfer
   invoiceTotal          Float
 
   status InvoiceStatus @default(PENDING)
+  paymentRequiresAction Boolean @default(false) // 3DS or other action required; buyer completes on pay page
 
   issuedAt DateTime  @default(now())
   paidAt   DateTime?

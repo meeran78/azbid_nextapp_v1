@@ -67,10 +67,22 @@ export async function createConnectAccountLink(
   return { url: link.url };
 }
 
+/** Clamp commission to 0–100; treat NaN/invalid as default. */
+function resolveCommissionPct(sellerPct: number | null | undefined): number {
+  if (sellerPct != null && Number.isFinite(sellerPct)) {
+    return Math.min(100, Math.max(0, sellerPct));
+  }
+  if (typeof process.env.PLATFORM_COMMISSION_PCT === "string") {
+    const n = Number.parseFloat(process.env.PLATFORM_COMMISSION_PCT);
+    if (Number.isFinite(n)) return Math.min(100, Math.max(0, n));
+  }
+  return DEFAULT_COMMISSION_PCT;
+}
+
 /**
  * Transfer seller payout to their Stripe Connect account after an invoice is paid.
  * Payout = winningBidAmount * (1 - commissionPct/100). Platform keeps buyer premium + commission.
- * Safe to call multiple times for the same invoice (we only transfer if seller has Connect and amount > 0).
+ * Idempotent: if sellerPayoutTransferId is already set, skips transfer and returns that transferId.
  */
 export async function transferToSellerForInvoice(
   invoiceId: string
@@ -84,16 +96,15 @@ export async function transferToSellerForInvoice(
   if (!invoice || invoice.status !== "PAID") {
     return { transferred: false, reason: "Invoice not found or not paid." };
   }
+  if (invoice.sellerPayoutTransferId) {
+    return { transferred: true, transferId: invoice.sellerPayoutTransferId };
+  }
   const accountId = invoice.seller?.stripeConnectAccountId;
   if (!accountId) {
     return { transferred: false, reason: "Seller has not connected Stripe for payouts." };
   }
 
-  const commissionPct =
-    invoice.seller.commissionPct ??
-    (typeof process.env.PLATFORM_COMMISSION_PCT === "string"
-      ? Number.parseFloat(process.env.PLATFORM_COMMISSION_PCT)
-      : DEFAULT_COMMISSION_PCT);
+  const commissionPct = resolveCommissionPct(invoice.seller.commissionPct);
   const sellerPayout = invoice.winningBidAmount * (1 - commissionPct / 100);
   const amountCents = Math.round(sellerPayout * 100);
   if (amountCents <= 0) {
@@ -110,6 +121,10 @@ export async function transferToSellerForInvoice(
       destination: accountId,
       description: `Payout for invoice ${invoice.invoiceDisplayId ?? invoiceId}`,
       metadata: { invoiceId, sellerId: invoice.sellerId },
+    });
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { sellerPayoutTransferId: transfer.id },
     });
     return { transferred: true, transferId: transfer.id };
   } catch (err: unknown) {

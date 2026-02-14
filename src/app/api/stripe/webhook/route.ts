@@ -58,7 +58,7 @@ export async function POST(request: Request) {
           await prisma.$transaction([
             prisma.invoice.update({
               where: { id: invoiceId },
-              data: { status: "PAID", paidAt: new Date() },
+              data: { status: "PAID", paidAt: new Date(), paymentRequiresAction: false },
             }),
             prisma.order.update({
               where: { id: invoice.order.id },
