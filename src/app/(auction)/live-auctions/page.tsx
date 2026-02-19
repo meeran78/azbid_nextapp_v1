@@ -1,10 +1,24 @@
-import React from 'react'
+import { ActiveLotsSection } from "@/app/components/ActiveLotsSection";
 
-type Props = {}
+type HomeSearchParams = {
+  q?: string;
+  status?: string;
+  location?: string;
+  lot_q?: string;
+  lot_status?: string;
+  lot_location?: string;
+  lot_item?: string;
+  lot_category?: string;
+};
 
-const LiveAuctions = (props: Props) => {
+type HomeProps = {
+  searchParams: Promise<HomeSearchParams> | HomeSearchParams;
+};
+
+const LiveAuctions = ({ searchParams }: HomeProps) => {
+  
   return (
-    <div>LiveAuctions</div>
+    <ActiveLotsSection searchParams={searchParams} />
   )
 }
 

@@ -89,14 +89,14 @@ const Header = ({ liveAuctionCount = 0 }: HeaderProps) => {
 											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Home
 										</Button>
-										{/* <Button
+										 <Button
 											variant='ghost'
 											size='sm'
 											onClick={() => navigate.push('/live-auctions')}
 											className='hover:scale-105 transition-all duration-200 cursor-pointer'>
 											Live Auctions
 										</Button>
-										<Button
+									{/*	<Button
 											variant='ghost'
 											size='sm'
 											onClick={() => navigate.push('/buy-now')}

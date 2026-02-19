@@ -26,7 +26,7 @@ export default async function Home({ searchParams }: HomeProps) {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       <AuctionHero />
       <ActiveStoresSection searchParams={searchParams} />
-      <ActiveLotsSection searchParams={searchParams} />
+    
       <ShopByCategorySection />
       <HowItWorksSection />
       <HighlightedFeature />
