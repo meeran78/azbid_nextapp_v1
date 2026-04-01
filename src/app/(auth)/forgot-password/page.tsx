@@ -46,13 +46,27 @@ export default function ForgotPasswordPage() {
       return;
     }
 
- // In handleSubmit:
-    const { error } = await forgetPasswordAction(
-      email.trim(),
-      `${window.location.origin}/reset-password`
-    );
+    try {
+      const { error } = await forgetPasswordAction(
+        email.trim(),
+        `${window.location.origin}/reset-password`
+      );
 
-   
+      if (error) {
+        setError(error);
+        toast.error(error);
+        return;
+      }
+
+      setSuccess(true);
+      toast.success("Password reset link sent. Please check your email.");
+    } catch {
+      const msg = "Failed to send reset email. Please try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (success) {

@@ -46,7 +46,7 @@ const options = {
     },
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendEmailAction({
+      const result = await sendEmailAction({
         to: user.email,
         subject: "Reset your password",
         meta: {
@@ -54,6 +54,9 @@ const options = {
           link: String(url),
         },
       });
+      if (!result?.success) {
+        throw new Error("Failed to send reset password email. Please try again.");
+      }
     },
   },
   hooks: {

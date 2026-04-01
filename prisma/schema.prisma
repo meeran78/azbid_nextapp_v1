@@ -238,6 +238,9 @@ model Store {
 
   status StoreStatus @default(PENDING) // Single definition
 
+  /// When true and store is ACTIVE, eligible for homepage hero carousel (admin-controlled).
+  displayInHero Boolean @default(false)
+
   // NEW: reputation metrics
   averageRating    Float?
   ratingsCount     Int?
@@ -259,6 +262,7 @@ model Store {
   updatedAt DateTime @updatedAt
 
   @@index([ownerId, status])
+  @@index([displayInHero, status])
 }
 
 model StoreFavourite {

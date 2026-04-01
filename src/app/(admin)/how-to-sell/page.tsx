@@ -242,6 +242,7 @@ const HowToSell = () => {
 		<div className='min-h-screen bg-background'>
 			
 			<div className='container mx-auto px-4 py-8'>
+				
 				{/* Hero Section */}
 				<section className='text-center py-12 mb-12'>
 					<h1 className='text-4xl font-bold mb-4'>
@@ -527,14 +528,14 @@ const HowToSell = () => {
 						list your first item!
 					</p>
 					<div className='flex flex-col sm:flex-row gap-4 justify-center'>
-						<Button size='lg' onClick={() => navigate('/auth')}>
+						<Button size='lg' onClick={() => navigate.push('/auth')}>
 							<User className='mr-2 h-5 w-5' />
 							Create Seller Account
 						</Button>
 						<Button
 							variant='outline'
 							size='lg'
-							onClick={() => navigate('/contact')}>
+							onClick={() => navigate.push('/contact')}>
 							<MessageCircle className='mr-2 h-5 w-5' />
 							Ask Questions
 						</Button>

@@ -5,7 +5,7 @@ import { ActiveStoresFilterBar } from "@/app/components/ActiveStoresFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { SectionPagination } from "@/app/components/SectionPagination";
 
-const DEFAULT_STORE_PER_PAGE = 6;
+const DEFAULT_STORE_PER_PAGE = 10;
 
 type ActiveStoresSectionProps = {
   searchParams?:
@@ -75,7 +75,7 @@ export async function ActiveStoresSection({ searchParams }: ActiveStoresSectionP
             currentPage={page}
             perPage={perPage}
             totalCount={totalCount}
-            syncResponsivePerPage
+            syncResponsivePerPage={false}
           />
         </>
       )}

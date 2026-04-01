@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 import { signInEmailAction } from "@/actions/signInEmail.action";
 import { SignInOauthButton } from "@/app/components/SignInOauthButton";
 import { MagicLinkLoginForm } from "@/app/components/MagicLinkForm";
@@ -26,6 +27,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isPageLoading = isLoading || isGoogleLoading;
 
   // Redirect if already logged in
   useEffect(() => {
@@ -55,7 +57,9 @@ export default function SignInPage() {
       formData.append("email", email);
       formData.append("password", password);
 
-      const { error, errorCode } = await signInEmailAction(formData);
+      const result = await signInEmailAction(formData);
+      const error = result?.error ?? null;
+      const errorCode = "errorCode" in result ? result.errorCode : undefined;
 
       if (error) {
         toast.error(error);
@@ -160,7 +164,16 @@ export default function SignInPage() {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-white dark:bg-gray-900">
+    <>
+      {isPageLoading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <div className="rounded-xl bg-background/90 px-5 py-4 shadow-lg border border-border flex items-center gap-3">
+            <Spinner className="size-5" />
+            <span className="text-sm font-medium">Signing you in...</span>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center justify-center min-h-screen p-4 bg-white dark:bg-gray-900">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
@@ -251,6 +264,7 @@ export default function SignInPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }

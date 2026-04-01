@@ -8,7 +8,7 @@ export async function forgetPasswordAction(email: string, redirectTo: string) {
   try {
     const headersList = await headers();
     
-    await auth.api.forgetPassword({
+    await auth.api.requestPasswordReset({
       headers: headersList,
       body: {
         email,

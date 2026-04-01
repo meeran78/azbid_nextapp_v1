@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, X, Building2 } from "lucide-react";
+import { StoreHeroDisplayToggle } from "@/app/components/admin/StoreHeroDisplayToggle";
 
 export default async function AdminStoresPage() {
   const headersList = await headers();
@@ -122,6 +123,13 @@ export default async function AdminStoresPage() {
                       >
                         {store.status}
                       </Badge>
+                    </td>
+                    <td className="py-2 px-4">
+                      <StoreHeroDisplayToggle
+                        storeId={store.id}
+                        checked={store.displayInHero}
+                        canToggle={store.status === "ACTIVE"}
+                      />
                     </td>
                   </tr>
                 ))}

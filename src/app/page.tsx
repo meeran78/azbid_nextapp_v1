@@ -1,6 +1,5 @@
 import AuctionHero from "@/components/AuctionHero";
 import {
-  DEFAULT_HERO_SLIDES,
   type HeroSlide,
 } from "@/app/components/hero-slides";
 import { getFeaturedSellersForHero } from "@/actions/public-seller.action";
@@ -31,11 +30,11 @@ type HomeProps = {
 };
 
 export default async function Home({ searchParams }: HomeProps) {
-  const featuredSellers = await getFeaturedSellersForHero(3);
+  const featuredSellers = await getFeaturedSellersForHero(6);
   const sellerSlides: HeroSlide[] = featuredSellers.map((s) => ({
     id: `seller-${s.sellerId}`,
     title: s.sellerName,
-    subtitle: s.sellerLocation ?? "Featured seller",
+    subtitle: s.storeName,
     mediaType: "image" as const,
     mediaUrl: s.sellerImageUrl ?? HERO_FALLBACK_IMAGE,
     storeId: s.storeId,
@@ -43,23 +42,20 @@ export default async function Home({ searchParams }: HomeProps) {
     sellerName: s.sellerName,
     sellerImageUrl: s.sellerImageUrl,
     sellerLocation: s.sellerLocation,
+    itemImageUrls: s.itemImageUrls,
+    auctionClosingAt: s.auctionClosingAt,
     ctaHref: `/stores/${s.storeId}`,
-    ctaLabel: "View store auction",
+    ctaLabel: "Start Bidding",
   }));
-  const heroSlides: HeroSlide[] = [
-    ...DEFAULT_HERO_SLIDES,
-    ...sellerSlides,
-  ];
+  const heroSlides: HeroSlide[] = sellerSlides;
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       <AuctionHero slides={heroSlides} />
-      <ActiveStoresSection searchParams={searchParams} />
-    
+      <ActiveStoresSection searchParams={searchParams} />    
       <ShopByCategorySection />
       <HowItWorksSection />
-      <HighlightedFeature />
-    
+      <HighlightedFeature />    
       <SocialMediaLinks />
     </div>
   );

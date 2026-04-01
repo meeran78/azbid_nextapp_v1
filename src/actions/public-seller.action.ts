@@ -58,21 +58,36 @@ export type FeaturedSellerForHero = {
   sellerLocation: string | null;
   storeId: string;
   storeName: string;
+  itemImageUrls: string[];
+  auctionClosingAt: string | null;
 };
 
 /**
- * Get featured sellers for hero carousel (active stores with owner info). Max 5.
+ * Get featured sellers for hero carousel: ACTIVE stores flagged with displayInHero.
  */
 export async function getFeaturedSellersForHero(
   limit = 5
 ): Promise<FeaturedSellerForHero[]> {
   const stores = await prisma.store.findMany({
-    where: { status: "ACTIVE" },
+    where: { status: "ACTIVE", displayInHero: true },
     take: limit,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       name: true,
+      lots: {
+        where: { status: "LIVE" },
+        orderBy: { closesAt: "asc" },
+        take: 3,
+        select: {
+          closesAt: true,
+          items: {
+            take: 3,
+            orderBy: { createdAt: "asc" },
+            select: { imageUrls: true },
+          },
+        },
+      },
       owner: {
         select: {
           id: true,
@@ -94,6 +109,13 @@ export async function getFeaturedSellersForHero(
       o.displayLocation ||
       [o.addressLine1, o.city, o.state, o.zipcode].filter(Boolean).join(", ") ||
       null;
+    const itemImageUrls = s.lots
+      .flatMap((lot) => lot.items)
+      .flatMap((item) => item.imageUrls ?? [])
+      .filter(Boolean)
+      .slice(0, 3);
+
+    const closingDate = s.lots[0]?.closesAt ?? null;
     return {
       sellerId: o.id,
       sellerName: o.companyName || o.name,
@@ -101,6 +123,8 @@ export async function getFeaturedSellersForHero(
       sellerLocation: location || null,
       storeId: s.id,
       storeName: s.name,
+      itemImageUrls,
+      auctionClosingAt: closingDate ? closingDate.toISOString() : null,
     };
   });
 }

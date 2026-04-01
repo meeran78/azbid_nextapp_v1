@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const PER_PAGE_OPTIONS = [6, 12, 24] as const;
+const PER_PAGE_OPTIONS = [6, 10, 12, 24] as const;
 
 /** Responsive page size: sm 6, md 9, lg 12 */
 function getResponsivePageSize(): number {
@@ -65,6 +65,7 @@ export function SectionPagination({
   const pageKey = `${paramPrefix}_page`;
   const perPageKey = `${paramPrefix}_per_page`;
   const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   const hasExplicitPerPage = baseParams[perPageKey] !== undefined;
   const hasSyncedRef = useRef(false);
@@ -151,9 +152,30 @@ export function SectionPagination({
               <span>Previous</span>
             </span>
           )}
-          <span className="min-w-[5rem] text-center text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </span>
+          <div className="flex items-center gap-2">
+            {pageNumbers.map((n) => {
+              const isActive = n === currentPage;
+              return (
+                <Link
+                  key={n}
+                  href={buildHref(n)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleNav(buildHref(n));
+                  }}
+                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? "bg-[#e7685b] text-white"
+                      : "bg-slate-600 text-white hover:bg-slate-500"
+                  }`}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={`Go to page ${n}`}
+                >
+                  {n}
+                </Link>
+              );
+            })}
+          </div>
           {currentPage < totalPages ? (
             <Link
               href={buildHref(currentPage + 1)}

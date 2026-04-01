@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 import { signUpEmailAction } from "@/actions/signUpEmail.action";
 import { motion } from "framer-motion";
 import { ShoppingBag, Store, Shield, Check } from "lucide-react";
@@ -32,6 +33,7 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isPageLoading = isLoading || isGoogleLoading;
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const companyInfoRef = useRef<LoginCompanyInfoRef>(null);
   const [formData, setFormData] = useState({
@@ -229,6 +231,15 @@ useEffect(() => {
   }
 
   return (
+    <>
+      {isPageLoading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <div className="rounded-xl bg-background/90 px-5 py-4 shadow-lg border border-border flex items-center gap-3">
+            <Spinner className="size-5" />
+            <span className="text-sm font-medium">Creating your account...</span>
+          </div>
+        </div>
+      )}
     <div className="flex items-center justify-center min-h-screen p-4 bg-white dark:bg-gray-900">
 
       <Card className="w-full max-w-md shadow-lg">
@@ -497,5 +508,6 @@ useEffect(() => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

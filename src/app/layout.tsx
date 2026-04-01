@@ -5,6 +5,7 @@ import "./globals.css";
 //Components
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { AiChat } from "@/components/AiChat";
 
 //Shandcn UI Components
 import { Toaster } from "@/components/ui/sonner";
@@ -40,6 +41,7 @@ export default async function RootLayout({
         <Header liveAuctionCount={liveAuctionCount} />
         {children}
         <Footer />
+        <AiChat />
         <Toaster position="top-center" richColors />
       </body>
     </html>

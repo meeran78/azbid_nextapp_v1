@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         // port: '', // Optional port
         // pathname: '/**', // Optional pathname with globs
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
       // {
       //   protocol: 'https',
       //   hostname: 'cdn.anotherexample.org',

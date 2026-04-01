@@ -65,24 +65,24 @@ export function StoreCard({ store, isFavourited: initialFavourited }: StoreCardP
   const responseRate = store.responseRate ?? 0;
 
   return (
-    <Card className="overflow-hidden relative transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5">
+    <Card className="group overflow-hidden relative transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5">
       <div className="absolute top-3 right-3 z-10">
         <span className="h-2.5 w-2.5 rounded-full bg-green-500 block" title="Online" />
       </div>
       <CardContent className="p-6">
         <div className="flex flex-col items-center text-center">
-          <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-muted mb-3">
+          <div className="relative h-40 w-full rounded-2xl overflow-hidden bg-muted mb-4">
             {store.logoUrl ? (
               <Image
                 src={store.logoUrl}
                 alt={store.name}
                 fill
-                className="object-cover"
-                sizes="80px"
+                className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                sizes="(max-width: 768px) 100vw, 320px"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Package className="h-10 w-10 text-muted-foreground" />
+                <Package className="h-12 w-12 text-muted-foreground transition-transform duration-500 ease-out group-hover:scale-105" />
               </div>
             )}
           </div>
