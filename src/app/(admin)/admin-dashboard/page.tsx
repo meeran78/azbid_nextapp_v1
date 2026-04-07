@@ -7,12 +7,16 @@ import {
   getMostCompetitiveAuctions,
   getAdminTimeSeries,
 } from "@/actions/admin-dashboard.action";
-import { getAdminSoftCloseAnalytics } from "@/actions/soft-close-analytics.action";
+import {
+  getAdminSoftCloseAnalytics
+} from "@/actions/soft-close-analytics.action";
 import { SoftCloseAnalyticsCard } from "@/app/components/analytics/SoftCloseAnalyticsCard";
 import { AdminDashboardKPICards } from "@/app/components/admin/AdminDashboardKPICards";
 import { AdminRiskMonitoringCard } from "@/app/components/admin/AdminRiskMonitoringCard";
 import { AdminCompetitiveAuctionsTable } from "@/app/components/admin/AdminCompetitiveAuctionsTable";
 import { AdminDashboardCharts } from "@/app/components/admin/AdminDashboardCharts";
+import { AdminAppointmentSchedulePanel } from "@/app/components/admin/AdminAppointmentSchedulePanel";
+import { prisma } from "@/lib/prisma";
 
 const defaultKPIs = {
   activeUsers: 0,
@@ -61,6 +65,14 @@ export default async function AdminDashboardPage() {
       getAdminSoftCloseAnalytics(),
     ]);
 
+  const appointmentRequestsRaw = await prisma.appointmentRequest.findMany({
+    orderBy: [{ status: "asc" }, { appointmentDate: "asc" }],
+  });
+  const appointmentRequests = appointmentRequestsRaw.map((request) => ({
+    ...request,
+    appointmentDate: request.appointmentDate.toISOString(),
+  }));
+
   return (
     <div className="container mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-6">
       <div>
@@ -79,6 +91,8 @@ export default async function AdminDashboardPage() {
       <AdminCompetitiveAuctionsTable auctions={competitiveAuctions} />
 
       <SoftCloseAnalyticsCard data={softCloseAnalytics} isAdmin />
+
+      <AdminAppointmentSchedulePanel requests={appointmentRequests} />
     </div>
   );
 }

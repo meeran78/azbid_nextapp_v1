@@ -1,8 +1,8 @@
 'use client';
 import React from 'react'
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
+import { AuctionCalendarAppointmentDialog } from '@/app/components/AuctionCalendarAppointmentDialog';
 import {  
     Phone,
     MapPin,
@@ -75,6 +75,9 @@ const Footer = (props: Props) => {
 										onClick={() => navigate.push('/auction-calendar')}>
 										Auction Calendar
 									</Button>
+								</li>
+								<li>
+									<AuctionCalendarAppointmentDialog triggerLabel='Appointment Schedule' />
 								</li>
 								<li>
 									<Button

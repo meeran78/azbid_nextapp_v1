@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,6 +24,7 @@ import {
   Pickaxe,
   Banknote,
   MessageSquare,
+  CalendarDays,
 } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
@@ -32,14 +33,16 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SignOutButton } from "@/app/components/SignoutButton";
 import Image from "next/image";
+import { getPendingAppointmentRequestCountAction } from "@/actions/appointment-request.action";
 
 type NavigationItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
+  badgeCount?: number;
 };
 
-const getNavigationItems = (roleType: string): NavigationItem[] => {
+const getNavigationItems = (roleType: string, pendingAppointmentCount = 0): NavigationItem[] => {
   const commonItems: NavigationItem[] = [
 
     // { title: "Change Password", url: "/change-password", icon: KeyRound },
@@ -72,6 +75,12 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
     case "ADMIN":
       return [
         // { title: "Dashboard", url: "/admin-dashboard", icon: LayoutDashboard },
+        {
+          title: "Appointment Schedule",
+          url: "/admin-dashboard#appointment-schedule",
+          icon: CalendarDays,
+          badgeCount: pendingAppointmentCount > 0 ? pendingAppointmentCount : undefined,
+        },
         { title: "Stores Management", url: "/stores-management", icon: Store },
         { title: "Lots Management", url: "/lots-management", icon: Barcode },
         { title: "Auctions Managements", url: "/auctions-management", icon: Pickaxe },
@@ -95,12 +104,28 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
 export function DashboardSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [pendingAppointmentCount, setPendingAppointmentCount] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
 
   const roleType = session?.user?.role || "BUYER";
-  const navigationItems = getNavigationItems(roleType);
+  const navigationItems = getNavigationItems(roleType, pendingAppointmentCount);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPendingCount() {
+      if (roleType !== "ADMIN") return;
+      const result = await getPendingAppointmentRequestCountAction();
+      if (mounted) setPendingAppointmentCount(result.count ?? 0);
+    }
+
+    loadPendingCount();
+    return () => {
+      mounted = false;
+    };
+  }, [roleType]);
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -407,6 +432,12 @@ function SidebarContent({
                       </motion.span>
                     )}
                   </AnimatePresence>
+
+                  {!!item.badgeCount && (
+                    <span className="absolute right-2 top-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white leading-none">
+                      {item.badgeCount}
+                    </span>
+                  )}
 
                   {/* Active indicator */}
                   {active && (
