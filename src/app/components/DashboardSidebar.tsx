@@ -78,6 +78,7 @@ const getNavigationItems = (roleType: string): NavigationItem[] => {
         { title: "Category Management", url: "/categories", icon: CirclePlus },
         { title: "Users", url: "/users-management", icon: Users },
         { title: "Store Reviews", url: "/reviews-management", icon: MessageSquare },
+        { title: "Seller Requests", url: "/seller-account-requests", icon: Users },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "FAQs", url: "/faqs", icon: HelpCircle },

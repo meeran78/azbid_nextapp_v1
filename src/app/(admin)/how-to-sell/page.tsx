@@ -2,6 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { SellerAccountRequestForm } from '@/app/components/SellerAccountRequestForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -523,23 +524,24 @@ const HowToSell = () => {
 				<section className='text-center py-12 bg-gradient-subtle rounded-lg'>
 					<h2 className='text-3xl font-bold mb-4'>Ready to Start Selling?</h2>
 					<p className='text-muted-foreground mb-8 max-w-2xl mx-auto text-lg'>
-						Join thousands of successful sellers who are earning money by
-						turning their items into cash. Create your seller account today and
-						list your first item!
+						Sign up as a buyer first, then submit a seller account request with
+						your company details. Admin will review, send contract details, and
+						activate your seller access after acknowledgement.
 					</p>
-					<div className='flex flex-col sm:flex-row gap-4 justify-center'>
-						<Button size='lg' onClick={() => navigate.push('/auth')}>
+					{/* <div className='flex flex-col sm:flex-row gap-4 justify-center'>
+						<Button size='lg' onClick={() => navigate.push('/sign-up')}>
 							<User className='mr-2 h-5 w-5' />
-							Create Seller Account
+							Create Buyer Account
 						</Button>
 						<Button
 							variant='outline'
 							size='lg'
-							onClick={() => navigate.push('/contact')}>
+							onClick={() => navigate.push('/help-support')}>
 							<MessageCircle className='mr-2 h-5 w-5' />
 							Ask Questions
 						</Button>
-					</div>
+					</div> */}
+					<SellerAccountRequestForm />
 				</section>
 			</div>
 		</div>

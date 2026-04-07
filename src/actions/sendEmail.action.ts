@@ -14,6 +14,7 @@ export async function sendEmailAction({
     to,
     subject,
     meta,
+    attachments = [],
 }: {
     to: string;
     subject: string;
@@ -21,6 +22,11 @@ export async function sendEmailAction({
         description: string;
         link: string;
     };
+    attachments?: Array<{
+        filename: string;
+        content: Buffer;
+        contentType?: string;
+    }>;
 }) {
     const mailOptions = {
         from: process.env.NODEMAILER_USER,
@@ -33,6 +39,7 @@ export async function sendEmailAction({
       <a href="${meta.link}" style="${styles.link}">Click Here</a>
     </div>
     `,
+        attachments,
     };
 
     try {

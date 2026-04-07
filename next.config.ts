@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   serverExternalPackages: ["@node-rs/argon2"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "15mb",
+    },
+  },
  
   images: {
     remotePatterns: [

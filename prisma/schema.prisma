@@ -64,6 +64,14 @@ enum StoreReviewStatus {
   REJECTED  // Hidden, not counted
 }
 
+enum SellerAccountRequestStatus {
+  PENDING
+  CONTRACT_SENT
+  ACKNOWLEDGED
+  APPROVED
+  REJECTED
+}
+
 model InvoiceItem {
   id        String  @id @default(uuid())
   invoiceId String
@@ -169,6 +177,7 @@ model User {
   // Admin actions
   adminLogs       AdminLog[]
   moderatedReviews StoreReview[] @relation("StoreReviewModeratedBy")
+  sellerAccountRequests SellerAccountRequest[]
 
   //Stripe
   stripeCustomerId     String? @unique
@@ -596,4 +605,39 @@ model Faq {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SellerAccountRequest {
+  id String @id @default(uuid())
+
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  requesterName String
+  requesterEmail String
+  companyName String
+  companyRegistrationNumber String
+  addressLine1 String
+  addressLine2 String?
+  city String
+  state String
+  zipcode String
+  country String
+
+  status SellerAccountRequestStatus @default(PENDING)
+  adminNotes String?
+  contractDetails String?
+  acknowledgementName String?
+  acknowledgementToken String? @unique
+  contractSentAt DateTime?
+  acknowledgedAt DateTime?
+  approvedAt DateTime?
+  rejectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([requesterEmail])
+  @@index([userId])
 }
