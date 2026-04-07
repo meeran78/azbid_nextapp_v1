@@ -63,12 +63,12 @@ export default async function SellersDashboardPage({
                         Manage your auctions and lots
                     </p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
+                {/* <Button variant="outline" size="sm" asChild>
                     <Link href="/my-auctions/stores" className="flex items-center gap-2">
                         <Store className="h-4 w-4" />
                         Manage stores
                     </Link>
-                </Button>
+                </Button> */}
             </div>
 
             {/* Seller Profile */}
