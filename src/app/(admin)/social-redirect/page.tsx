@@ -7,3 +7,5 @@ const SocialRedirect = (props: Props) => {
     <div>SocialRedirect</div>
   )
 }
+
+export default SocialRedirect;
