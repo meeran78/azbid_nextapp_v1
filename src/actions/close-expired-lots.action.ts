@@ -34,11 +34,12 @@ export async function closeExpiredLots(): Promise<CloseExpiredLotsResult> {
 
   for (const lot of expiredLots) {
     const outcome = await closeLot(lot.id);
-    if (outcome.success) {
-      result.closed++;
-    } else {
+    if ("error" in outcome) {
       result.errors.push({ lotId: lot.id, error: outcome.error });
+      continue;
     }
+
+    result.closed++;
   }
 
   return result;
