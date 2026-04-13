@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getMinimumNextBid, validateBidAmount } from "@/lib/bid-increment";
 import { ensureBuyerHasValidCard } from "@/actions/payment.action";
+import { Prisma } from "@/generated/prisma/client";
 
 /**
  * Place a bid on an item. Requires signed-in user with BUYER role.
@@ -116,7 +117,7 @@ export async function placeBidAction(
     : item.lot.closesAt;
 
   // 3. Save bid + 5. Extend lot (if applicable) + 6. Update item currentPrice (transaction)
-  const operations: Parameters<typeof prisma.$transaction>[0] = [
+  const operations: Prisma.PrismaPromise<unknown>[] = [
     prisma.bid.create({
       data: {
         itemId,
