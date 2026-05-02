@@ -48,7 +48,7 @@ interface Lot {
   _count: {
     items: number;
   };
-  createdAt: string;
+  createdAt: string | Date;
 }
 interface LotsTableProps {
   lots: Lot[];

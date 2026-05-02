@@ -127,9 +127,34 @@
 }
 
 /* Purple & Orange gradient utilities */
+/* Use background-image only — the `background` shorthand resets background-clip and breaks bg-clip-text */
 .bg-gradient-primary {
-  background: linear-gradient(135deg, oklch(0.55 0.25 292) 0%, oklch(0.72 0.18 55) 100%);
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.55 0.25 292) 0%,
+    oklch(0.72 0.18 55) 100%
+  );
 }
 .bg-gradient-subtle {
-  background: linear-gradient(135deg, oklch(0.99 0.01 292) 0%, oklch(0.99 0.02 55) 100%);
+  background-image: linear-gradient(
+    135deg,
+    oklch(0.99 0.01 292) 0%,
+    oklch(0.99 0.02 55) 100%
+  );
+}
+
+/* Gradient-filled text: one utility so clip + fill aren’t split by cascade (fixes “gradient box”, invisible letters) */
+@layer utilities {
+  .text-gradient-primary {
+    display: inline-block;
+    background-image: linear-gradient(
+      135deg,
+      oklch(0.55 0.25 292) 0%,
+      oklch(0.72 0.18 55) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
 }

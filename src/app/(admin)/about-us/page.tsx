@@ -157,9 +157,7 @@ const AboutUs = () => {
 					<div className='max-w-4xl mx-auto'>
 						<h1 className='text-4xl md:text-5xl font-bold mb-6'>
 							About{' '}
-							<span className='bg-gradient-primary bg-clip-text text-transparent'>
-								AZ-Bid
-							</span>
+							<span className='text-gradient-primary italic'>AZ-Bid</span>
 						</h1>
 						<p className='text-xl text-muted-foreground mb-8 leading-relaxed'>
 							We're revolutionizing the auction experience by connecting
@@ -311,14 +309,14 @@ const AboutUs = () => {
 							AZ-Bid is the perfect place to start your auction journey.
 						</p>
 						<div className='flex flex-col sm:flex-row gap-4 justify-center'>
-							<Button size='lg' onClick={() => navigate('/auth')}>
+							<Button size='lg' onClick={() => navigate.push('/auth')}>
 								<Users className='mr-2 h-5 w-5' />
 								Get Started Today
 							</Button>
 							<Button
 								variant='outline'
 								size='lg'
-								onClick={() => navigate('/how-to-buy')}>
+								onClick={() => navigate.push('/how-to-buy')}>
 								Learn How to Buy
 							</Button>
 						</div>

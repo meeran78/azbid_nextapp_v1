@@ -23,7 +23,7 @@ import { motion } from "framer-motion";
 export default async function SellersDashboardPage({
     searchParams,
 }: {
-    searchParams: { status?: string; storeId?: string; auctionId?: string };
+    searchParams: Promise<{ status?: string; storeId?: string; auctionId?: string }>;
 }) {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
@@ -36,7 +36,6 @@ export default async function SellersDashboardPage({
         redirect("/");
     }
 
-    // Await searchParams before accessing its properties
     const params = await searchParams;
 
     const [auctions, lots, softCloseAnalytics] = await Promise.all([

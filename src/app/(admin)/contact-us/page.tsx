@@ -125,9 +125,7 @@ const ContactUs = () => {
 				<section className='text-center py-12 '>
 					<h1 className='text-4xl font-bold'>
 						Get in{' '}
-						<span className='bg-gradient-primary bg-clip-text text-transparent'>
-							Touch
-						</span>
+						<span className='text-gradient-primary italic'>Touch</span>
 					</h1>
 					<p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
 						Have questions, feedback, or need support? We're here to help and

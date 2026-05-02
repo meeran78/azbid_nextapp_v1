@@ -32,7 +32,8 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   const featuredSellers = await getFeaturedSellersForHero(6);
   const sellerSlides: HeroSlide[] = featuredSellers.map((s) => ({
-    id: `seller-${s.sellerId}`,
+    // One row per store; seller id can repeat when a seller has multiple hero stores.
+    id: `store-${s.storeId}`,
     title: s.sellerName,
     subtitle: s.storeName,
     mediaType: "image" as const,

@@ -130,13 +130,15 @@ export async function createLotAction(data: {
       ownerId: session.user.id,
     },
   });
-// After "Verify store ownership" block (~line 126), add:
-if (store.status !== "ACTIVE") {
-  return { error: "Store must be approved before you can add lots. Please wait for admin approval." };
-}
-
   if (!store) {
     return { error: "Store not found or access denied" };
+  }
+
+  if (store.status !== "ACTIVE") {
+    return {
+      error:
+        "Store must be approved before you can add lots. Please wait for admin approval.",
+    };
   }
 
   try {
@@ -204,7 +206,7 @@ if (store.status !== "ACTIVE") {
             removalStartAt: validatedData.removalStartAt || null, // Set lotDisplayId when publishing (if not already set)
             lotDisplayId: existingLot.lotDisplayId ?? validatedData.lotDisplayId ?? (await generateUniqueLotDisplayId()),
               items: {
-                create: validatedData.items.map((item) => ({
+                create: validatedData.items.map((item: any) => ({
                 title: item.title,
                 categoryId: item.categoryId || null,
                 description: item.description || null,
@@ -284,7 +286,7 @@ if (store.status !== "ACTIVE") {
         inspectionAt: validatedData.inspectionAt || null,
         removalStartAt: validatedData.removalStartAt || null,
         items: {
-          create: validatedData.items.map((item) => ({
+          create: validatedData.items.map((item: any) => ({
             title: item.title,
             categoryId: item.categoryId || null,
             description: item.description || null,

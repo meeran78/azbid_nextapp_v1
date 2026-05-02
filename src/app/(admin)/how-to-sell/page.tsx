@@ -248,10 +248,8 @@ const HowToSell = () => {
 				<section className='text-center py-12 mb-12'>
 					<h1 className='text-4xl font-bold mb-4'>
 						How to{' '}
-						<span className=' bg-clip-text text-primary'>
-							Sell
-						</span>{' '}
-						on AZ-Bid
+						<span className='text-gradient-primary italic'>Sell</span>
+						{' '}on AZ-Bid
 					</h1>
 					<p className='text-xl text-muted-foreground max-w-3xl mx-auto'>
 						Turn your unused items into cash with our comprehensive seller

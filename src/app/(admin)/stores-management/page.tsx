@@ -30,6 +30,20 @@ export default async function AdminStoresPage() {
     }),
   ]);
 
+  async function approveStoreFormAction(formData: FormData) {
+    "use server";
+    const storeId = String(formData.get("storeId") ?? "");
+    if (!storeId) return;
+    await approveStoreAction(storeId);
+  }
+
+  async function rejectStoreFormAction(formData: FormData) {
+    "use server";
+    const storeId = String(formData.get("storeId") ?? "");
+    if (!storeId) return;
+    await rejectStoreAction(storeId);
+  }
+
   return (
     <div className="container mx-auto p-6 max-w-10xl space-y-8">
       <div>
@@ -67,13 +81,15 @@ export default async function AdminStoresPage() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <form action={approveStoreAction.bind(null, store.id)}>
+                    <form action={approveStoreFormAction}>
+                      <input type="hidden" name="storeId" value={store.id} />
                       <Button type="submit" size="sm" variant="default">
                         <Check className="h-4 w-4 mr-1" />
                         Approve
                       </Button>
                     </form>
-                    <form action={rejectStoreAction.bind(null, store.id)}>
+                    <form action={rejectStoreFormAction}>
+                      <input type="hidden" name="storeId" value={store.id} />
                       <Button type="submit" size="sm" variant="destructive">
                         <X className="h-4 w-4 mr-1" />
                         Reject

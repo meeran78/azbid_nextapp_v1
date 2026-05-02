@@ -190,7 +190,7 @@ const HowToBuy = () => {
 				<section className='text-center py-12 mb-12'>
 					<h1 className='text-4xl font-bold mb-4'>
 						How to{' '}
-						<span className=' bg-clip-text text-primary'>
+						<span className='text-gradient-primary italic'>
 							Buy
 						</span>{' '}
 						on AZ-Bid

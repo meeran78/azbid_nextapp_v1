@@ -80,7 +80,8 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
       </div>
     
       <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
-        Live <span className="text-violet-600 dark:text-violet-400 italic">Auctions</span>
+        Live <span className="text-gradient-primary italic">Auctions</span>
+        
       </h2>
       <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
         Browse lots by name, location, item, or category. Filter by status and find live or scheduled auctions.

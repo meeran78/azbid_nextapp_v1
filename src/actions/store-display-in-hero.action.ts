@@ -37,5 +37,5 @@ export async function setStoreDisplayInHeroAction(
 
   revalidatePath("/");
   revalidatePath("/stores-management");
-  return { error: null as const };
+  return { error: null };
 }

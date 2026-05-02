@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function getSellerDashboardMetrics(sellerId: string) {
   const headersList = await headers();
@@ -229,15 +230,12 @@ export async function getSellerAuctions(
   const effectiveStoreId =
     storeId && storeIds.includes(storeId) ? storeId : undefined;
 
-  const where: {
-    storeId: string | { in: string[] };
-    status?: string;
-  } = {
+  const where: Prisma.AuctionWhereInput = {
     storeId: effectiveStoreId ? effectiveStoreId : { in: storeIds },
   };
 
   if (status && status !== "ALL") {
-    where.status = status;
+    where.status = status as any;
   }
 
   return await prisma.auction.findMany({

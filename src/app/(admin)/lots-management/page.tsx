@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LotsManagementClient } from "./lots-management-client";
@@ -25,12 +26,12 @@ export default async function AdminLotsPage({
   const searchQuery = params.search?.trim() || "";
   const page = Math.max(1, parseInt(params.page || "1", 10));
 
-  const where: Parameters<typeof prisma.lot.findMany>[0]["where"] = {};
+  const where: Prisma.LotWhereInput = {};
 
   // Exclude LIVE, SOLD, UNSOLD from lot management (review/approve workflow only)
   const allowedStatuses = ["DRAFT", "SCHEDULED", "RESEND"] as const;
   if (statusFilter && allowedStatuses.includes(statusFilter as (typeof allowedStatuses)[number])) {
-    where.status = statusFilter;
+    where.status = statusFilter as any;
   } else {
     where.status = { notIn: ["LIVE", "SOLD", "UNSOLD"] };
   }

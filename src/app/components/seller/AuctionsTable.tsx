@@ -19,10 +19,10 @@ interface Auction {
   startAt: Date;
   endAt: Date;
   status: string;
-  store: {
+  store?: {
     name: string;
   };
-  _count: {
+  _count?: {
     lots: number;
   };
 }
@@ -71,14 +71,14 @@ export function AuctionsTable({ auctions }: AuctionsTableProps) {
               className="hover:bg-muted/50 transition-colors"
             >
               <TableCell className="font-medium">{auction.title}</TableCell>
-              <TableCell>{auction.store.name}</TableCell>
+              <TableCell>{auction.store?.name ?? "N/A"}</TableCell>
               <TableCell>
                 {format(new Date(auction.startAt), "MMM dd, yyyy HH:mm")}
               </TableCell>
               <TableCell>
                 {format(new Date(auction.endAt), "MMM dd, yyyy HH:mm")}
               </TableCell>
-              <TableCell>{auction._count.lots}</TableCell>
+              <TableCell>{auction._count?.lots ?? 0}</TableCell>
               <TableCell>
                 <Badge
                   className={statusColors[auction.status] || "bg-gray-500"}
