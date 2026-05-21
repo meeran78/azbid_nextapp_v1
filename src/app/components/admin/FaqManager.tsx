@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { upsertFaqAction } from "@/actions/faq.actions";
-import type { Faq } from "@prisma/client";
+import type { Faq } from "@/generated/prisma/client";
 import { toast } from "sonner";
 
 interface FaqManagerProps {
@@ -67,7 +67,7 @@ export default function FaqManager({ initialFaqs }: FaqManagerProps) {
             if (form.id) {
               return prev.map((f) =>
                 f.id === form.id
-                  ? { ...f, ...payload }
+                  ? { ...f, ...payload, id: f.id }
                   : f
               );
             }

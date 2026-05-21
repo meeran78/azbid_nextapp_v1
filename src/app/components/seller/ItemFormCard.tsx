@@ -169,7 +169,7 @@ export function ItemFormCard({ index, totalCount, onRemove, canRemove, onMoveUp,
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                   <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                    <AlertDialogContent onClick={(e) => e.stopPropagation()} onPointerDownOutside={(e) => e.stopPropagation()}>
+                    <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Remove this item?</AlertDialogTitle>
                         <AlertDialogDescription>

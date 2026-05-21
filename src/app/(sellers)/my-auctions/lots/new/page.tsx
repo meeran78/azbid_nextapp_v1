@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ export default function CreateLotPage() {
   defaultClosesAt.setHours(18, 0, 0, 0); // 6 PM
 
   const form = useForm<CreateLotFormData>({
-    resolver: zodResolver(createLotSchema),
+    resolver: zodResolver(createLotSchema) as Resolver<CreateLotFormData>,
     defaultValues: {
       lotId,
       title: `${lotId}`,
@@ -210,7 +210,7 @@ export default function CreateLotPage() {
         inspectionAt: data.inspectionAt?.toISOString() || null,
         items: data.items.map((item, index) => ({
           title: item.title,
-          categoryId: item.categoryId,
+          categoryId: item.categoryId ?? null,
           condition: item.condition,
           startPrice: item.startPrice,
           retailPrice: item.retailPrice,
@@ -267,7 +267,7 @@ export default function CreateLotPage() {
       const errors = result.error.flatten().fieldErrors;
       Object.entries(errors).forEach(([path, messages]) => {
         if (messages?.[0]) {
-          form.setError(path as `items.${number}.${string}` | "title" | "description" | "storeId" | "closesAt" | "removalStartAt" | "inspectionAt" | "disclaimerAccepted" | "lotId" | "auctionId" | "lotDisplayId", {
+          form.setError(path as any, {
             type: "manual",
             message: messages[0],
           });
@@ -290,7 +290,7 @@ export default function CreateLotPage() {
       toast.error("Please fix the errors before saving draft");
       return;
     }
-    await onSubmit(result.data, true);
+    await onSubmit(result.data as CreateLotFormData, true);
   };
 
   return (

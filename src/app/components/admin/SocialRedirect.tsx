@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExternalLink, ArrowLeft } from 'lucide-react';
 
 const SocialRedirect = () => {
-  const { platform } = useParams<{ platform: string }>();
-  const navigate = useNavigate();
+  const params = useParams();
+  const platform = params.platform as string | undefined;
+  const router = useRouter();
 
   const socialLinks = {
     facebook: {
@@ -51,7 +52,7 @@ const SocialRedirect = () => {
             <p className="text-muted-foreground mb-6">
               The social media platform you're looking for doesn't exist.
             </p>
-            <Button onClick={() => navigate('/')}>
+            <Button onClick={() => router.push('/')}>
               Return Home
             </Button>
           </CardContent>
@@ -106,7 +107,7 @@ const SocialRedirect = () => {
                 
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/')}
+                  onClick={() => router.push('/')}
                   className="w-full"
                 >
                   Stay on AZ-Bid
@@ -121,7 +122,7 @@ const SocialRedirect = () => {
                       key={key}
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/social/${key}`)}
+                      onClick={() => router.push(`/social/${key}`)}
                       className={key === platform ? 'ring-2 ring-primary' : ''}
                     >
                       {social.name}

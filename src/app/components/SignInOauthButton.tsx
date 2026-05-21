@@ -30,14 +30,9 @@ export const SignInOauthButton = ({
         onResponse: () => {
           setIsPending(false);
         },
-        onError: (ctx) => {
-      },
-      },
-      onError: (ctx) => {
-        toast.error(ctx.error.message);
-      },
-      onSuccess: () => {
-        toast.success("You’ve logged in. Welcome back!");
+        onError: (ctx: { error: Error }) => {
+          toast.error(ctx.error.message);
+        },
       },
     });
 

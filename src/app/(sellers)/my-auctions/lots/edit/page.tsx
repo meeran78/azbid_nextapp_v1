@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ export default function EditLotPage() {
   const [originalItemImageUrls, setOriginalItemImageUrls] = useState<string[][]>([]);
 
   const form = useForm<CreateLotFormData>({
-    resolver: zodResolver(createLotSchema),
+    resolver: zodResolver(createLotSchema) as Resolver<CreateLotFormData>,
     defaultValues: {
       lotId: "",
       title: "",
@@ -111,7 +111,7 @@ export default function EditLotPage() {
         const itemsWithImages = lot.items.map((item) => ({
           title: item.title,
           categoryId: item.categoryId || null,
-          condition: item.condition || "Used – Good",
+          condition: (item.condition || "Used – Good") as import("@/lib/validations/lot.schema").CreateLotFormData["items"][0]["condition"],
           startPrice: item.startPrice,
           retailPrice: item.retailPrice || null,
           reservePrice: item.reservePrice || null,
@@ -134,14 +134,13 @@ export default function EditLotPage() {
           description: lot.description || "",
           storeId: lot.storeId,
           auctionId: lot.auctionId || null,
-          status: lot.status,
+          status: lot.status === "DRAFT" ? "DRAFT" : "SCHEDULED",
           lotDisplayId: lot.lotDisplayId || null,
           closesAt: new Date(lot.closesAt),
           removalStartAt: lot.inspectionAt ? new Date(lot.inspectionAt) : null, // Note: schema uses inspectionAt
           inspectionAt: lot.inspectionAt ? new Date(lot.inspectionAt) : null,
           items: itemsWithImages,
-          disclaimerAccepted: true, // Assume accepted if lot exists
-          isDraft: lot.status === "DRAFT",
+          disclaimerAccepted: true,
         });
       } catch (error) {
         console.error("Error loading lot:", error);
@@ -271,7 +270,7 @@ export default function EditLotPage() {
         inspectionAt: data.inspectionAt?.toISOString() || null,
         items: data.items.map((item, index) => ({
           title: item.title,
-          categoryId: item.categoryId,
+          categoryId: item.categoryId ?? null,
           condition: item.condition,
           startPrice: item.startPrice,
           retailPrice: item.retailPrice,
@@ -328,7 +327,7 @@ export default function EditLotPage() {
       const formErrors = result.error.flatten().fieldErrors;
       Object.entries(formErrors).forEach(([path, messages]) => {
         if (path === "items" && typeof messages === "object") {
-          Object.entries(messages as Record<string, string[]>).forEach(([idx, itemErrors]) => {
+          Object.entries(messages as unknown as Record<string, string[]>).forEach(([idx, itemErrors]) => {
             if (typeof itemErrors === "object" && itemErrors !== null) {
               Object.entries(itemErrors).forEach(([field, msgs]) => {
                 const itemPath = `items.${idx}.${field}`;
@@ -345,7 +344,7 @@ export default function EditLotPage() {
       toast.error("Please fix the errors before saving draft");
       return;
     }
-    await onSubmit(result.data, true);
+    await onSubmit(result.data as CreateLotFormData, true);
   };
 
   if (isLoadingLot) {
@@ -409,7 +408,7 @@ export default function EditLotPage() {
                     <FormItem>
                       <FormLabel>Lot ID</FormLabel>
                       <FormControl>
-                        <Input {...field} readOnly className="bg-muted" />
+                        <Input {...field} value={field.value ?? ""} readOnly className="bg-muted" />
                       </FormControl>
                       <FormDescription>
                         Lot identifier

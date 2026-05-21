@@ -213,7 +213,7 @@ export function CategoryForm({ initialData }: CategoryFormProps) {
                   <FormLabel>Category Image</FormLabel>
                   <FormControl>
                     <CategoryImageUpload
-                      imageUrl={field.value}
+                      imageUrl={field.value ?? null}
                       onChange={field.onChange}
                       onFileChange={setImageFile}
                       disabled={isPending}

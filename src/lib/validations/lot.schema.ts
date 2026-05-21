@@ -14,16 +14,10 @@ export const itemMediaSchema = z.object({
         const isImage = file.type.startsWith("image/");
         const isVideo = file.type.startsWith("video/");
         if (!isImage && !isVideo) return false;
-
         const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
         return file.size <= maxSize;
       },
-      (file) => {
-        const isImage = file.type.startsWith("image/");
-        const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
-        const maxSizeMB = maxSize / (1024 * 1024);
-        return `File size must be less than ${maxSizeMB}MB`;
-      }
+      { message: "File exceeds the maximum allowed size (10 MB for images, 100 MB for videos)" }
     )
     .refine(
       (file) => {
@@ -49,7 +43,7 @@ export const itemSchemaForServer = z
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
     categoryId: z.string().min(1, "Category is required").optional().nullable(),
     condition: z.enum(["New", "Like New", "Used – Good", "Used – Fair", "Salvage"], {
-      required_error: "Please select a condition",
+      error: "Please select a condition",
     }),
     startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
@@ -90,7 +84,7 @@ export const itemSchema = z
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
     categoryId: z.string().min(1, "Category is required").optional().nullable(),
     condition: z.enum(["New", "Like New", "Used – Good", "Used – Fair", "Salvage"], {
-      required_error: "Please select a condition",
+      error: "Please select a condition",
     }),
     startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
@@ -126,7 +120,7 @@ const itemDraftSchema = z
     title: z.string().min(1, "Item title is required").max(200, "Title must be less than 200 characters"),
     categoryId: z.string().min(1, "Category is required").optional().nullable(),
     condition: z.enum(["New", "Like New", "Used – Good", "Used – Fair", "Salvage"], {
-      required_error: "Please select a condition",
+      error: "Please select a condition",
     }),
     startPrice: z.coerce.number().min(0, "Starting price must be positive"),
     retailPrice: z.coerce.number().min(0, "Price must be positive").optional().nullable(),
@@ -165,7 +159,7 @@ export const createLotDraftSchema = z
     status: z.enum(["DRAFT", "SCHEDULED", "RESEND"]).optional(),
     lotDisplayId: z.string().optional().nullable(),
     closesAt: z.coerce.date({
-      required_error: "Closing date and time is required",
+      error: "Closing date and time is required",
     }),
     removalStartAt: z.coerce.date().optional().nullable(),
     inspectionAt: z.coerce.date().optional().nullable(),
@@ -189,7 +183,7 @@ export const createLotSchema = z
     status: z.enum(["DRAFT", "SCHEDULED"]),
     lotDisplayId: z.string().optional().nullable(),
     closesAt: z.coerce.date({
-      required_error: "Closing date and time is required",
+      error: "Closing date and time is required",
     }),
     removalStartAt: z.coerce.date().optional().nullable(),
     inspectionAt: z.coerce.date().optional().nullable(),

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -39,7 +39,7 @@ export function AdminCompetitiveAuctionsTable({
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={containerVariants}
+      variants={containerVariants as any}
     >
     <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-amber-200 dark:border-amber-800">
       <CardHeader>
@@ -73,7 +73,7 @@ export function AdminCompetitiveAuctionsTable({
                 {auctions.map((a) => (
                   <TableRow key={a.auctionId}>
                     <TableCell className="font-medium">
-                      {a.auctionDisplayId ? `${a.auctionDisplayId} — ` : ""}
+                      {a.auctionDisplayId ? `${a.auctionDisplayId} â€” ` : ""}
                       {a.title}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{a.storeName}</TableCell>
@@ -88,7 +88,7 @@ export function AdminCompetitiveAuctionsTable({
                           {a.extendedLotsCount}
                         </span>
                       ) : (
-                        "—"
+                        "â€”"
                       )}
                     </TableCell>
                     <TableCell>

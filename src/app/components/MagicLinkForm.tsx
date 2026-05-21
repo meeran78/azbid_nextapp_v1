@@ -8,7 +8,7 @@ import { StarIcon } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 import { toast } from "sonner";
 
-export const MagicLinkLoginForm = (): JSX.Element => {
+export const MagicLinkLoginForm = (): React.ReactElement => {
     const [isPending, setIsPending] = useState(false);
     const ref = useRef<HTMLDetailsElement>(null);
 

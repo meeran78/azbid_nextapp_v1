@@ -50,8 +50,11 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
         setIsSubmitting(false);
         return;
       }
-      if (confirmResult.setupIntent?.id) {
-        const result = await setDefaultPaymentMethodFromSetupIntent(confirmResult.setupIntent.id);
+      const setupIntentId = ('setupIntent' in confirmResult)
+        ? (confirmResult.setupIntent as { id?: string } | undefined)?.id
+        : undefined;
+      if (setupIntentId) {
+        const result = await setDefaultPaymentMethodFromSetupIntent(setupIntentId);
         if ("error" in result) {
           toast.error(result.error);
           setIsSubmitting(false);

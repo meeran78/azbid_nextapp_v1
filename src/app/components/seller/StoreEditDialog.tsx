@@ -104,7 +104,7 @@ export function StoreEditDialog({
       }
       const result = await response.json();
       setFormData((prev) => ({ ...prev, logoUrl: result.url }));
-      setValidationErrors((prev) => ({ ...prev, logoUrl: undefined }));
+      setValidationErrors((prev) => ({ ...prev, logoUrl: "" }));
       toast.success("Logo uploaded");
     } catch (err: any) {
       toast.error("Upload failed", { description: err.message });
@@ -127,7 +127,7 @@ export function StoreEditDialog({
         }
       }
       setFormData((prev) => ({ ...prev, logoUrl: "" }));
-      setValidationErrors((prev) => ({ ...prev, logoUrl: undefined }));
+      setValidationErrors((prev) => ({ ...prev, logoUrl: "" }));
       toast.success("Logo removed");
     } catch (err: any) {
       toast.error("Failed to remove logo", { description: err.message });

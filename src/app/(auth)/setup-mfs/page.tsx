@@ -1,32 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { enableMfa, verifyMfa } from "@/lib/auth-client";
+import { twoFactor } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SetupMFAPage() {
   const [step, setStep] = useState<"setup" | "verify">("setup");
-  const [secret, setSecret] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [code, setCode] = useState("");
 
   const handleSetup = async () => {
-    const result = await enableMfa.totp.setup();
+    const result = await twoFactor.getTotpUri({ password: "" });
     if (result.data) {
-      setSecret(result.data.secret);
-      setQrCode(result.data.qrCode);
+      setQrCode(result.data.totpURI);
       setStep("verify");
     }
   };
 
   const handleVerify = async () => {
-    const result = await verifyMfa.totp({
-      code,
-      secret,
-    });
-
+    const result = await twoFactor.verifyTotp({ code });
     if (result.data) {
       window.location.href = "/admin-dashboard";
     }

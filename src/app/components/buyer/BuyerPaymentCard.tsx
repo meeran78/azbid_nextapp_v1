@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ export function BuyerPaymentCard({ m }: { m: BuyerDashboardMetrics }) {
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={cardVariants}
+      variants={cardVariants as any}
       whileHover="hover"
     >
     <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-blue-200 dark:border-blue-800">
@@ -75,10 +75,10 @@ export function BuyerPaymentCard({ m }: { m: BuyerDashboardMetrics }) {
                 <TableBody>
                   {m.recentFailedPayments.map((p) => (
                     <TableRow key={p.orderId}>
-                      <TableCell className="font-mono text-xs">{p.orderId.slice(0, 8)}…</TableCell>
+                      <TableCell className="font-mono text-xs">{p.orderId.slice(0, 8)}â€¦</TableCell>
                       <TableCell>${p.amount.toFixed(2)}</TableCell>
                       <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                        {p.reason ?? "—"}
+                        {p.reason ?? "â€”"}
                       </TableCell>
                       <TableCell>
                         <Button variant="ghost" size="sm" asChild>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export function BuyerFinancialCard({ m }: { m: BuyerDashboardMetrics }) {
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={cardVariants}
+      variants={cardVariants as any}
       whileHover="hover"
     >
     <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-teal-200 dark:border-teal-800">

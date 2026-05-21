@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +22,7 @@ export function BuyerActiveBiddingCard({ m }: { m: BuyerDashboardMetrics }) {
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={cardVariants}
+      variants={cardVariants as any}
       whileHover="hover"
     >
     <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-green-200 dark:border-green-800">
@@ -32,7 +32,7 @@ export function BuyerActiveBiddingCard({ m }: { m: BuyerDashboardMetrics }) {
           Active bidding exposure
         </CardTitle>
         <CardDescription>
-          Lots you’re currently bidding on. You’re leading on {m.leadingBidsCount} of {m.activeBidsCount} active bids.
+          Lots youâ€™re currently bidding on. Youâ€™re leading on {m.leadingBidsCount} of {m.activeBidsCount} active bids.
         </CardDescription>
       </CardHeader>
       <CardContent>

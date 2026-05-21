@@ -36,6 +36,9 @@ const defaultMetrics = {
   watchlistCount: 0,
   favoritesCount: 0,
   lotsParticipatedCount: 0,
+  totalActiveLotsParticipating: 0,
+  highestCurrentExposure: 0,
+  endingSoonCount: 0,
 };
 
 export default async function BuyersDashboardPage() {

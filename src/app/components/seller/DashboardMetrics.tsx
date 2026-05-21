@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
@@ -149,7 +149,7 @@ export function DashboardMetrics({ metrics }: DashboardMetricsProps) {
             custom={index}
             initial="hidden"
             animate="visible"
-            variants={cardVariants}
+            variants={cardVariants as any}
             whileHover="hover"
           >
             <Card

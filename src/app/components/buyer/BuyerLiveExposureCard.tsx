@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,14 +21,14 @@ const cardVariants = {
 };
 
 /**
- * Live auction exposure: active lots participating, highest current exposure (max bid × count), ending soon.
+ * Live auction exposure: active lots participating, highest current exposure (max bid Ã— count), ending soon.
  */
 export function BuyerLiveExposureCard({ m }: { m: BuyerDashboardMetrics }) {
   return (
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={cardVariants}
+      variants={cardVariants as any}
       whileHover="hover"
     >
     <Card className="hover:shadow-lg transition-shadow duration-300 border-2 border-green-200 dark:border-green-800">
@@ -38,7 +38,7 @@ export function BuyerLiveExposureCard({ m }: { m: BuyerDashboardMetrics }) {
           Live auction exposure
         </CardTitle>
         <CardDescription>
-          Your current participation in live lots and exposure (max bid × active bid count).
+          Your current participation in live lots and exposure (max bid Ã— active bid count).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -50,7 +50,7 @@ export function BuyerLiveExposureCard({ m }: { m: BuyerDashboardMetrics }) {
                 Total active auctions participating
               </p>
               <p className="text-2xl font-bold">{m.totalActiveLotsParticipating}</p>
-              <p className="text-xs text-muted-foreground">LIVE lots you’re bidding on</p>
+              <p className="text-xs text-muted-foreground">LIVE lots youâ€™re bidding on</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border p-4">
@@ -60,7 +60,7 @@ export function BuyerLiveExposureCard({ m }: { m: BuyerDashboardMetrics }) {
                 Highest current exposure
               </p>
               <p className="text-2xl font-bold">${fmt(m.highestCurrentExposure)}</p>
-              <p className="text-xs text-muted-foreground">Max bid × active bid count</p>
+              <p className="text-xs text-muted-foreground">Max bid Ã— active bid count</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-lg border p-4">
