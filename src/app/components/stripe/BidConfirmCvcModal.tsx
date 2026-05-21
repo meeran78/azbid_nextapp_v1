@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import {
   Dialog,
   DialogContent,
@@ -13,15 +19,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard } from "lucide-react";
 import Link from "next/link";
-import { createBidVerificationIntent, cancelBidVerification } from "@/actions/payment.action";
+import {
+  createBidVerificationIntent,
+  cancelBidVerification,
+} from "@/actions/payment.action";
 import { placeBidAction } from "@/actions/bid.action";
-import { setCardVerifiedForBidSession } from "@/lib/bid-session";
+import {
+  setCardVerifiedForBidSession,
+  BID_VERIFY_PENDING_KEY,
+} from "@/lib/bid-session";
 import { toast } from "sonner";
+import { useSession } from "@/lib/auth-client";
 
-const stripePromise =
-  typeof window !== "undefined" && process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-    : null;
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 type BidConfirmCvcModalProps = {
   open: boolean;
@@ -31,39 +43,68 @@ type BidConfirmCvcModalProps = {
   onSuccess: () => void;
 };
 
-function ConfirmCvcStep({
-  clientSecret,
+function buildCleanReturnUrl(): string {
+  const u = new URL(window.location.href);
+  u.searchParams.delete("payment_intent");
+  u.searchParams.delete("payment_intent_client_secret");
+  u.searchParams.delete("redirect_status");
+  return u.toString();
+}
+
+function ConfirmCvcInner({
   paymentIntentId,
   itemId,
   amount,
+  onVerifiedFlowComplete,
   onSuccess,
   onCancel,
 }: {
-  clientSecret: string;
   paymentIntentId: string;
   itemId: string;
   amount: number;
+  onVerifiedFlowComplete: () => void;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { data: session } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleConfirm = async () => {
-    if (!stripePromise) return;
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    const userId = session?.user?.id;
+    if (!userId) {
+      toast.error("Sign in to place a bid.");
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const stripe = await stripePromise;
-      if (!stripe) {
-        toast.error("Payment service unavailable");
+      sessionStorage.setItem(
+        BID_VERIFY_PENDING_KEY,
+        JSON.stringify({ itemId, amount, paymentIntentId, userId })
+      );
+      const returnUrl = buildCleanReturnUrl();
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        sessionStorage.removeItem(BID_VERIFY_PENDING_KEY);
+        toast.error(submitError.message ?? "Check your payment details");
         setIsSubmitting(false);
         return;
       }
-      const { error } = await stripe.confirmCardPayment(clientSecret);
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: returnUrl },
+      });
       if (error) {
+        sessionStorage.removeItem(BID_VERIFY_PENDING_KEY);
         toast.error(error.message ?? "Card verification failed");
         setIsSubmitting(false);
         return;
       }
+      // Non-redirect completion: finish bid here. After a redirect, BidVerificationResume runs.
+      sessionStorage.removeItem(BID_VERIFY_PENDING_KEY);
       const cancelResult = await cancelBidVerification(paymentIntentId);
       if ("error" in cancelResult) {
         toast.error(cancelResult.error);
@@ -76,35 +117,87 @@ function ConfirmCvcStep({
         setIsSubmitting(false);
         return;
       }
-      setCardVerifiedForBidSession();
+      onVerifiedFlowComplete();
+      setCardVerifiedForBidSession(userId);
       toast.success("Bid placed successfully!");
       onSuccess();
-    } catch {
-      toast.error("Something went wrong");
+    } catch (err) {
+      sessionStorage.removeItem(BID_VERIFY_PENDING_KEY);
+      const message =
+        err instanceof Error ? err.message : "Something went wrong";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Click below to verify your card with CVC. Stripe may open a secure form or 3D Secure window. We won’t charge you unless you win.
+        Confirm your saved card (CVC if required). Stripe may open a secure window for 3D Secure.
+        We won&apos;t charge you unless you win.
       </p>
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          paymentMethodOrder: ["card"],
+        }}
+      />
       <DialogFooter className="gap-2 sm:gap-0">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           Cancel
         </Button>
-        <Button onClick={handleConfirm} disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || !stripe || !elements}>
           {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
             <CreditCard className="h-4 w-4 mr-2" />
           )}
-          Verify card & place bid ${amount.toFixed(2)}
+          Verify card &amp; place bid ${amount.toFixed(2)}
         </Button>
       </DialogFooter>
-    </div>
+    </form>
+  );
+}
+
+function ConfirmCvcStep({
+  clientSecret,
+  paymentIntentId,
+  itemId,
+  amount,
+  onVerifiedFlowComplete,
+  onSuccess,
+  onCancel,
+}: {
+  clientSecret: string;
+  paymentIntentId: string;
+  itemId: string;
+  amount: number;
+  onVerifiedFlowComplete: () => void;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  if (!stripePromise) return null;
+  const options = {
+    clientSecret,
+    appearance: { theme: "stripe" as const },
+  };
+  return (
+    <Elements stripe={stripePromise} options={options}>
+      <ConfirmCvcInner
+        paymentIntentId={paymentIntentId}
+        itemId={itemId}
+        amount={amount}
+        onVerifiedFlowComplete={onVerifiedFlowComplete}
+        onSuccess={onSuccess}
+        onCancel={onCancel}
+      />
+    </Elements>
   );
 }
 
@@ -120,6 +213,14 @@ export function BidConfirmCvcModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requiresPaymentMethod, setRequiresPaymentMethod] = useState(false);
+  const verifiedCompleteRef = useRef(false);
+  const intentRequestSeq = useRef(0);
+
+  useEffect(() => {
+    if (open) {
+      verifiedCompleteRef.current = false;
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open || !itemId || amount == null || amount <= 0) {
@@ -129,10 +230,12 @@ export function BidConfirmCvcModal({
       setRequiresPaymentMethod(false);
       return;
     }
+    const seq = ++intentRequestSeq.current;
     setLoading(true);
     setError(null);
     createBidVerificationIntent(itemId)
       .then((res) => {
+        if (seq !== intentRequestSeq.current) return;
         if ("error" in res) {
           setError(res.error);
           setRequiresPaymentMethod(res.requiresPaymentMethod ?? false);
@@ -142,32 +245,53 @@ export function BidConfirmCvcModal({
         setPaymentIntentId(res.paymentIntentId);
         setError(null);
       })
-      .catch(() => setError("Could not load verification form"))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (seq !== intentRequestSeq.current) return;
+        setError("Could not load verification form");
+      })
+      .finally(() => {
+        if (seq !== intentRequestSeq.current) return;
+        setLoading(false);
+      });
   }, [open, itemId, amount]);
 
-  const handleSuccess = () => {
-    onOpenChange(false);
-    setClientSecret(null);
-    setPaymentIntentId(null);
-    onSuccess();
+  const handleVerifiedComplete = () => {
+    verifiedCompleteRef.current = true;
   };
 
-  const handleCancel = () => {
-    onOpenChange(false);
-    setClientSecret(null);
-    setPaymentIntentId(null);
+  const handleDialogOpenChange = (next: boolean) => {
+    if (!next && !verifiedCompleteRef.current && paymentIntentId && clientSecret) {
+      // Fire-and-forget cancel with error logging so orphaned holds don't accumulate.
+      cancelBidVerification(paymentIntentId).then((result) => {
+        if ("error" in result) {
+          console.error("Failed to cancel bid verification PI:", paymentIntentId, result.error);
+        }
+      });
+    }
+    if (!next) {
+      setClientSecret(null);
+      setPaymentIntentId(null);
+    }
+    onOpenChange(next);
+  };
+
+  const handleSuccess = () => {
+    handleDialogOpenChange(false);
+    onSuccess();
   };
 
   if (!itemId || amount == null) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Confirm your bid</DialogTitle>
           <DialogDescription>
-            Enter your card CVC to verify your payment method. We’ll charge your card only if you win (${amount.toFixed(2)} bid).
+            Verify your payment method for your ${amount.toFixed(2)} bid. We&apos;ll charge your card only if you win.
           </DialogDescription>
         </DialogHeader>
 
@@ -175,6 +299,12 @@ export function BidConfirmCvcModal({
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        )}
+
+        {!stripePromise && !loading && (
+          <p className="text-sm text-muted-foreground py-4">
+            Stripe is not configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.
+          </p>
         )}
 
         {error && !loading && (
@@ -188,21 +318,26 @@ export function BidConfirmCvcModal({
               </Button>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={handleCancel}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => handleDialogOpenChange(false)}
+              >
                 Close
               </Button>
             </DialogFooter>
           </div>
         )}
 
-        {clientSecret && paymentIntentId && !loading && (
+        {clientSecret && paymentIntentId && !loading && stripePromise && (
           <ConfirmCvcStep
             clientSecret={clientSecret}
             paymentIntentId={paymentIntentId}
             itemId={itemId}
             amount={amount}
+            onVerifiedFlowComplete={handleVerifiedComplete}
             onSuccess={handleSuccess}
-            onCancel={handleCancel}
+            onCancel={() => handleDialogOpenChange(false)}
           />
         )}
       </DialogContent>

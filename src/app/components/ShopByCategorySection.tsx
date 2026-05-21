@@ -20,7 +20,7 @@ export async function ShopByCategorySection() {
         </Badge>
       </div>
       <h2 className="text-2xl md:text-3xl font-bold text-center mb-2">
-        Shop by <span className="text-violet-600 dark:text-violet-400 italic">Category</span>
+        Shop by <span className="text-gradient-primary italic">Category</span>
       </h2>
       <p className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
         Discover amazing deals across all our product categories.

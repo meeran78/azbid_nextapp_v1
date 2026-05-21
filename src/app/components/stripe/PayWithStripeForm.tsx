@@ -37,6 +37,11 @@ function ConfirmPaymentForm({
     if (!stripe || !elements) return;
     setIsSubmitting(true);
     try {
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        toast.error(submitError.message ?? "Check your payment details");
+        return;
+      }
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {

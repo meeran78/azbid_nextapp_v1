@@ -1,0 +1,109 @@
+name: Close Expired Auction Lots
+
+# Runs every 5 minutes (GitHub Actions minimum reliable interval).
+# The endpoint is idempotent — concurrent runs with Vercel cron are safe due
+# to the optimistic lock on lot status in close-lot.action.ts.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log the request without calling the endpoint"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  close-lots:
+    name: Close expired lots
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate required configuration
+        run: |
+          if [ -z "${{ vars.APP_URL }}" ]; then
+            echo "::error::APP_URL variable is not set. Add it under repo Settings → Variables."
+            exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "::error::CRON_SECRET secret is not set. Add it under repo Settings → Secrets."
+            exit 1
+          fi
+
+      - name: Dry run check
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        run: |
+          echo "Dry run — would POST to ${{ vars.APP_URL }}/api/cron/close-lots"
+          echo "Skipping actual request."
+
+      - name: Call close-lots endpoint
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        id: call
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${{ vars.APP_URL }}/api/cron/close-lots" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --max-time 120 \
+            --retry 2 \
+            --retry-delay 5 \
+            --retry-connrefused)
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+          echo "--- Response ---"
+          echo "HTTP $HTTP_STATUS"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+
+      - name: Validate response
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          HTTP_STATUS="${{ steps.call.outputs.status }}"
+          BODY='${{ steps.call.outputs.body }}'
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Endpoint returned HTTP $HTTP_STATUS"
+            echo "$BODY"
+            exit 1
+          fi
+
+          # Check for errors array in response JSON
+          ERRORS=$(echo "$BODY" | python3 -c "
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              errs = data.get('errors', [])
+              if errs:
+                  for e in errs:
+                      print(f\"Lot {e.get('lotId','?')}: {e.get('error','unknown error')}\")
+                  sys.exit(1)
+              closed = data.get('closed', 0)
+              print(f'OK — closed {closed} lot(s)')
+          except Exception as ex:
+              print(f'Could not parse response: {ex}')
+          " 2>&1)
+
+          EXIT_CODE=$?
+          echo "$ERRORS"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::warning::Some lots failed to close — check the output above."
+            # Not a hard failure — partial success is acceptable; individual lot errors
+            # are logged server-side and lots will retry on the next cron invocation.
+          fi
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "::error::close-lots cron job failed. Check the logs above."
+          echo "To debug manually:"
+          echo "  curl -X POST ${{ vars.APP_URL }}/api/cron/close-lots \\"
+          echo "       -H 'Authorization: Bearer <CRON_SECRET>'"

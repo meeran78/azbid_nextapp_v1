@@ -19,7 +19,7 @@ const HighlightedFeature = () => {
 						</Badge>
 					</div>
 					<h3 className='text-4xl font-bold mb-4'>
-						Highlighted <span className='italic'>Features</span>
+						Highlighted <span className='text-gradient-primary italic'>Features</span>
 					</h3>
 				</div>
 

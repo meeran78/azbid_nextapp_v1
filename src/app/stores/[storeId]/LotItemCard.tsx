@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
+import { Package, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { getMinimumNextBid } from "@/lib/bid-increment";
 import { BidConfirmCvcModal } from "@/app/components/stripe/BidConfirmCvcModal";
 import { getCardVerifiedForBidSession, clearCardVerifiedForBidSession } from "@/lib/bid-session";
@@ -74,12 +74,12 @@ function ItemCarousel({
         <Package className="h-16 w-16 text-muted-foreground" />
         {isNewItem(item.createdAt) && (
           <span className="absolute top-3 left-3 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-xs font-medium text-white">
-            {item.condition?.toUpperCase()}
+            New
           </span>
         )}
         {lotStatus === "LIVE" && (
           <span className="absolute top-3 right-3 rounded-full bg-purple-600 px-2.5 py-0.5 text-xs font-medium text-white">
-            {lotStatus?.toUpperCase()}
+            {lotStatus}
           </span>
         )}
       </div>
@@ -102,12 +102,12 @@ function ItemCarousel({
                 />
                 {isNewItem(item.createdAt) && (
                   <span className="absolute top-3 left-3 rounded-full bg-teal-500/90 px-2.5 py-0.5 text-xs font-medium text-white">
-                   {item.condition?.toUpperCase()}
+                    New
                   </span>
                 )}
                 {lotStatus === "LIVE" && (
                   <span className="absolute top-3 right-3 rounded-full bg-green-600 px-2.5 py-0.5 text-xs font-medium text-white">
-                    {lotStatus?.toUpperCase()}
+                    {lotStatus}
                   </span>
                 )}
                 {item.imageUrls.length > 1 && (
@@ -138,11 +138,13 @@ function ItemBidForm({
   item,
   lotId,
   lotStatus,
+  storeId,
   onViewHistory,
 }: {
   item: PublicStoreLotItem;
   lotId: string;
   lotStatus: string;
+  storeId?: string;
   onViewHistory: () => void;
 }) {
   const isScheduled = (lotStatus ?? "").toUpperCase() === "SCHEDULED";
@@ -161,17 +163,18 @@ function ItemBidForm({
   }, [minBid]);
 
   useEffect(() => {
+    if (isPending) return;
     if (!session?.user) clearCardVerifiedForBidSession();
-  }, [session?.user]);
+  }, [session, isPending]);
 
-  const handleBid = async (e: React.FormEvent) => {
+  const handleBid = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount < minBid) {
       toast.error(`Minimum bid is $${minBid.toFixed(2)}`);
       return;
     }
-    if (getCardVerifiedForBidSession()) {
+    if (session?.user?.id && getCardVerifiedForBidSession(session.user.id)) {
       setIsSubmitting(true);
       try {
         const result = await placeBidAction(item.id, numAmount);
@@ -203,13 +206,15 @@ function ItemBidForm({
   }
 
   if (!session) {
+    // Use the store URL as the callback so the user returns here after sign-in.
+    const callbackUrl = storeId ? `/stores/${storeId}` : `/lots/${lotId}`;
     return (
       <div className="rounded-lg bg-muted/30 p-4">
         <p className="text-sm text-muted-foreground mb-3">
           Sign in to place a bid on this item.
         </p>
         <Button asChild size="sm">
-          <Link href={`/sign-in?callbackURL=/lots/${lotId}`}>Sign In to Bid</Link>
+          <Link href={`/sign-in?callbackURL=${callbackUrl}`}>Sign In to Bid</Link>
         </Button>
       </div>
     );
@@ -246,64 +251,41 @@ function ItemBidForm({
 
   return (
     <>
-    <form onSubmit={handleBid} className="space-y-3">
-      <div className="flex gap-2 items-center">
-        {/* <span className="text-sm text-muted-foreground shrink-0">
-          $ Next bid: ${minBid.toFixed(2)}
-        </span> */}
-        <div className="relative flex-1 min-w-0">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-            $
-          </span>
-          <Input
-            type="number"
-            step="0.01"
-            min={minBid}
-            placeholder={minBid.toFixed(2)}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="pl-7 h-9"
-            aria-label="Bid amount"
-          />
+      <form onSubmit={handleBid} className="space-y-3">
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1 min-w-0">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+              $
+            </span>
+            <Input
+              type="number"
+              step="0.01"
+              min={minBid}
+              placeholder={minBid.toFixed(2)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="pl-7 h-9"
+              aria-label="Bid amount"
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            size="sm"
+            className="bg-zinc-800 hover:bg-zinc-900 text-white shrink-0"
+          >
+            Place Bid
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            onClick={onViewHistory}
+          >
+            <History className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          size="sm"
-          className="bg-zinc-800 hover:bg-zinc-900 text-white shrink-0"
-        >
-          Place Bid
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          onClick={onViewHistory}
-        >
-          <History className="h-4 w-4" />
-         
-        </Button>
-      </div>
-      {/* <div className="flex gap-2">
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 bg-violet-600 hover:bg-violet-700"
-        >
-          <Gavel className="h-4 w-4 mr-2" />
-          Confirm Bid
-        </Button>
-       <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          onClick={onViewHistory}
-        >
-          <History className="h-4 w-4 mr-2" />
-          View History
-        </Button> 
-      </div>*/}
-    </form>
+      </form>
       <BidConfirmCvcModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -326,15 +308,6 @@ interface LotItemCardProps {
   isFavourited?: boolean;
   isWatched?: boolean;
 }
-
-const CONDITION_BADGES = {
-  "New": "bg-teal-500/90",
-  "Like New": "bg-teal-500/90",
-  "Used - Good": "bg-teal-500/90",
-  "Used - Fair": "bg-teal-500/90",
-  "Salvage": "bg-teal-500/90",
-}
-
 
 export function LotItemCard({
   item,
@@ -415,11 +388,7 @@ export function LotItemCard({
 
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        });
+        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
         toast.success("Shared successfully!");
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
@@ -467,16 +436,6 @@ export function LotItemCard({
                   {item.description}
                 </p>
               )}
-              {/* {item.condition && (
-                <p className="text-sm text-muted-foreground">
-                  Condition: {item.condition}
-                </p>
-              )}
-              {item.reservePrice != null && (
-                <p className="text-sm text-muted-foreground">
-                  Reserve: ${item.reservePrice.toFixed(2)}
-                </p>
-              )} */}
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -487,7 +446,7 @@ export function LotItemCard({
         >
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
-              Starting Bid:{" "}
+              {item.currentPrice != null ? "Current Bid:" : "Starting Bid:"}{" "}
               <span className="font-bold text-violet-600">
                 ${(item.currentPrice ?? item.startPrice).toFixed(2)}
               </span>
@@ -500,6 +459,7 @@ export function LotItemCard({
             item={item}
             lotId={lotId}
             lotStatus={lotStatus}
+            storeId={storeId}
             onViewHistory={() => setHistoryOpen(true)}
           />
         </div>
@@ -522,9 +482,7 @@ export function LotItemCard({
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Heart
-              className={`h-5 w-5 ${isFavourited ? "fill-current" : ""}`}
-            />
+            <Heart className={`h-5 w-5 ${isFavourited ? "fill-current" : ""}`} />
             <span>{isFavourited ? "Favourited" : "Favourite"}</span>
           </button>
           <button

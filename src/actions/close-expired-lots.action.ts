@@ -17,7 +17,11 @@ export type CloseExpiredLotsResult = {
  * - Auto-charges buyer's saved Stripe payment method (or leaves invoice PENDING)
  * - Sends emails to buyers and seller
  *
- * Invoked by the cron endpoint GET/POST /api/cron/close-lots (see vercel.json: every minute).
+ * Lots are closed in parallel (Promise.allSettled) to avoid serialised timeouts on
+ * Vercel when many lots expire at once. closeLot() uses an optimistic lock on the
+ * lot's status so concurrent cron invocations cannot double-close the same lot.
+ *
+ * Invoked by the cron endpoint GET/POST /api/cron/close-lots (see vercel.json).
  */
 export async function closeExpiredLots(): Promise<CloseExpiredLotsResult> {
   const now = new Date();
@@ -32,14 +36,22 @@ export async function closeExpiredLots(): Promise<CloseExpiredLotsResult> {
 
   const result: CloseExpiredLotsResult = { closed: 0, errors: [] };
 
-  for (const lot of expiredLots) {
-    const outcome = await closeLot(lot.id);
-    if ("error" in outcome) {
-      result.errors.push({ lotId: lot.id, error: outcome.error });
-      continue;
-    }
+  if (expiredLots.length === 0) return result;
 
-    result.closed++;
+  const outcomes = await Promise.allSettled(
+    expiredLots.map((lot) => closeLot(lot.id))
+  );
+
+  for (let i = 0; i < outcomes.length; i++) {
+    const outcome = outcomes[i];
+    const lotId = expiredLots[i].id;
+    if (outcome.status === "rejected") {
+      result.errors.push({ lotId, error: String(outcome.reason) });
+    } else if ("error" in outcome.value) {
+      result.errors.push({ lotId, error: outcome.value.error });
+    } else {
+      result.closed++;
+    }
   }
 
   return result;

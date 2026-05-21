@@ -10,7 +10,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { createSetupIntent, setDefaultPaymentMethodFromSetupIntent } from "@/actions/payment.action";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -25,12 +25,18 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!stripe || !elements) return;
     setIsSubmitting(true);
     try {
-      const { error, setupIntent } = await stripe.confirmSetup({
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        toast.error(submitError.message ?? "Check your payment details");
+        setIsSubmitting(false);
+        return;
+      }
+      const confirmResult = await stripe.confirmSetup({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/buyers-dashboard/payment-methods?setup=success`,
@@ -39,13 +45,13 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
           },
         },
       });
-      if (error) {
-        toast.error(error.message ?? "Failed to save card");
+      if (confirmResult.error) {
+        toast.error(confirmResult.error.message ?? "Failed to save card");
         setIsSubmitting(false);
         return;
       }
-      if (setupIntent?.id) {
-        const result = await setDefaultPaymentMethodFromSetupIntent(setupIntent.id);
+      if (confirmResult.setupIntent?.id) {
+        const result = await setDefaultPaymentMethodFromSetupIntent(confirmResult.setupIntent.id);
         if ("error" in result) {
           toast.error(result.error);
           setIsSubmitting(false);
@@ -53,9 +59,9 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
         }
       }
       toast.success("Card saved successfully.");
-      onSuccess();
       router.refresh();
-    } catch (err) {
+      onSuccess();
+    } catch {
       toast.error("Something went wrong");
     } finally {
       setIsSubmitting(false);
@@ -68,6 +74,7 @@ function SetupForm({ onSuccess }: { onSuccess: () => void }) {
         options={{
           layout: "tabs",
           paymentMethodOrder: ["card"],
+          wallets: { applePay: "never", googlePay: "never" },
         }}
       />
       <Button type="submit" disabled={!stripe || !elements || isSubmitting} className="w-full">
@@ -84,6 +91,7 @@ export function SaveCardForm() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     createSetupIntent()
@@ -130,6 +138,19 @@ export function SaveCardForm() {
     );
   }
 
+  if (saved) {
+    return (
+      <Card>
+        <CardContent className="pt-6 flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+          <p className="text-sm font-medium text-green-700">
+            Card saved successfully. You can now place bids.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!clientSecret) {
     return (
       <Card>
@@ -147,12 +168,12 @@ export function SaveCardForm() {
       <CardHeader>
         <CardTitle>Save a payment method</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Add a card to pay for won auctions quickly. We’ll charge this card when you win (charge later).
+          Add a debit or credit card (required to place bids). We&apos;ll charge this card when you win.
         </p>
       </CardHeader>
       <CardContent>
         <Elements stripe={stripePromise} options={options}>
-          <SetupForm onSuccess={() => {}} />
+          <SetupForm onSuccess={() => setSaved(true)} />
         </Elements>
       </CardContent>
     </Card>

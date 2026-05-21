@@ -14,7 +14,7 @@ const HowItWorksSection = () => {
 						</Badge>
 					</div>
 					<h3 className='text-4xl font-bold mb-4'>
-						How It's <span className='italic'>Work</span>
+						How It's <span className='text-gradient-primary italic'>Work</span>
 					</h3>
 				</div>
 

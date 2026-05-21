@@ -18,7 +18,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Package, Gavel, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
+import { Package, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { getMinimumNextBid } from "@/lib/bid-increment";
 import { BidConfirmCvcModal } from "@/app/components/stripe/BidConfirmCvcModal";
 import { getCardVerifiedForBidSession, clearCardVerifiedForBidSession } from "@/lib/bid-session";
@@ -172,17 +172,18 @@ function ItemBidForm({
   const minBid = getMinimumNextBid(currentPrice);
 
   useEffect(() => {
+    if (isPending) return;
     if (!session?.user) clearCardVerifiedForBidSession();
-  }, [session?.user]);
+  }, [session, isPending]);
 
-  const handleBid = async (e: React.FormEvent) => {
+  const handleBid = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount < minBid) {
       toast.error(`Minimum bid is $${minBid.toFixed(2)}`);
       return;
     }
-    if (getCardVerifiedForBidSession()) {
+    if (session?.user?.id && getCardVerifiedForBidSession(session.user.id)) {
       setIsSubmitting(true);
       try {
         const result = await placeBidAction(item.id, numAmount);
@@ -281,34 +282,16 @@ function ItemBidForm({
           >
             Place Bid
           </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          onClick={onViewHistory}
-        > <History className="h-4 w-4 mr-2" /></Button>
-       
-      </div>
-      <div className="flex gap-2">
-         {/*<Button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 bg-violet-600 hover:bg-violet-700"
-        >
-          <Gavel className="h-4 w-4 mr-2" />
-          Confirm Bid
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0"
-          onClick={onViewHistory}
-        >
-          <History className="h-4 w-4 mr-2" />
-          View History
-        </Button> */}
-      </div>
-    </form>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            onClick={onViewHistory}
+          >
+            <History className="h-4 w-4 mr-2" />
+          </Button>
+        </div>
+      </form>
       <BidConfirmCvcModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -463,7 +446,7 @@ function AuctionItemCard({
         >
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
-              Starting Bid:{" "}
+              {item.currentPrice != null ? "Current Bid:" : "Starting Bid:"}{" "}
               <span className="font-bold text-violet-600">
                 ${(item.currentPrice ?? item.startPrice).toFixed(2)}
               </span>

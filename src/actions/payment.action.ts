@@ -42,7 +42,8 @@ export async function getOrCreateStripeCustomer(
  * Check if the current buyer has a valid card stored in Stripe (required to place bids).
  */
 export async function ensureBuyerHasValidCard(): Promise<
-  { valid: true } | { valid: false; error: string }
+  | { valid: true }
+  | { valid: false; error: string; suggestAddCard?: boolean }
 > {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
@@ -60,23 +61,48 @@ export async function ensureBuyerHasValidCard(): Promise<
   if ("error" in customerResult) {
     return { valid: false, error: customerResult.error };
   }
-  const customer = await stripe.customers.retrieve(customerResult.customerId);
+
+  // List cards in a single call — avoids the extra customer.retrieve + expand round-trip.
+  const cardList = await stripe.paymentMethods.list({
+    customer: customerResult.customerId,
+    type: "card",
+  });
+  if (cardList.data.length > 0) {
+    return { valid: true };
+  }
+
+  // No cards found — check whether the default method is a non-card (e.g. Link) to give a
+  // more specific error message.
+  const customer = await stripe.customers.retrieve(customerResult.customerId, {
+    expand: ["invoice_settings.default_payment_method"],
+  });
   if (customer.deleted) {
     return { valid: false, error: "Payment account is invalid." };
   }
-  // Only card payment methods work for bid verification and off_session charge; Link etc. are not supported.
-  const cardList = await stripe.paymentMethods.list({
-    customer: (customer as Stripe.Customer).id,
-    type: "card",
-  });
-  const hasCard = cardList.data.length > 0;
-  if (!hasCard) {
+  const cust = customer as Stripe.Customer;
+  const rawDefault = cust.invoice_settings?.default_payment_method;
+  let defaultPaymentMethodType: string | undefined;
+  if (typeof rawDefault === "object" && rawDefault && "type" in rawDefault) {
+    defaultPaymentMethodType = (rawDefault as Stripe.PaymentMethod).type;
+  } else if (typeof rawDefault === "string") {
+    const pm = await stripe.paymentMethods.retrieve(rawDefault);
+    defaultPaymentMethodType = pm.type;
+  }
+
+  if (defaultPaymentMethodType && defaultPaymentMethodType !== "card") {
     return {
       valid: false,
-      error: "Add a valid payment method to place bids. We'll charge it only if you win.",
+      suggestAddCard: true,
+      error:
+        "A debit or credit card is required to bid. You saved a non-card method (for example Link). Add a card on Payment methods.",
     };
   }
-  return { valid: true };
+
+  return {
+    valid: false,
+    suggestAddCard: true,
+    error: "Add a card to place bids. We'll charge it only if you win.",
+  };
 }
 
 /**
@@ -98,7 +124,7 @@ export async function createBidVerificationIntent(
   if (!check.valid) {
     return {
       error: check.error,
-      requiresPaymentMethod: check.error.includes("Add a valid payment method"),
+      requiresPaymentMethod: check.suggestAddCard === true,
     };
   }
   const stripe = getStripe();
@@ -107,27 +133,16 @@ export async function createBidVerificationIntent(
   if ("error" in customerResult) return { error: customerResult.error };
   const customer = await stripe.customers.retrieve(customerResult.customerId);
   if (customer.deleted) return { error: "Payment account is invalid." };
-  // Bid verification and confirmCardPayment require a card; Link/default may be non-card.
-  const cardList = await stripe.paymentMethods.list({
-    customer: (customer as Stripe.Customer).id,
-    type: "card",
-  });
-  const pmId = cardList.data[0]?.id ?? null;
-  if (!pmId) {
-    return {
-      error: "Add a valid payment method to place bids.",
-      requiresPaymentMethod: true,
-    };
-  }
 
-  // Create a small manual-capture PaymentIntent for card verification before bidding.
-  // We pass an explicit payment_method, so we don't need automatic_payment_methods here.
+  // Small manual-capture PI for bid verification. No payment_method here — the client confirms
+  // with Payment Element so buyers pick a saved card and enter CVC / 3DS when required.
   const paymentIntent = await stripe.paymentIntents.create({
     amount: 50, // $0.50 minimum for USD
     currency: "usd",
     customer: customerResult.customerId,
-    payment_method: pmId,
     capture_method: "manual",
+    confirmation_method: "automatic",
+    payment_method_types: ["card"],
     metadata: {
       type: "bid_verification",
       itemId,
@@ -153,12 +168,48 @@ export async function cancelBidVerification(
   }
   const stripe = getStripe();
   if (!stripe) return { error: "Payments are not configured." };
-  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  let pi = await stripe.paymentIntents.retrieve(paymentIntentId);
   if (pi.metadata.type !== "bid_verification" || pi.metadata.userId !== session.user.id) {
     return { error: "Invalid verification. Please try again." };
   }
-  if (pi.status === "requires_capture" || pi.status === "succeeded") {
+  if (pi.status === "canceled") {
+    return { success: true };
+  }
+
+  // Intent can be briefly "processing" right after client confirmation.
+  // Poll up to 3 times with a short back-off rather than a tight busy loop.
+  for (let attempt = 0; attempt < 3 && pi.status === "processing"; attempt++) {
+    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  }
+
+  if (pi.status === "canceled") {
+    return { success: true };
+  }
+  if (pi.status === "processing") {
+    return {
+      error:
+        "Card verification is still processing. Wait a few seconds and try your bid again.",
+    };
+  }
+
+  // Void authorization or abandon an unconfirmed intent.
+  const cancelable: Stripe.PaymentIntent.Status[] = [
+    "requires_payment_method",
+    "requires_confirmation",
+    "requires_capture",
+    "requires_action",
+  ];
+  if (!cancelable.includes(pi.status)) {
+    return { success: true };
+  }
+  try {
     await stripe.paymentIntents.cancel(paymentIntentId);
+  } catch {
+    const again = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (again.status !== "canceled") {
+      return { error: "Could not release card verification. Try again or contact support." };
+    }
   }
   return { success: true };
 }
@@ -182,6 +233,12 @@ export async function setDefaultPaymentMethodFromSetupIntent(
   const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, {
     expand: ["payment_method", "customer"],
   });
+
+  // Only act on a completed setup — a failed or processing intent must not set the PM.
+  if (setupIntent.status !== "succeeded") {
+    return { error: "SetupIntent has not succeeded." };
+  }
+
   const customerId =
     typeof setupIntent.customer === "string"
       ? setupIntent.customer
@@ -230,7 +287,8 @@ export async function createSetupIntent(): Promise<
     customer: customerResult.customerId,
     usage: "off_session",
     metadata: { userId: session.user.id },
-    automatic_payment_methods: { enabled: true },
+    // Card-only so bidding + ensureBuyerHasValidCard (card list) stay in sync. Link-only saves looked "successful" but failed bid checks.
+    payment_method_types: ["card"],
   });
   return {
     success: true,
@@ -240,8 +298,8 @@ export async function createSetupIntent(): Promise<
 
 /**
  * Trigger payment flow for an invoice.
- * Creates Stripe PaymentIntent (charge later / off_session) and stores stripePaymentIntentId on Invoice.
- * Returns clientSecret for frontend to confirm payment (Stripe Elements).
+ * Creates a Stripe PaymentIntent (card-only, for off-session compatibility) and stores
+ * stripePaymentIntentId on the Invoice. Returns clientSecret for frontend confirmation.
  */
 export async function triggerPaymentFlow(
   invoiceId: string
@@ -269,12 +327,32 @@ export async function triggerPaymentFlow(
         const pi = await stripe.paymentIntents.retrieve(
           invoice.stripePaymentIntentId
         );
-        return { success: true, clientSecret: pi.client_secret ?? undefined };
+        // If the existing PI is in a terminal/non-usable state, fall through to create a new one.
+        const reusable: Stripe.PaymentIntent.Status[] = [
+          "requires_payment_method",
+          "requires_confirmation",
+          "requires_action",
+          "processing",
+          "succeeded",
+        ];
+        if (reusable.includes(pi.status)) {
+          return { success: true, clientSecret: pi.client_secret ?? undefined };
+        }
+        // PI is canceled or otherwise terminal — create a fresh one below.
+        await prisma.invoice.update({
+          where: { id: invoiceId },
+          data: { stripePaymentIntentId: null },
+        });
       } catch {
-        return { success: true };
+        // PI not found in Stripe — clear it and create fresh.
+        await prisma.invoice.update({
+          where: { id: invoiceId },
+          data: { stripePaymentIntentId: null },
+        });
       }
+    } else {
+      return { success: true };
     }
-    return { success: true };
   }
 
   const stripe = getStripe();
@@ -297,12 +375,14 @@ export async function triggerPaymentFlow(
     return { error: "Invoice amount too small for Stripe (min $0.50)." };
   }
 
+  // Use payment_method_types: ["card"] (not automatic_payment_methods) so this PI can be
+  // confirmed off-session without Stripe requiring a return_url.
   const paymentIntent = await stripe.paymentIntents.create({
     amount: amountCents,
     currency: "usd",
     customer: customerId,
+    payment_method_types: ["card"],
     metadata: { invoiceId },
-    automatic_payment_methods: { enabled: true },
   });
 
   await prisma.invoice.update({
@@ -362,11 +442,30 @@ export async function chargeInvoiceWithStoredPayment(
     return { charged: false, reason: "No PaymentIntent for invoice." };
   }
 
+  // If the stored PI is in a terminal state (e.g. canceled), it cannot be confirmed —
+  // clear it and create a fresh one.
+  const existingPi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (existingPi.status === "canceled") {
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: { stripePaymentIntentId: null },
+    });
+    const refreshed = await triggerPaymentFlow(invoiceId);
+    if ("error" in refreshed) return { charged: false, reason: refreshed.error };
+    const inv = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { stripePaymentIntentId: true },
+    });
+    paymentIntentId = inv?.stripePaymentIntentId ?? null;
+    if (!paymentIntentId) return { charged: false, reason: "Could not create new PaymentIntent." };
+  }
+
   const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
   if (customer.deleted) {
     return { charged: false, reason: "Customer no longer valid." };
   }
-  // Prefer customer's default payment method (set after SetupIntent), then first card.
+
+  // Prefer customer's default payment method, then first available card.
   const defaultPmId =
     typeof customer.invoice_settings?.default_payment_method === "string"
       ? customer.invoice_settings.default_payment_method
@@ -414,7 +513,7 @@ export async function chargeInvoiceWithStoredPayment(
           },
         }),
       ]);
-      // Seller payout is done in the payment_intent.succeeded webhook to avoid double transfer
+      // Seller payout is triggered by the payment_intent.succeeded webhook to avoid double transfer.
       return { charged: true };
     }
     if (pi.status === "requires_action") {

@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { unstable_cache } from "next/cache";
 import "./globals.css";
 
 //Components
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { AiChat } from "@/components/AiChat";
+import { BidVerificationResume } from "@/app/components/stripe/BidVerificationResume";
 
 //Shandcn UI Components
 import { Toaster } from "@/components/ui/sonner";
 import { getLiveScheduledAuctionsCount } from "@/actions/auction.action";
+
+// Cache for 60 s so every page load doesn't hit the DB.
+const getCachedAuctionCount = unstable_cache(
+  () => getLiveScheduledAuctionsCount(),
+  ["live-auction-count"],
+  { revalidate: 60 }
+);
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +40,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const liveAuctionCount = await getLiveScheduledAuctionsCount();
+  const liveAuctionCount = await getCachedAuctionCount();
 
   return (
     <html lang="en">
@@ -39,6 +48,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Header liveAuctionCount={liveAuctionCount} />
+        <BidVerificationResume />
         {children}
         <Footer />
         <AiChat />

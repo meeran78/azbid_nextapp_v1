@@ -7,9 +7,12 @@ import { transferToSellerForInvoice } from "@/actions/stripe-connect.action";
 /**
  * Stripe webhook – event sync.
  * Verify STRIPE_WEBHOOK_SECRET and handle:
- * - payment_intent.succeeded → mark Invoice/Order PAID, create Payment
- * - payment_intent.payment_failed → log (optional notify)
- * - setup_intent.succeeded → set payment method as default on customer
+ * - payment_intent.succeeded       → mark Invoice/Order PAID, create Payment, trigger seller payout
+ * - payment_intent.payment_failed  → mark invoice as requiring action so buyer knows to retry
+ * - setup_intent.succeeded         → set payment method as default on customer
+ *
+ * All handlers are idempotent: if the invoice is already PAID, the succeeded handler skips
+ * the DB writes and payout so duplicate webhook deliveries are safe.
  */
 export async function POST(request: Request) {
   const secret = getStripeWebhookSecret();
@@ -50,55 +53,75 @@ export async function POST(request: Request) {
         const pi = event.data.object as Stripe.PaymentIntent;
         const invoiceId = pi.metadata?.invoiceId;
         if (!invoiceId) break;
+
         const invoice = await prisma.invoice.findUnique({
           where: { id: invoiceId },
           include: { order: { select: { id: true } } },
         });
-        if (invoice?.order) {
-          await prisma.$transaction([
-            prisma.invoice.update({
-              where: { id: invoiceId },
-              data: { status: "PAID", paidAt: new Date(), paymentRequiresAction: false },
-            }),
-            prisma.order.update({
-              where: { id: invoice.order.id },
-              data: { status: "PAID" },
-            }),
-            prisma.payment.upsert({
-              where: { orderId: invoice.order.id },
-              create: {
-                orderId: invoice.order.id,
-                provider: "STRIPE",
-                providerRef: pi.id,
-                amount: invoice.invoiceTotal,
-                status: "PAID",
-              },
-              update: {
-                providerRef: pi.id,
-                amount: invoice.invoiceTotal,
-                status: "PAID",
-              },
-            }),
-          ]);
-          const transferResult = await transferToSellerForInvoice(invoiceId);
-          if (!transferResult.transferred && transferResult.reason) {
-            console.warn("Seller payout (webhook):", transferResult.reason);
-          }
+
+        // Idempotency guard: skip if already processed by chargeInvoiceWithStoredPayment.
+        if (!invoice?.order || invoice.status === "PAID") break;
+
+        await prisma.$transaction([
+          prisma.invoice.update({
+            where: { id: invoiceId },
+            data: { status: "PAID", paidAt: new Date(), paymentRequiresAction: false },
+          }),
+          prisma.order.update({
+            where: { id: invoice.order.id },
+            data: { status: "PAID" },
+          }),
+          prisma.payment.upsert({
+            where: { orderId: invoice.order.id },
+            create: {
+              orderId: invoice.order.id,
+              provider: "STRIPE",
+              providerRef: pi.id,
+              amount: invoice.invoiceTotal,
+              status: "PAID",
+            },
+            update: {
+              providerRef: pi.id,
+              amount: invoice.invoiceTotal,
+              status: "PAID",
+            },
+          }),
+        ]);
+
+        // transferToSellerForInvoice is idempotent (checks sellerPayoutTransferId).
+        const transferResult = await transferToSellerForInvoice(invoiceId);
+        if (!transferResult.transferred && transferResult.reason) {
+          console.warn("Seller payout (webhook):", transferResult.reason);
         }
         break;
       }
+
       case "payment_intent.payment_failed": {
         const pi = event.data.object as Stripe.PaymentIntent;
-        console.warn("Payment failed:", pi.id, pi.last_payment_error?.message);
+        const invoiceId = pi.metadata?.invoiceId;
+        console.warn(
+          "Payment failed:",
+          pi.id,
+          pi.last_payment_error?.message,
+          invoiceId ? `(invoice ${invoiceId})` : ""
+        );
+        if (invoiceId) {
+          await prisma.invoice.updateMany({
+            where: { id: invoiceId, status: "PENDING" },
+            data: { paymentRequiresAction: true },
+          });
+        }
         break;
       }
+
       case "setup_intent.succeeded": {
         const si = event.data.object as Stripe.SetupIntent;
         const pmId =
           typeof si.payment_method === "string"
             ? si.payment_method
             : (si.payment_method as Stripe.PaymentMethod)?.id;
-        const customerId = typeof si.customer === "string" ? si.customer : si.customer?.id;
+        const customerId =
+          typeof si.customer === "string" ? si.customer : si.customer?.id;
         if (customerId && pmId) {
           await stripe.customers.update(customerId, {
             invoice_settings: { default_payment_method: pmId },
@@ -106,16 +129,13 @@ export async function POST(request: Request) {
         }
         break;
       }
+
       default:
-        // Unhandled event type
         break;
     }
   } catch (err) {
     console.error("Stripe webhook handler error:", err);
-    return NextResponse.json(
-      { error: "Handler error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Handler error" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true }, { status: 200 });

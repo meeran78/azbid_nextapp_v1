@@ -31,12 +31,16 @@ export type CloseLotResult =
  * Close a lot. Call when lot.closesAt has passed (e.g. from a cron or job).
  *
  * Flow:
- * 1. LOT CLOSE        – Mark lot as SOLD or UNSOLD
+ * 1. LOT CLOSE        – Atomically mark lot SOLD or UNSOLD (optimistic lock: only if still LIVE)
  * 2. Determine winner – Set winningBidId/winningBidAmount on each item (highest bid wins)
  * 3. Create Order     – One order per buyer for their won items in this lot
- * 4. Generate Invoice  – One invoice per order (with InvoiceItems)
- * 5. Charge stored payment method – Attempt to charge buyer’s saved card (Stripe); else leave PENDING
- * 6. Notify buyer + seller – Email buyers (“You won – pay / payment received”) and seller (“Lot sold”)
+ * 4. Generate Invoice  – One invoice per order (with InvoiceItems via createMany)
+ * 5. Charge stored payment method – Attempt to charge buyer's saved card (Stripe); else leave PENDING
+ * 6. Notify buyer + seller – Email buyers ("You won – pay / payment received") and seller ("Lot sold")
+ *
+ * Concurrent-run safe: the lot.updateMany with `status: "LIVE"` condition is an atomic
+ * optimistic lock — if two cron invocations race, the second returns 0 rows updated and
+ * exits the transaction early without creating duplicate orders/invoices.
  */
 export async function closeLot(lotId: string): Promise<CloseLotResult> {
   const lot = await prisma.lot.findUnique({
@@ -44,7 +48,8 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
     include: {
       items: {
         include: {
-          bids: { orderBy: { amount: "desc" }, take: 1 },
+          // Primary: highest amount wins. Secondary: earliest bid at that amount wins (first in time).
+          bids: { orderBy: [{ amount: "desc" }, { createdAt: "asc" }], take: 1 },
         },
       },
       store: {
@@ -83,7 +88,7 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
       wonItems.push({
         itemId: item.id,
         winningBidId: winningBid.id,
-        winningBidAmount: winningBid.amount,
+        winningBidAmount: Number(winningBid.amount), // Prisma returns Decimal; convert explicitly
         buyerId: winningBid.userId,
       });
     }
@@ -91,23 +96,27 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
 
   const lotStatus: "SOLD" | "UNSOLD" = wonItems.length > 0 ? "SOLD" : "UNSOLD";
 
-  const createdInvoices: Array<{
-    invoiceId: string;
-    buyerId: string;
-    itemTitles: string[];
-    total: number;
-  }> = [];
-
-  await prisma.$transaction(async (tx) => {
-    // 1. Mark lot as SOLD / UNSOLD
-    await tx.lot.update({
-      where: { id: lotId },
+  // Declared inside and returned from the transaction so it is only populated when the
+  // transaction commits. If the transaction rolls back, we never attempt payment or emails
+  // against invoice IDs that don't exist in the database.
+  const createdInvoices = await prisma.$transaction(async (tx) => {
+    const invoices: Array<{
+      invoiceId: string;
+      buyerId: string;
+      itemTitles: string[];
+      total: number;
+    }> = [];
+    // 1. Atomically mark lot SOLD/UNSOLD — only succeeds if status is still LIVE.
+    //    If a concurrent cron run already closed it, count === 0 and we bail out.
+    const updatedLot = await tx.lot.updateMany({
+      where: { id: lotId, status: "LIVE" },
       data: { status: lotStatus },
     });
+    if (updatedLot.count === 0) return; // another process already closed this lot
 
     if (wonItems.length === 0) return;
 
-    // 2. Set winningBidId + winningBidAmount on each item
+    // 2. Set winningBidId + winningBidAmount on each won item
     for (const w of wonItems) {
       await tx.item.update({
         where: { id: w.itemId },
@@ -118,7 +127,7 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
       });
     }
 
-    // 3. Create Order + 4. Generate Invoice per buyer (one Order + one Invoice for multiple items won)
+    // 3. Create Order + 4. Generate Invoice per buyer
     const wonByBuyer = new Map<
       string,
       Array<{
@@ -172,18 +181,17 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
         },
       });
 
-      for (const oi of orderItemsData) {
-        await tx.orderItem.create({
-          data: {
-            orderId: order.id,
-            itemId: oi.itemId,
-            subtotal: oi.subtotal,
-            buyerPremium: oi.buyerPremium,
-            tax: oi.tax,
-            total: oi.total,
-          },
-        });
-      }
+      // Use createMany to avoid N+1 queries for order items and invoice items.
+      await tx.orderItem.createMany({
+        data: orderItemsData.map((oi) => ({
+          orderId: order.id,
+          itemId: oi.itemId,
+          subtotal: oi.subtotal,
+          buyerPremium: oi.buyerPremium,
+          tax: oi.tax,
+          total: oi.total,
+        })),
+      });
 
       const invoice = await tx.invoice.create({
         data: {
@@ -200,30 +208,37 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
         },
       });
 
-      for (const oi of orderItemsData) {
-        await tx.invoiceItem.create({
-          data: {
-            invoiceId: invoice.id,
-            itemId: oi.itemId,
-          },
-        });
-      }
+      await tx.invoiceItem.createMany({
+        data: orderItemsData.map((oi) => ({
+          invoiceId: invoice.id,
+          itemId: oi.itemId,
+        })),
+      });
 
-      createdInvoices.push({
+      invoices.push({
         invoiceId: invoice.id,
         buyerId,
         itemTitles: items.map((i) => i.itemTitle),
         total: orderTotal,
       });
     }
+
+    return invoices;
   });
 
-  // 5. Trigger payment flow then auto-charge stored payment method for each invoice (skip if below Stripe minimum)
+  // Transaction may return undefined if it exited early (concurrent close already ran).
+  if (!createdInvoices || createdInvoices.length === 0) {
+    return { success: true, lotStatus, ordersCreated: 0 };
+  }
+
+  // 5. Trigger payment flow then auto-charge stored payment method for each invoice
   const STRIPE_MIN_AMOUNT = 0.5;
   const autoChargedInvoiceIds = new Set<string>();
   for (const inv of createdInvoices) {
     if (inv.total < STRIPE_MIN_AMOUNT) {
-      console.warn(`Invoice ${inv.invoiceId} total $${inv.total.toFixed(2)} below Stripe minimum ($${STRIPE_MIN_AMOUNT}); buyer must contact support.`);
+      console.warn(
+        `Invoice ${inv.invoiceId} total $${inv.total.toFixed(2)} below Stripe minimum ($${STRIPE_MIN_AMOUNT}); buyer must contact support.`
+      );
       continue;
     }
     try {
@@ -278,7 +293,9 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
     if (seller?.email) {
       const soldSummary = createdInvoices
         .map((inv) => {
-          const paid = autoChargedInvoiceIds.has(inv.invoiceId) ? " (paid)" : " (payment pending)";
+          const paid = autoChargedInvoiceIds.has(inv.invoiceId)
+            ? " (paid)"
+            : " (payment pending)";
           return `• ${inv.itemTitles.join(", ")} – $${inv.total.toFixed(2)}${paid}`;
         })
         .join("\n");
