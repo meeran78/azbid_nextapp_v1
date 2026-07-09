@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
     getSellerAuctions,
+    getSellerFlowStatus,
     getSellerLots,
 } from "@/actions/seller-dashboard.action";
 import { getSellerSoftCloseAnalytics } from "@/actions/soft-close-analytics.action";
@@ -17,6 +18,7 @@ import { StatusFilter } from "@/app/components/seller/StatusFilter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Plus, Store } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import SellerProfile from "@/app/components/seller/SellerProfile";
 import { motion } from "framer-motion";
 
@@ -38,7 +40,7 @@ export default async function SellersDashboardPage({
 
     const params = await searchParams;
 
-    const [auctions, lots, softCloseAnalytics] = await Promise.all([
+    const [auctions, lots, softCloseAnalytics, flowStatus] = await Promise.all([
         getSellerAuctions(
             session.user.id,
             params.status,
@@ -51,6 +53,7 @@ export default async function SellersDashboardPage({
             params.auctionId
         ),
         getSellerSoftCloseAnalytics(session.user.id),
+        getSellerFlowStatus(session.user.id),
     ]);
 
     return (
@@ -72,6 +75,29 @@ export default async function SellersDashboardPage({
 
             {/* Seller Profile */}
             <SellerProfile />
+
+            {(!flowStatus.activeStoresCount || (!lots.length && !auctions.length)) && (
+                <Alert className="border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20">
+                    <AlertTitle className="font-semibold">Next steps to launch your first listing</AlertTitle>
+                    <AlertDescription className="mt-2 flex flex-wrap items-center gap-2">
+                        {!flowStatus.activeStoresCount ? (
+                            <Button asChild size="sm" variant="outline">
+                                <Link href="/sellers-stores/new">Create a store</Link>
+                            </Button>
+                        ) : null}
+                        {flowStatus.activeStoresCount && !lots.length ? (
+                            <Button asChild size="sm" variant="outline">
+                                <Link href="/my-auctions/lots/new">Create your first lot</Link>
+                            </Button>
+                        ) : null}
+                        <span className="text-sm text-muted-foreground">
+                            {flowStatus.pendingStoresCount > 0
+                                ? "Your store is waiting for admin approval before listings can be published."
+                                : "Once your store is active, you can publish lots and connect them to auctions."}
+                        </span>
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* Auctions and Lots Tabs */}
             <Tabs defaultValue="lots" className="w-full space-y-4 space-x-4">

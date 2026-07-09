@@ -52,7 +52,7 @@ A modern, full-featured online auction platform built with Next.js 16, featuring
 
 ### Additional Libraries
 - **Sanity 4.22.0** - Headless CMS
-- **Nodemailer** - Email sending
+- **Resend** - Email sending
 - **Stripe** - Payment processing (integrated)
 - **Zod** - Schema validation
 
@@ -84,11 +84,11 @@ Before you begin, ensure you have the following installed:
         BETTER_AUTH_SECRET="your-secret-key-here"
         BETTER_AUTH_URL="http://localhost:3000"
 
-        # Email Configuration (Nodemailer)
-        SMTP_HOST="smtp.gmail.com"
-        SMTP_PORT=587
-        SMTP_USER="your-email@gmail.com"
-        SMTP_PASSWORD="your-app-password"
+        # Email Configuration (Resend)
+        RESEND_API_KEY="re_your_resend_api_key"
+        RESEND_FROM_EMAIL="hello@yourdomain.com"
+        RESEND_FROM_NAME="Az-Bid"
+        SUPPORT_EMAIL="support@yourdomain.com"
 
         # Social Authentication
         GOOGLE_CLIENT_ID="your-google-client-id"
@@ -123,6 +123,131 @@ Before you begin, ensure you have the following installed:
    npm run dev
 6. **Open your browser**
     Navigate to http://localhost:3000
+
+## Complete End-to-End Workflow
+
+This application is designed to support a full auction lifecycle from a fresh database. The following steps describe the expected user journey and the technical flow behind it.
+
+### 1. Account setup and role selection
+
+1. Create an account using the sign-up flow.
+2. Verify your email address if required by your auth setup.
+3. Choose a role:
+   - Buyer: browse lots, place bids, and pay for winning items.
+   - Seller: create a store, add lots, and manage auctions.
+   - Admin: review sellers, approve stores, manage auctions, and oversee platform activity.
+4. If a user wants seller access, they can submit a seller account request through the seller onboarding flow. Admins review and approve it.
+
+### 2. Seller onboarding flow
+
+1. A seller signs in and opens the seller dashboard.
+2. The dashboard shows the current seller workflow status:
+   - whether a store exists,
+   - whether the store is active or pending approval,
+   - how many lots and auctions have been created.
+3. If no store exists, the seller creates a store with:
+   - store name,
+   - description,
+   - optional logo.
+4. The store is created as `PENDING` by default and an email is sent to admins for review.
+
+### 3. Admin review and store approval
+
+1. An admin opens the admin dashboard.
+2. The admin reviews the new store and approves or rejects it.
+3. Once the store is `ACTIVE`, the seller can publish lots.
+4. If the store is still pending, the seller sees clear guidance to wait for approval before creating listings.
+
+### 4. Create an auction, lot, and items
+
+Once the store is approved:
+
+1. The seller creates a lot from the seller dashboard.
+2. The seller selects the store that owns the lot.
+3. The seller fills in the lot details:
+   - title,
+   - description,
+   - closing date/time,
+   - inspection date/time (optional),
+   - removal date/time (optional).
+4. The seller adds one or more items to the lot.
+5. Each item includes:
+   - title,
+   - description,
+   - condition,
+   - category,
+   - start price,
+   - reserve price (optional),
+   - retail price (optional),
+   - image uploads.
+6. The seller can save the lot as a draft or publish it.
+
+### 5. Auction association and publishing
+
+1. Admins can create or manage auctions and associate approved lots with them.
+2. Lots can be attached to an auction or remain standalone.
+3. When an auction is marked `LIVE`, its linked lots become `LIVE` as well.
+4. When a lot is published and approved, it becomes available for buyers to browse and bid on.
+
+### 6. Buyer browsing and bidding
+
+1. A buyer signs in and browses live lots.
+2. Buyers can view item details, images, pricing, and lot timing.
+3. To place bids, the buyer must have a valid card on file for verification and off-session charging.
+4. The bidding flow works like this:
+   - the buyer places a bid,
+   - the item price updates,
+   - the lot close time may be extended if the bid occurs in the soft-close window,
+   - the bid is recorded and the buyer remains in the live bidding experience.
+5. If a buyer wins, the lot closes and the system prepares the order and invoice.
+
+### 7. Soft close and automatic lot closing
+
+1. Lots have a closing time (`closesAt`).
+2. If a bid arrives near the end of the lot window, the lot can be extended automatically.
+3. A cron job checks for lots that have expired and closes them.
+4. On close, the system:
+   - marks the lot as `SOLD` or `UNSOLD`,
+   - selects the winning bid for each item,
+   - creates orders and invoices,
+   - attempts payment collection for winning buyers.
+
+### 8. Order, invoice, and payment flow
+
+When a lot closes:
+
+1. The system groups won items by buyer.
+2. One order is created per buyer for the lot.
+3. One invoice is created per order.
+4. The invoice contains the winning bids, buyer premium, tax, and total.
+5. The buyer is shown a payment page where they can complete the purchase.
+6. If the invoice total is below the Stripe minimum, the platform notifies the buyer and skips card payment.
+7. If the invoice total is above the minimum, Stripe is used to authorize or charge the buyer.
+8. If 3D Secure or additional verification is required, the buyer completes it on the payment page.
+
+### 9. Seller payout flow
+
+1. Once payment succeeds, the invoice becomes `PAID`.
+2. The platform triggers a seller payout through Stripe Connect.
+3. The payout is idempotent and will not create duplicate transfers if the webhook is retried.
+4. Seller commissions are calculated from either the seller-specific commission setting, platform commission, or a default fallback.
+5. Revenue and payout metrics are surfaced in the seller dashboard.
+
+### 10. What a seller sees after launch
+
+After the flow is complete, the seller can:
+- review lots and auctions in the seller dashboard,
+- see which lots are live, sold, unsold, or pending,
+- track orders and payout status,
+- monitor analytics and seller performance metrics.
+
+### 11. What a buyer sees after launch
+
+After the flow is complete, the buyer can:
+- see active bids and current lot status,
+- review won lots and pending payments,
+- pay for successful purchases,
+- see order and invoice history.
 
 ## Auction & Payment Flow (Complete)
 
@@ -380,9 +505,10 @@ azbid_nextapp_v1/
     Forms, Navigation menus
     Toast notifications (Sonner)
 ## 📧 Email Configuration
-    Email functionality uses Nodemailer. Configure SMTP settings in .env:
-    Gmail: Use App Password (not regular password)
-    Other providers: Adjust SMTP_HOST and SMTP_PORT accordingly
+    Email functionality uses Resend. Configure the API key and sender details in .env:
+    Set RESEND_API_KEY to your Resend API key.
+    Set RESEND_FROM_EMAIL to the verified sender address in Resend.
+    Set SUPPORT_EMAIL to the inbox that should receive contact requests.
 ## 🔒 Security Features
     Password hashing with Argon2
     Email verification required
@@ -417,10 +543,10 @@ azbid_nextapp_v1/
 | NEXT_PUBLIC_APP_URL | Public app URL | ✅ |
 | BETTER_AUTH_SECRET | Auth secret key | ✅ |
 | BETTER_AUTH_URL | Auth base URL | ✅ |
-| SMTP_HOST | SMTP server host | ✅ |
-| SMTP_PORT | SMTP server port | ✅ |
-| SMTP_USER | SMTP username | ✅ |
-| SMTP_PASSWORD | SMTP password | ✅ |
+| RESEND_API_KEY | Resend API key | ✅ |
+| RESEND_FROM_EMAIL | Sender address for outbound mail | ✅ |
+| RESEND_FROM_NAME | Sender display name | ✅ |
+| SUPPORT_EMAIL | Inbox that receives contact requests | ✅ |
 | STRIPE_SECRET_KEY | Stripe secret key (payments, Connect, transfers) | ✅ for payments |
 | STRIPE_WEBHOOK_SECRET | Webhook signing secret for `/api/stripe/webhook` | ✅ for payouts |
 | PLATFORM_COMMISSION_PCT | Default platform commission % (0–100); overridden by User.commissionPct | ❌ (default 10) |

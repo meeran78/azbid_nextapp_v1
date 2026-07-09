@@ -1,6 +1,7 @@
 "use server";
 
-import transporter from "@/lib/nodemailer";
+import { Buffer } from "node:buffer";
+import { resend, RESEND_FROM_EMAIL, RESEND_FROM_NAME } from "@/lib/resend";
 
 const styles = {
     container:
@@ -28,22 +29,30 @@ export async function sendEmailAction({
         contentType?: string;
     }>;
 }) {
-    const mailOptions = {
-        from: process.env.NODEMAILER_USER,
-        to,
-        subject: `Az-Bid - ${subject}`,
-        html: `
+    try {
+        if (!resend) {
+            return { success: false };
+        }
+
+        await resend.emails.send({
+            from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
+            to: [to],
+            subject: `Az-Bid - ${subject}`,
+            html: `
     <div style="${styles.container}">
       <h1 style="${styles.heading}">${subject}</h1>
       <p style="${styles.paragraph}">${String(meta.description).replace(/\n/g, "<br/>")}</p>
       <a href="${meta.link}" style="${styles.link}">Click Here</a>
     </div>
     `,
-        attachments,
-    };
+            attachments: attachments.map((attachment) => ({
+                filename: attachment.filename,
+                content: attachment.content.toString("base64"),
+                encoding: "base64",
+                contentType: attachment.contentType,
+            })),
+        });
 
-    try {
-        await transporter.sendMail(mailOptions);
         return { success: true };
     } catch (err) {
         console.error("[SendEmail]:", err);

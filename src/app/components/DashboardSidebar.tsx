@@ -91,6 +91,7 @@ const getNavigationItems = (roleType: string, pendingAppointmentCount = 0): Navi
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "FAQs", url: "/faqs", icon: HelpCircle },
+        { title: "Contact Messages", url: "/contact-messages", icon: MessageSquare },
         { title: "Settings", url: "/admin-settings", icon: Settings },
         { title: "Help & Support", url: "/help-support", icon: HelpCircle },
 
@@ -107,10 +108,10 @@ export function DashboardSidebar() {
   const [pendingAppointmentCount, setPendingAppointmentCount] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
 
-  const roleType = session?.user?.role || "BUYER";
-  const navigationItems = getNavigationItems(roleType, pendingAppointmentCount);
+  const roleType = session?.user?.role?.toUpperCase();
+  const navigationItems = roleType ? getNavigationItems(roleType, pendingAppointmentCount) : [];
 
   useEffect(() => {
     let mounted = true;
@@ -138,6 +139,10 @@ export function DashboardSidebar() {
   const isActive = (url: string) => {
     return pathname === url || pathname?.startsWith(url + "/");
   };
+
+  if (isPending || !session?.user?.id || !roleType) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col h-full">

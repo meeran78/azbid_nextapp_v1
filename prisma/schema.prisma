@@ -84,6 +84,13 @@ enum AppointmentRequestStatus {
   REJECTED
 }
 
+enum ContactMessageStatus {
+  NEW
+  REVIEWED
+  REPLIED
+  CLOSED
+}
+
 model InvoiceItem {
   id        String  @id @default(uuid())
   invoiceId String
@@ -191,6 +198,7 @@ model User {
   moderatedReviews StoreReview[] @relation("StoreReviewModeratedBy")
   sellerAccountRequests SellerAccountRequest[]
   reviewedAppointmentRequests AppointmentRequest[] @relation("AppointmentReviewedBy")
+  contactMessages ContactMessage[]
 
   //Stripe
   stripeCustomerId     String? @unique
@@ -247,6 +255,27 @@ model Verification {
   expiresAt  DateTime
 
   @@map("verifications")
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name      String
+  email     String
+  subject   String
+  category  String?
+  message   String
+  status    ContactMessageStatus @default(NEW)
+
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  ipAddress String?
+  userAgent String?
+
+  @@map("contact_messages")
 }
 
 model Store {

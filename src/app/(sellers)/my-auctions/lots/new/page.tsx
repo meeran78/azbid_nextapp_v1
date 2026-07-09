@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, Package, Plus, Save, Send } from "lucide-react";
+import Link2 from "next/link";
 import { toast } from "sonner";
 import { createLotSchema, createLotDraftSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
@@ -397,7 +398,12 @@ export default function CreateLotPage() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {stores.length === 0 && "Please create a store first"}
+                        {stores.length === 0 ? (
+                          <span className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                            Create a store first, or wait for an existing store to be approved before listing lots.
+                            <Link2 href="/sellers-stores/new" className="font-medium underline">Create store</Link2>
+                          </span>
+                        ) : null}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

@@ -27,6 +27,7 @@ import {
 	Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { sendSupportEmailAction } from '@/actions/support-email.action';
 
 const ContactUs = () => {
 	const navigate = useRouter();
@@ -85,41 +86,49 @@ const ContactUs = () => {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+
+		if (!formData.name.trim() || !formData.email.trim() || !formData.subject.trim() || !formData.category || !formData.message.trim()) {
+			toast.error('Please complete all required fields before sending your message.');
+			return;
+		}
+
 		setIsSubmitting(true);
 
-		// Simulate form submission
-		setTimeout(() => {
-			toast.success(
-				"Message sent successfully! We'll get back to you within 24 hours."
-			);
-			setFormData({
-				name: '',
-				email: '',
-				subject: '',
-				category: '',
-				message: '',
+		try {
+			const result = await sendSupportEmailAction({
+				subject: formData.subject,
+				message: `Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`,
+				userEmail: formData.email,
+				userName: formData.name,
+				category: formData.category,
 			});
+
+			if (result.success) {
+				if (result.emailSent) {
+					toast.success('Message sent successfully! We\'ll get back to you within 24 hours.');
+				} else {
+					toast.warning(result.error || 'Your message was saved, but email delivery could not be completed.');
+				}
+				setFormData({
+					name: '',
+					email: '',
+					subject: '',
+					category: '',
+					message: '',
+				});
+			} else {
+				toast.error(result.error || 'Failed to send your message. Please try again.');
+			}
+		} catch (error: any) {
+			toast.error(error?.message || 'An unexpected error occurred while sending your message.');
+		} finally {
 			setIsSubmitting(false);
-		}, 2000);
+		}
 	};
 
 	return (
 		<div className='min-h-screen bg-background'>
 			{/* Header */}
-			<header className='border-b border-border bg-card/50 backdrop-blur-sm'>
-				<div className='container mx-auto px-4 py-4'>
-					<div className='flex items-center justify-between'>
-						<div className='flex items-center space-x-4'>
-							<Button variant='ghost' size='sm' onClick={() => navigate.push('/')}>
-								<ArrowLeft className='h-4 w-4 mr-2' />
-								Back to Home
-							</Button>
-						</div>
-						<Button onClick={() => navigate.push('/auth')}>Sign In</Button>
-					</div>
-				</div>
-			</header>
-
 			<div className='container mx-auto px-4 '>
 				{/* Hero Section */}
 				<section className='text-center py-12 '>
@@ -142,7 +151,7 @@ const ContactUs = () => {
 								<Card key={index} className='hover:shadow-md transition-shadow'>
 									<CardContent className='p-4'>
 										<div className='flex items-start gap-3'>
-											<info.icon className='h-6 w-6 text-primary mt-1 flex-shrink-0' />
+											<info.icon className='h-6 w-6 text-primary mt-1 shrink-0' />
 											<div>
 												<h3 className='font-semibold mb-1'>{info.title}</h3>
 												<p className='text-primary font-medium mb-1'>

@@ -28,6 +28,23 @@ export async function createStoreAction(formData: FormData) {
   if (logoUrl && !isValidUrl(logoUrl)) return { error: "Please enter a valid logo URL" };
 
   try {
+    const existingStore = await prisma.store.findFirst({
+      where: {
+        ownerId: session.user.id,
+        name: { equals: name, mode: "insensitive" },
+      },
+      select: { id: true, name: true, status: true },
+    });
+
+    if (existingStore) {
+      return {
+        error:
+          existingStore.status === "PENDING"
+            ? "You already have a store pending approval. Please wait for admin review before creating another one."
+            : `You already have a store named "${existingStore.name}".`,
+      };
+    }
+
     const store = await prisma.store.create({
       data: {
         name,

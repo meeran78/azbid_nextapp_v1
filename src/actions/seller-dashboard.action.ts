@@ -181,6 +181,65 @@ const lotsWithItems = await prisma.lot.findMany({
   };
 }
 
+export async function getSellerFlowStatus(sellerId: string) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "SELLER") {
+    redirect("/sign-in");
+  }
+
+  const [stores, lots, auctions] = await Promise.all([
+    prisma.store.findMany({
+      where: { ownerId: sellerId },
+      select: { id: true, status: true, name: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.lot.findMany({
+      where: { store: { ownerId: sellerId } },
+      select: { id: true, status: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.auction.findMany({
+      where: { store: { ownerId: sellerId } },
+      select: { id: true, status: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const activeStores = stores.filter((store) => store.status === "ACTIVE");
+  const pendingStores = stores.filter((store) => store.status === "PENDING");
+  const draftOrScheduledLots = lots.filter((lot) => lot.status === "DRAFT" || lot.status === "SCHEDULED");
+  const liveLots = lots.filter((lot) => lot.status === "LIVE");
+
+  let nextStep = "Create your first store";
+  let nextStepHref = "/sellers-stores/new";
+
+  if (pendingStores.length > 0) {
+    nextStep = "Your store is pending approval";
+    nextStepHref = "/sellers-dashboard";
+  } else if (activeStores.length > 0 && lots.length === 0) {
+    nextStep = "Create your first lot";
+    nextStepHref = "/my-auctions/lots/new";
+  } else if (lots.length > 0) {
+    nextStep = "Review your lots and auctions";
+    nextStepHref = "/my-auctions";
+  }
+
+  return {
+    storesCount: stores.length,
+    activeStoresCount: activeStores.length,
+    pendingStoresCount: pendingStores.length,
+    lotsCount: lots.length,
+    draftOrScheduledLotsCount: draftOrScheduledLots.length,
+    liveLotsCount: liveLots.length,
+    auctionsCount: auctions.length,
+    canCreateLot: activeStores.length > 0,
+    nextStep,
+    nextStepHref,
+  };
+}
+
 export async function getSellerStores(sellerId: string) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
