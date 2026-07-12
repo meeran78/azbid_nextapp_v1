@@ -299,7 +299,7 @@ export function ItemFormCard({ index, totalCount, onRemove, canRemove, onMoveUp,
                           placeholder="0.00"
                           className="-mx-2 pl-7 px-6"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value || ""}
                           onChange={(e) =>
                             field.onChange(
                               e.target.value ? parseFloat(e.target.value) : null

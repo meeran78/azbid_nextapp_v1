@@ -31,9 +31,22 @@ export async function approveStoreAction(storeId: string) {
     },
   });
 
-  revalidatePath("/admin-dashboard/stores");
+  revalidatePath("/stores-management");
   revalidatePath("/sellers-dashboard");
   return { error: null };
+}
+
+export async function getPendingStoreCountAction() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "ADMIN") return { count: 0 };
+
+  const count = await prisma.store.count({
+    where: { status: "PENDING" },
+  });
+
+  return { count };
 }
 
 export async function rejectStoreAction(storeId: string) {
@@ -53,7 +66,7 @@ export async function rejectStoreAction(storeId: string) {
     data: { status: "SUSPENDED" },
   });
 
-  revalidatePath("/admin-dashboard/stores");
+  revalidatePath("/stores-management");
   revalidatePath("/sellers-dashboard");
   return { error: null };
 }

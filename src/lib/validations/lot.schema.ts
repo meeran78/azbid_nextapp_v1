@@ -175,7 +175,7 @@ export const createLotSchema = z
     title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
     description: z
       .string()
-      .min(500, "Description must be at least 500 characters")
+      .min(1, "Description is required")
       .max(5000, "Description must be less than 5000 characters"),
 
     storeId: z.string().min(1, "Store is required"),
@@ -236,7 +236,7 @@ export const createLotSchemaForServer = z
     title: z.string().min(1, "Lot title is required").max(200, "Title must be less than 200 characters"),
     description: z
       .string()
-      .min(500, "Description must be at least 500 characters")
+      .min(1, "Description is required")
       .max(2000, "Description must be less than 2000 characters"),
     storeId: z.string().min(1, "Store is required"),
     auctionId: z.string().optional().nullable(),

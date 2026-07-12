@@ -35,10 +35,12 @@ type AppointmentType = "IN_PERSON" | "VIRTUAL" | "PHONE";
 
 type AuctionCalendarAppointmentDialogProps = {
   triggerLabel?: string;
+  trigger?: React.ReactNode;
 };
 
 export function AuctionCalendarAppointmentDialog({
   triggerLabel = "Appointment Schedule",
+  trigger,
 }: AuctionCalendarAppointmentDialogProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -107,13 +109,15 @@ export function AuctionCalendarAppointmentDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="link"
-          size="sm"
-          className="h-auto p-0 text-muted-foreground hover:text-background"
-        >
-          {triggerLabel}
-        </Button>
+        {trigger ?? (
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-muted-foreground hover:text-background"
+          >
+            {triggerLabel}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { rejectLotAction } from "@/actions/admin-lot.action";
+import { approveLotAction, rejectLotAction } from "@/actions/admin-lot.action";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { X, Package, Calendar, ChevronRight } from "lucide-react";
+import { Check, X, Package, Calendar, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 
@@ -56,6 +56,24 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
   const [adminNotes, setAdminNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  const handleApprove = async () => {
+    setIsSubmitting(true);
+    try {
+      const result = await approveLotAction(lot.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Lot approved and is now live. Seller has been notified.");
+        router.push("/lots-management");
+        router.refresh();
+      }
+    } catch (err) {
+      toast.error("Failed to approve lot");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleReject = async () => {
     if (!adminNotes.trim()) {
@@ -112,6 +130,12 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span>Inspection: {new Date(lot.inspectionAt).toLocaleString()}</span>
+                </div>
+              )}
+              {lot.removalStartAt && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>Removal start: {new Date(lot.removalStartAt).toLocaleString()}</span>
                 </div>
               )}
             </div>
@@ -210,6 +234,10 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
               <CardTitle>Admin Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex gap-4">
+              <Button onClick={handleApprove} disabled={isSubmitting}>
+                <Check className="h-4 w-4 mr-2" />
+                {isSubmitting ? "Approving..." : "Approve & Publish"}
+              </Button>
               <Button
                 variant="destructive"
                 onClick={() => setRejectDialogOpen(true)}

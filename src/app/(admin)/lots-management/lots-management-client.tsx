@@ -43,13 +43,14 @@ import {
 import { Package, Eye, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 
-const LOT_STATUSES = ["DRAFT", "SCHEDULED", "RESEND"] as const;
+const LOT_STATUSES = ["DRAFT", "SCHEDULED", "RESEND", "LIVE"] as const;
 const PAGE_SIZE = 10;
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     DRAFT: "secondary",
     SCHEDULED: "outline",
     RESEND: "destructive",
+    LIVE: "default",
 };
 
 type LotWithRelations = {

@@ -36,7 +36,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, Package, Plus, Save, Send } from "lucide-react";
 import { toast } from "sonner";
-import { createLotSchema, createLotDraftSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
+import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
 import { getLotAction } from "@/actions/get-lot.action";
 import { deleteLotItemImagesAction } from "@/actions/delete-lot.action";
@@ -320,31 +320,11 @@ export default function EditLotPage() {
   };
 
   const handleSaveDraft = async () => {
-    const data = form.getValues();
-    const result = createLotDraftSchema.safeParse(data);
-  
-    if (!result.success) {
-      const formErrors = result.error.flatten().fieldErrors;
-      Object.entries(formErrors).forEach(([path, messages]) => {
-        if (path === "items" && typeof messages === "object") {
-          Object.entries(messages as unknown as Record<string, string[]>).forEach(([idx, itemErrors]) => {
-            if (typeof itemErrors === "object" && itemErrors !== null) {
-              Object.entries(itemErrors).forEach(([field, msgs]) => {
-                const itemPath = `items.${idx}.${field}`;
-                if (Array.isArray(msgs) && msgs[0]) {
-                  form.setError(itemPath as any, { type: "manual", message: msgs[0] });
-                }
-              });
-            }
-          });
-        } else if (Array.isArray(messages) && messages[0]) {
-          form.setError(path as any, { type: "manual", message: messages[0] });
-        }
-      });
-      toast.error("Please fix the errors before saving draft");
-      return;
-    }
-    await onSubmit(result.data as CreateLotFormData, true);
+    // Drafts intentionally skip form validation — sellers can save partial
+    // progress and come back later. The server action already stores
+    // whatever's present and defaults the rest. Only Publish validates.
+    form.clearErrors();
+    await onSubmit(form.getValues(), true);
   };
 
   if (isLoadingLot) {
@@ -480,13 +460,13 @@ export default function EditLotPage() {
                       </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Describe your lot (500-2000 characters)..."
+                          placeholder="Describe your lot..."
                           rows={6}
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        {field.value?.length || 0}/2000 characters (minimum 500)
+                        {field.value?.length || 0}/5000 characters
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

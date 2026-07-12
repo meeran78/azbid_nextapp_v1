@@ -139,7 +139,7 @@ const AboutUs = () => {
 				<div className='container mx-auto px-4 py-4'>
 					<div className='flex items-center justify-between'>
 						<div className='flex items-center space-x-4' />
-						<Button onClick={() => navigate.push('/auth')}>
+						<Button onClick={() => navigate.push('/join-our-community')}>
 							Join Our Community
 						</Button>
 					</div>
@@ -167,7 +167,7 @@ const AboutUs = () => {
 							<Button
 								variant='outline'
 								size='lg'
-								onClick={() => navigate.push('/contact')}>
+								onClick={() => navigate.push('/contact-us')}>
 								Get in Touch
 							</Button>
 						</div>
@@ -304,7 +304,7 @@ const AboutUs = () => {
 							AZ-Bid is the perfect place to start your auction journey.
 						</p>
 						<div className='flex flex-col sm:flex-row gap-4 justify-center'>
-							<Button size='lg' onClick={() => navigate.push('/auth')}>
+							<Button size='lg' onClick={() => navigate.push('/join-our-community')}>
 								<Users className='mr-2 h-5 w-5' />
 								Get Started Today
 							</Button>
@@ -313,6 +313,12 @@ const AboutUs = () => {
 								size='lg'
 								onClick={() => navigate.push('/how-to-buy')}>
 								Learn How to Buy
+							</Button>
+							<Button
+								variant='outline'
+								size='lg'
+								onClick={() => navigate.push('/how-to-sell')}>
+								Learn How to Sell
 							</Button>
 						</div>
 					</div>

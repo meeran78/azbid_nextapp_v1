@@ -1,18 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { submitSellerAccountRequestAction } from "@/actions/seller-account-request.action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export function SellerAccountRequestForm() {
   const { data: session } = useSession();
+  const isLoggedIn = Boolean(session?.user);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState(session?.user?.name ?? "");
   const [email, setEmail] = useState(session?.user?.email ?? "");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [companyRegistrationNumber, setCompanyRegistrationNumber] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
@@ -26,6 +32,22 @@ export function SellerAccountRequestForm() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setEmailError(null);
+
+    if (!isLoggedIn) {
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match.");
+        return;
+      }
+      if (!acceptedTerms) {
+        toast.error("You must accept the terms and conditions.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     const fd = new FormData();
     fd.set("name", name);
@@ -38,6 +60,11 @@ export function SellerAccountRequestForm() {
     fd.set("state", state);
     fd.set("zipcode", zipcode);
     fd.set("country", country);
+    if (!isLoggedIn) {
+      fd.set("password", password);
+      fd.set("confirmPassword", confirmPassword);
+      fd.set("acceptedTerms", acceptedTerms ? "true" : "false");
+    }
 
     const result = await submitSellerAccountRequestAction(fd);
     if (result.error) {
@@ -54,7 +81,14 @@ export function SellerAccountRequestForm() {
       setIsSubmitting(false);
       return;
     }
-    toast.success("Seller account request submitted. Admin will review and email you.");
+    toast.success(
+      isLoggedIn
+        ? "Seller account request submitted. Admin will review and email you."
+        : "Account created and seller request submitted. Check your email to verify your address."
+    );
+    setPassword("");
+    setConfirmPassword("");
+    setAcceptedTerms(false);
     setCompanyName("");
     setCompanyRegistrationNumber("");
     setAddressLine1("");
@@ -70,7 +104,9 @@ export function SellerAccountRequestForm() {
     <form onSubmit={onSubmit} className="mx-auto mt-8 max-w-3xl rounded-lg border bg-card p-6 space-y-4 text-left">
       <h3 className="text-xl font-semibold">Seller Account Request Form</h3>
       <p className="text-sm text-muted-foreground">
-        Submit company details. Admin will review, send contract details, and you will acknowledge before approval.
+        {isLoggedIn
+          ? "Submit company details. Admin will review, send contract details, and you will acknowledge before approval."
+          : "Create your account and submit company details in one step. Admin will review, send contract details, and you will acknowledge before approval."}
       </p>
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -90,6 +126,7 @@ export function SellerAccountRequestForm() {
             className={emailError ? "border-destructive" : undefined}
             aria-invalid={Boolean(emailError)}
             required
+            disabled={isLoggedIn}
           />
           {emailError && (
             <p className="text-sm text-destructive" role="alert">
@@ -98,6 +135,30 @@ export function SellerAccountRequestForm() {
           )}
         </div>
       </div>
+      {!isLoggedIn && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="sellerPassword">Password</Label>
+            <Input
+              id="sellerPassword"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sellerConfirmPassword">Confirm Password</Label>
+            <Input
+              id="sellerConfirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="companyName">Company Name</Label>
@@ -134,8 +195,34 @@ export function SellerAccountRequestForm() {
         <Label htmlFor="country">Country</Label>
         <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} required />
       </div>
+      {!isLoggedIn && (
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id="sellerTerms"
+            checked={acceptedTerms}
+            onCheckedChange={(v) => setAcceptedTerms(v === true)}
+          />
+          <Label htmlFor="sellerTerms" className="text-sm font-normal leading-5">
+            I accept the{" "}
+            <Link href="/terms-conditions" target="_blank" className="text-primary underline underline-offset-4">
+              Terms and Conditions
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy-policy" target="_blank" className="text-primary underline underline-offset-4">
+              Privacy Policy
+            </Link>
+            .
+          </Label>
+        </div>
+      )}
       <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Submitting..." : "Submit Seller Request"}
+        {isSubmitting
+          ? isLoggedIn
+            ? "Submitting..."
+            : "Creating Account..."
+          : isLoggedIn
+            ? "Submit Seller Request"
+            : "Create Account & Submit Request"}
       </Button>
     </form>
   );

@@ -28,13 +28,11 @@ export default async function AdminLotsPage({
 
   const where: Prisma.LotWhereInput = {};
 
-  // Exclude LIVE, SOLD, UNSOLD from lot management (review/approve workflow only)
-  const allowedStatuses = ["DRAFT", "SCHEDULED", "RESEND"] as const;
+  const allowedStatuses = ["DRAFT", "SCHEDULED", "RESEND", "LIVE", "SOLD", "UNSOLD"] as const;
   if (statusFilter && allowedStatuses.includes(statusFilter as (typeof allowedStatuses)[number])) {
     where.status = statusFilter as any;
-  } else {
-    where.status = { notIn: ["LIVE", "SOLD", "UNSOLD"] };
   }
+  // No status filter — list all lots regardless of status.
 
   if (searchQuery) {
     where.OR = [

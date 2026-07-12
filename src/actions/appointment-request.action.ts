@@ -46,6 +46,7 @@ export async function submitAppointmentRequestAction(formData: FormData) {
   });
 
   revalidatePath("/admin-dashboard");
+  revalidatePath("/scheduled-calls");
   return { error: null };
 }
 
@@ -68,6 +69,7 @@ export async function approveAppointmentRequestAction(formData: FormData) {
   });
 
   revalidatePath("/admin-dashboard");
+  revalidatePath("/scheduled-calls");
   return { error: null };
 }
 
@@ -91,7 +93,23 @@ export async function rejectAppointmentRequestAction(formData: FormData) {
   });
 
   revalidatePath("/admin-dashboard");
+  revalidatePath("/scheduled-calls");
   return { error: null };
+}
+
+export async function getAdminAppointmentRequestsAction() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+  if (!session || session.user.role !== "ADMIN") redirect("/sign-in");
+
+  const requests = await prisma.appointmentRequest.findMany({
+    orderBy: [{ status: "asc" }, { appointmentDate: "asc" }],
+  });
+
+  return requests.map((request) => ({
+    ...request,
+    appointmentDate: request.appointmentDate.toISOString(),
+  }));
 }
 
 export async function getPendingAppointmentRequestCountAction() {

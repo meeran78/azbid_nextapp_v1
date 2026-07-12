@@ -34,6 +34,10 @@ import { Separator } from "@/components/ui/separator";
 import { SignOutButton } from "@/app/components/SignoutButton";
 import Image from "next/image";
 import { getPendingAppointmentRequestCountAction } from "@/actions/appointment-request.action";
+import { getPendingStoreCountAction } from "@/actions/approve-store.action";
+import { getPendingLotCountAction } from "@/actions/admin-lot.action";
+import { getPendingStoreReviewCountAction } from "@/actions/store-review.action";
+import { getPendingSellerAccountRequestCountAction } from "@/actions/seller-account-request.action";
 
 type NavigationItem = {
   title: string;
@@ -42,7 +46,14 @@ type NavigationItem = {
   badgeCount?: number;
 };
 
-const getNavigationItems = (roleType: string, pendingAppointmentCount = 0): NavigationItem[] => {
+const getNavigationItems = (
+  roleType: string,
+  pendingAppointmentCount = 0,
+  pendingStoreCount = 0,
+  pendingLotCount = 0,
+  pendingStoreReviewCount = 0,
+  pendingSellerRequestCount = 0
+): NavigationItem[] => {
   const commonItems: NavigationItem[] = [
 
     // { title: "Change Password", url: "/change-password", icon: KeyRound },
@@ -76,18 +87,38 @@ const getNavigationItems = (roleType: string, pendingAppointmentCount = 0): Navi
       return [
         // { title: "Dashboard", url: "/admin-dashboard", icon: LayoutDashboard },
         {
-          title: "Appointment Schedule",
-          url: "/admin-dashboard#appointment-schedule",
+          title: "Scheduled Calls",
+          url: "/scheduled-calls",
           icon: CalendarDays,
           badgeCount: pendingAppointmentCount > 0 ? pendingAppointmentCount : undefined,
         },
-        { title: "Stores Management", url: "/stores-management", icon: Store },
-        { title: "Lots Management", url: "/lots-management", icon: Barcode },
+        {
+          title: "Stores Management",
+          url: "/stores-management",
+          icon: Store,
+          badgeCount: pendingStoreCount > 0 ? pendingStoreCount : undefined,
+        },
+        {
+          title: "Lots Management",
+          url: "/lots-management",
+          icon: Barcode,
+          badgeCount: pendingLotCount > 0 ? pendingLotCount : undefined,
+        },
         { title: "Auctions Managements", url: "/auctions-management", icon: Pickaxe },
         { title: "Category Management", url: "/categories", icon: CirclePlus },
         { title: "Users", url: "/users-management", icon: Users },
-        { title: "Store Reviews", url: "/reviews-management", icon: MessageSquare },
-        { title: "Seller Requests", url: "/seller-account-requests", icon: Users },
+        {
+          title: "Store Reviews",
+          url: "/reviews-management",
+          icon: MessageSquare,
+          badgeCount: pendingStoreReviewCount > 0 ? pendingStoreReviewCount : undefined,
+        },
+        {
+          title: "Seller Requests",
+          url: "/seller-account-requests",
+          icon: Users,
+          badgeCount: pendingSellerRequestCount > 0 ? pendingSellerRequestCount : undefined,
+        },
         { title: "Analytics", url: "/analytics", icon: BarChart3 },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "FAQs", url: "/faqs", icon: HelpCircle },
@@ -106,27 +137,62 @@ export function DashboardSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [pendingAppointmentCount, setPendingAppointmentCount] = useState(0);
+  const [pendingStoreCount, setPendingStoreCount] = useState(0);
+  const [pendingLotCount, setPendingLotCount] = useState(0);
+  const [pendingStoreReviewCount, setPendingStoreReviewCount] = useState(0);
+  const [pendingSellerRequestCount, setPendingSellerRequestCount] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
   const roleType = session?.user?.role?.toUpperCase();
-  const navigationItems = roleType ? getNavigationItems(roleType, pendingAppointmentCount) : [];
+  const navigationItems = roleType
+    ? getNavigationItems(
+        roleType,
+        pendingAppointmentCount,
+        pendingStoreCount,
+        pendingLotCount,
+        pendingStoreReviewCount,
+        pendingSellerRequestCount
+      )
+    : [];
 
   useEffect(() => {
+    if (roleType !== "ADMIN") return;
     let mounted = true;
 
-    async function loadPendingCount() {
-      if (roleType !== "ADMIN") return;
-      const result = await getPendingAppointmentRequestCountAction();
-      if (mounted) setPendingAppointmentCount(result.count ?? 0);
+    async function loadPendingCounts() {
+      const [appointmentResult, storeResult, lotResult, storeReviewResult, sellerRequestResult] =
+        await Promise.all([
+          getPendingAppointmentRequestCountAction(),
+          getPendingStoreCountAction(),
+          getPendingLotCountAction(),
+          getPendingStoreReviewCountAction(),
+          getPendingSellerAccountRequestCountAction(),
+        ]);
+      if (mounted) {
+        setPendingAppointmentCount(appointmentResult.count ?? 0);
+        setPendingStoreCount(storeResult.count ?? 0);
+        setPendingLotCount(lotResult.count ?? 0);
+        setPendingStoreReviewCount(storeReviewResult.count ?? 0);
+        setPendingSellerRequestCount(sellerRequestResult.count ?? 0);
+      }
     }
 
-    loadPendingCount();
+    // Badges are approved/rejected from other admin pages, so a single
+    // mount-time fetch here would go stale as soon as an admin acts on
+    // something without this layout remounting. Refetch on navigation, on
+    // tab refocus, and on a short poll as a safety net for in-place actions.
+    loadPendingCounts();
+    window.addEventListener("focus", loadPendingCounts);
+    const interval = setInterval(loadPendingCounts, 30_000);
+
     return () => {
       mounted = false;
+      window.removeEventListener("focus", loadPendingCounts);
+      clearInterval(interval);
     };
-  }, [roleType]);
+  }, [roleType, pathname]);
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);

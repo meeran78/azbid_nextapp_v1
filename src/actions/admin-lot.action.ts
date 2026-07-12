@@ -8,6 +8,19 @@ import { revalidatePath } from "next/cache";
 import { sendEmailAction } from "@/actions/sendEmail.action";
 import { notifyBuyersLotNowLive } from "@/actions/lot-live-notification.action";
 
+export async function getPendingLotCountAction() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "ADMIN") return { count: 0 };
+
+  const count = await prisma.lot.count({
+    where: { status: "SCHEDULED" },
+  });
+
+  return { count };
+}
+
 export async function approveLotAction(lotId: string) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
@@ -42,11 +55,17 @@ export async function approveLotAction(lotId: string) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const lotUrl = `${appUrl}/my-auctions?lotId=${lotId}`;
 
+    const dateLines = [
+      `Closing date: ${lot.closesAt.toLocaleString()}`,
+      lot.inspectionAt ? `Inspection date: ${lot.inspectionAt.toLocaleString()}` : null,
+      lot.removalStartAt ? `Removal start date: ${lot.removalStartAt.toLocaleString()}` : null,
+    ].filter(Boolean);
+
     await sendEmailAction({
       to: lot.store.owner.email,
       subject: "Lot Approved – Now Live",
       meta: {
-        description: `Your lot "${lot.title}" has been approved and is now LIVE. You can view it in your dashboard.`,
+        description: `Your lot "${lot.title}" has been approved and is now LIVE. You can view it in your dashboard.\n\n${dateLines.join("\n")}`,
         link: lotUrl,
       },
     });

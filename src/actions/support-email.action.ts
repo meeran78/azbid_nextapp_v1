@@ -67,13 +67,24 @@ export async function sendSupportEmailAction({
     let emailSent = false;
 
     try {
-      await resend.emails.send({
+      const supportSend = await resend.emails.send({
         from: `${RESEND_FROM_NAME} <${fromAddress}>`,
         to: [supportAddress],
         subject: `Az-Bid Contact Request: ${subject}`,
         html: supportEmailHtml,
         replyTo: userEmail || supportAddress,
       });
+
+      // The Resend SDK resolves (rather than throws) on API-level failures
+      // like an unverified sending domain, so this must be checked explicitly.
+      if (supportSend.error) {
+        console.error("[SupportEmail] Resend API error:", supportSend.error);
+        return {
+          success: true,
+          error: `Your message was saved successfully, but email delivery failed: ${supportSend.error.message}`,
+          emailSent: false,
+        };
+      }
 
       if (userEmail) {
         const confirmationHtml = `
@@ -92,12 +103,15 @@ export async function sendSupportEmailAction({
           </div>
         `;
 
-        await resend.emails.send({
+        const confirmationSend = await resend.emails.send({
           from: `${RESEND_FROM_NAME} <${fromAddress}>`,
           to: [userEmail],
           subject: "Az-Bid - Contact Request Received",
           html: confirmationHtml,
         });
+        if (confirmationSend.error) {
+          console.error("[SupportEmail] Confirmation email error:", confirmationSend.error);
+        }
       }
 
       emailSent = true;

@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
-import { signUpEmailAction } from "@/actions/signUpEmail.action";
+import { signUpAdminAction } from "@/actions/signUpAdmin.action";
 
-export default function SignUpPage() {
+export default function AdminSignUpPage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -27,13 +27,14 @@ export default function SignUpPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    registrationKey: "",
   });
 
   useEffect(() => {
     if (!isPending && session?.user) {
       const role = session.user.role;
-      if (role === "SELLER") router.replace("/sellers-dashboard");
-      else if (role === "ADMIN") router.replace("/admin-dashboard");
+      if (role === "ADMIN") router.replace("/admin-dashboard");
+      else if (role === "SELLER") router.replace("/sellers-dashboard");
       else router.replace("/");
     }
   }, [session, isPending, router]);
@@ -48,6 +49,7 @@ export default function SignUpPage() {
     else if (formData.password.length < 8) errors.password = "Password must be at least 8 characters";
     if (!formData.confirmPassword) errors.confirmPassword = "Please confirm your password";
     else if (formData.password !== formData.confirmPassword) errors.confirmPassword = "Passwords do not match";
+    if (!formData.registrationKey.trim()) errors.registrationKey = "Admin registration key is required";
     if (!acceptedTerms) errors.terms = "You must accept the terms and conditions";
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -64,13 +66,14 @@ export default function SignUpPage() {
       fd.append("name", formData.name);
       fd.append("email", formData.email);
       fd.append("password", formData.password);
+      fd.append("registrationKey", formData.registrationKey);
       fd.append("acceptedTerms", acceptedTerms ? "true" : "false");
-      const result = await signUpEmailAction(fd);
+      const result = await signUpAdminAction(fd);
       if (result?.error) {
         setError(result.error);
         toast.error(result.error);
       } else {
-        toast.success("Buyer account created. Please verify your email.");
+        toast.success("Admin account created. Please verify your email.");
         router.push("/sign-up/success");
       }
     } catch (err) {
@@ -95,13 +98,12 @@ export default function SignUpPage() {
       <div className="flex items-center justify-center min-h-screen p-4 bg-white dark:bg-gray-900">
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Create Buyer Account</CardTitle>
+            <div className="flex justify-center mb-2">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-center">Create Admin Account</CardTitle>
             <CardDescription className="text-center">
-              Sign up as a buyer. Want to sell instead?{" "}
-              <Link href="/join-our-community?type=seller" className="text-primary underline underline-offset-4 hover:text-primary/80">
-                Submit a seller account request
-              </Link>
-              .
+              Requires a valid admin registration key. Contact an existing admin if you don&apos;t have one.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -126,6 +128,16 @@ export default function SignUpPage() {
                 <Input id="confirmPassword" type="password" value={formData.confirmPassword} onChange={(e) => setFormData((p) => ({ ...p, confirmPassword: e.target.value }))} />
                 {validationErrors.confirmPassword && <p className="text-sm text-red-500">{validationErrors.confirmPassword}</p>}
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="registrationKey">Admin Registration Key</Label>
+                <Input
+                  id="registrationKey"
+                  type="password"
+                  value={formData.registrationKey}
+                  onChange={(e) => setFormData((p) => ({ ...p, registrationKey: e.target.value }))}
+                />
+                {validationErrors.registrationKey && <p className="text-sm text-red-500">{validationErrors.registrationKey}</p>}
+              </div>
               <div className="flex items-start gap-2">
                 <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(v) => setAcceptedTerms(v === true)} />
                 <Label htmlFor="terms" className="text-sm font-normal leading-5">
@@ -143,7 +155,7 @@ export default function SignUpPage() {
                 </Alert>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Buyer Account"}
+                {isLoading ? "Creating Account..." : "Create Admin Account"}
               </Button>
               <div className="text-center text-sm">
                 <span className="text-muted-foreground">Already have an account? </span>

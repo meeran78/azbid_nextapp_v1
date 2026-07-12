@@ -522,7 +522,7 @@ const HowToSell = () => {
 				<section className='text-center py-12 bg-gradient-subtle rounded-lg'>
 					<h2 className='text-3xl font-bold mb-4'>Ready to Start Selling?</h2>
 					<p className='text-muted-foreground mb-8 max-w-2xl mx-auto text-lg'>
-						Sign up as a buyer first, then submit a seller account request with
+						Submit your seller account request with
 						your company details. Admin will review, send contract details, and
 						activate your seller access after acknowledgement.
 					</p>

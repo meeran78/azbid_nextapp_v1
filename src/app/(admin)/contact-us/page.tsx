@@ -6,6 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -13,8 +22,6 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import {
-	ArrowLeft,
-	Gavel,
 	Mail,
 	Phone,
 	MapPin,
@@ -28,6 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendSupportEmailAction } from '@/actions/support-email.action';
+import { AuctionCalendarAppointmentDialog } from '@/app/components/AuctionCalendarAppointmentDialog';
 
 const ContactUs = () => {
 	const navigate = useRouter();
@@ -39,6 +47,14 @@ const ContactUs = () => {
 		message: '',
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+	const [supportForm, setSupportForm] = useState({
+		toEmail: 'support@az-bid.com',
+		fromEmail: '',
+		subject: '',
+		message: '',
+	});
+	const [isSupportSubmitting, setIsSupportSubmitting] = useState(false);
 
 	const contactInfo = [
 		{
@@ -84,6 +100,53 @@ const ContactUs = () => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
+	const handleSupportFieldChange = (field: string, value: string) => {
+		setSupportForm((prev) => ({ ...prev, [field]: value }));
+	};
+
+	const resetSupportForm = () => {
+		setSupportForm({
+			toEmail: 'support@az-bid.com',
+			fromEmail: '',
+			subject: '',
+			message: '',
+		});
+	};
+
+	const handleSupportSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		if (!supportForm.fromEmail.trim() || !supportForm.subject.trim() || !supportForm.message.trim()) {
+			toast.error('Please enter your email, subject, and a message before sending.');
+			return;
+		}
+
+		setIsSupportSubmitting(true);
+
+		try {
+			const result = await sendSupportEmailAction({
+				subject: supportForm.subject,
+				message: supportForm.message,
+				userEmail: supportForm.fromEmail,
+				userName: supportForm.fromEmail,
+				category: 'support',
+			});
+
+			if (result.success) {
+				toast.success('Your support request has been sent. We will get back to you soon.');
+				resetSupportForm();
+				setIsSupportModalOpen(false);
+			} else {
+				toast.error(result.error || 'Failed to send your support request. Please try again.');
+			}
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'An unexpected error occurred while sending your message.';
+			toast.error(message);
+		} finally {
+			setIsSupportSubmitting(false);
+		}
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
@@ -119,8 +182,9 @@ const ContactUs = () => {
 			} else {
 				toast.error(result.error || 'Failed to send your message. Please try again.');
 			}
-		} catch (error: any) {
-			toast.error(error?.message || 'An unexpected error occurred while sending your message.');
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : 'An unexpected error occurred while sending your message.';
+			toast.error(message);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -137,7 +201,7 @@ const ContactUs = () => {
 						<span className='text-gradient-primary italic'>Touch</span>
 					</h1>
 					<p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
-						Have questions, feedback, or need support? We're here to help and
+						Have questions, feedback, or need support? We&apos;re here to help and
 						would love to hear from you.
 					</p>
 				</section>
@@ -148,22 +212,32 @@ const ContactUs = () => {
 						<h2 className='text-2xl font-bold mb-6'>Contact Information</h2>
 						<div className='space-y-6'>
 							{contactInfo.map((info, index) => (
-								<Card key={index} className='hover:shadow-md transition-shadow'>
-									<CardContent className='p-4'>
-										<div className='flex items-start gap-3'>
-											<info.icon className='h-6 w-6 text-primary mt-1 shrink-0' />
-											<div>
-												<h3 className='font-semibold mb-1'>{info.title}</h3>
-												<p className='text-primary font-medium mb-1'>
-													{info.details}
-												</p>
-												<p className='text-sm text-muted-foreground'>
-													{info.description}
-												</p>
+								<button
+									type='button'
+									key={index}
+									className='w-full text-left'
+									onClick={() => {
+										if (info.title === 'Email Us') {
+											setIsSupportModalOpen(true);
+										}
+									}}>
+									<Card className='hover:shadow-md transition-shadow'>
+										<CardContent className='p-4'>
+											<div className='flex items-start gap-3'>
+												<info.icon className='h-6 w-6 text-primary mt-1 shrink-0' />
+												<div>
+													<h3 className='font-semibold mb-1'>{info.title}</h3>
+													<p className='text-primary font-medium mb-1'>
+														{info.details}
+													</p>
+													<p className='text-sm text-muted-foreground'>
+														{info.description}
+													</p>
+												</div>
 											</div>
-										</div>
-									</CardContent>
-								</Card>
+										</CardContent>
+									</Card>
+								</button>
 							))}
 						</div>
 
@@ -204,7 +278,7 @@ const ContactUs = () => {
 							<CardHeader>
 								<CardTitle className='text-2xl'>Send us a Message</CardTitle>
 								<p className='text-muted-foreground'>
-									Fill out the form below and we'll get back to you as soon as
+									Fill out the form below and we&apos;ll get back to you as soon as
 									possible.
 								</p>
 							</CardHeader>
@@ -334,6 +408,68 @@ const ContactUs = () => {
 					</div>
 				</div>
 
+				<Dialog open={isSupportModalOpen} onOpenChange={setIsSupportModalOpen}>
+					<DialogContent className='sm:max-w-lg'>
+						<DialogHeader>
+							<DialogTitle>Contact Support</DialogTitle>
+							<DialogDescription>
+								Send a quick support request to our team.
+							</DialogDescription>
+						</DialogHeader>
+						<form onSubmit={handleSupportSubmit} className='space-y-4'>
+							<div className='space-y-2'>
+								<Label htmlFor='support-to'>To</Label>
+								<Input
+									id='support-to'
+									value={supportForm.toEmail}
+									readOnly
+								/>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='support-from'>Your Email</Label>
+								<Input
+									id='support-from'
+									type='email'
+									placeholder='you@example.com'
+									value={supportForm.fromEmail}
+									onChange={(e) => handleSupportFieldChange('fromEmail', e.target.value)}
+									required
+								/>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='support-subject'>Subject</Label>
+								<Textarea
+									id='support-subject'
+									placeholder='How can we help?'
+									value={supportForm.subject}
+									onChange={(e) => handleSupportFieldChange('subject', e.target.value)}
+									rows={3}
+									required
+								/>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='support-message'>Message</Label>
+								<Textarea
+									id='support-message'
+									placeholder='Please describe your issue or question...'
+									value={supportForm.message}
+									onChange={(e) => handleSupportFieldChange('message', e.target.value)}
+									rows={5}
+									required
+								/>
+							</div>
+							<DialogFooter>
+								<Button type='button' variant='outline' onClick={() => setIsSupportModalOpen(false)}>
+									Cancel
+								</Button>
+								<Button type='submit' disabled={isSupportSubmitting}>
+									{isSupportSubmitting ? 'Sending...' : 'Send Support Request'}
+								</Button>
+							</DialogFooter>
+						</form>
+					</DialogContent>
+				</Dialog>
+
 				{/* FAQ Section */}
 				<section className='mb-12'>
 					<div className='text-center mb-8'>
@@ -405,17 +541,22 @@ const ContactUs = () => {
 					<div className='flex flex-col sm:flex-row gap-4 justify-center'>
 						<Button
 							size='lg'
+							onClick={() => setIsSupportModalOpen(true)}
 							className='bg-gradient-primary text-primary-foreground hover:scale-105 transition-all duration-200'>
 							<Mail className='mr-2 h-5 w-5' />
 							Email Support
 						</Button>
-						<Button
-							variant='outline'
-							size='lg'
-							className='hover:scale-105 transition-all duration-200'>
-							<Phone className='mr-2 h-5 w-5' />
-							Schedule a Call
-						</Button>
+						<AuctionCalendarAppointmentDialog
+							trigger={
+								<Button
+									variant='outline'
+									size='lg'
+									className='hover:scale-105 transition-all duration-200'>
+									<Phone className='mr-2 h-5 w-5' />
+									Schedule a Call
+								</Button>
+							}
+						/>
 					</div>
 				</section>
 			</div>

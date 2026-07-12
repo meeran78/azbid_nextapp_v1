@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { APIError } from "better-auth/api";
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmailAction } from "@/actions/sendEmail.action";
@@ -67,6 +69,24 @@ async function readPdfAttachment(
       contentType: "application/pdf",
     },
   };
+}
+
+/**
+ * Count of seller requests awaiting admin action: newly submitted (PENDING,
+ * needs a contract sent) or acknowledged by the seller (needs approval).
+ * CONTRACT_SENT is excluded since the ball is in the seller's court then.
+ */
+export async function getPendingSellerAccountRequestCountAction() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "ADMIN") return { count: 0 };
+
+  const count = await prisma.sellerAccountRequest.count({
+    where: { status: { in: ["PENDING", "ACKNOWLEDGED"] } },
+  });
+
+  return { count };
 }
 
 export async function submitSellerAccountRequestAction(
@@ -146,9 +166,58 @@ export async function submitSellerAccountRequestAction(
     };
   }
 
+  let userId = sessionUserId ?? undefined;
+
+  if (!existingUser && !sessionUserId) {
+    // No account exists for this email yet — create one here so sellers don't
+    // need to sign up as a buyer separately before requesting seller access.
+    const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirmPassword") ?? "");
+    const acceptedTerms =
+      String(formData.get("acceptedTerms") ?? "").toLowerCase() === "true";
+
+    if (!password || password.length < 8) {
+      return { error: "Password must be at least 8 characters." };
+    }
+    if (password !== confirmPassword) {
+      return { error: "Passwords do not match." };
+    }
+    if (!acceptedTerms) {
+      return { error: "You must accept the terms and conditions." };
+    }
+
+    try {
+      const signUpResult = await auth.api.signUpEmail({
+        body: { name, email, password },
+      });
+      if (signUpResult.user?.id) {
+        userId = signUpResult.user.id;
+        await prisma.user.update({
+          where: { id: userId },
+          data: { acceptedTerms: true },
+        });
+      }
+    } catch (err) {
+      if (err instanceof APIError) {
+        const errCode = err.body ? (err.body.code as string) : "UNKNOWN";
+        if (errCode === "USER_ALREADY_EXISTS") {
+          return {
+            error:
+              "This email is already registered to another account. Please use a different email address.",
+            code: "EMAIL_TAKEN",
+          };
+        }
+        return { error: err.message };
+      }
+      return { error: "Failed to create your account. Please try again." };
+    }
+  }
+
+  console.log("[SubmitSellerAccountRequest] email=%s resolvedUserId=%s (sessionUserId=%s, existingUser=%s)", email, userId, sessionUserId, existingUser?.id);
+
   const request = await prisma.sellerAccountRequest.create({
     data: {
-      userId: session?.user?.id,
+      userId,
       requesterName: name,
       requesterEmail: email,
       companyName,
@@ -284,23 +353,59 @@ export async function approveSellerAccountRequestAction(formData: FormData) {
   const req = await prisma.sellerAccountRequest.findUnique({ where: { id: requestId } });
   if (!req) return { error: "Request not found." };
 
-  const user = await prisma.user.findUnique({ where: { email: req.requesterEmail } });
-  if (user) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        role: "SELLER",
-        companyName: req.companyName,
-        companyRegistrationNumber: req.companyRegistrationNumber,
-        addressLine1: req.addressLine1,
-        addressLine2: req.addressLine2,
-        city: req.city,
-        state: req.state,
-        zipcode: req.zipcode,
-        country: req.country,
-        displayLocation: `${req.city}, ${req.state}`,
-      },
+  console.log("[ApproveSellerAccountRequest] requestId=%s requesterEmail=%s req.userId=%s", requestId, req.requesterEmail, req.userId);
+
+  // Prefer the userId captured at request time (exact, unambiguous). Fall back
+  // to a case-insensitive email match for legacy requests that predate it —
+  // better-auth does not normalize email casing on sign-up, so an exact-match
+  // lookup here can silently miss the account and leave the role unchanged.
+  const user = req.userId
+    ? await prisma.user.findUnique({ where: { id: req.userId } })
+    : (await prisma.user.findUnique({ where: { email: req.requesterEmail } })) ??
+      (await prisma.user.findFirst({
+        where: { email: { equals: req.requesterEmail, mode: "insensitive" } },
+      }));
+
+  console.log("[ApproveSellerAccountRequest] matched user=%s currentRole=%s", user?.id, user?.role);
+
+  if (!user) {
+    console.error("[ApproveSellerAccountRequest] No matching user found for request", requestId);
+    return {
+      error:
+        "Could not find a matching user account for this request's email. Ask the seller to confirm the email on their account, then try again.",
+    };
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      role: "SELLER",
+      companyName: req.companyName,
+      companyRegistrationNumber: req.companyRegistrationNumber,
+      addressLine1: req.addressLine1,
+      addressLine2: req.addressLine2,
+      city: req.city,
+      state: req.state,
+      zipcode: req.zipcode,
+      country: req.country,
+      displayLocation: `${req.city}, ${req.state}`,
+    },
+  });
+
+  console.log("[ApproveSellerAccountRequest] updated user=%s newRole=%s", updatedUser.id, updatedUser.role);
+
+  // The user's role may have just changed while they still hold an active
+  // session created before the promotion. Session data is cached in a signed
+  // cookie for up to 5 minutes (see auth.ts cookieCache), so without this the
+  // seller could keep seeing their old BUYER-role session until it expires.
+  // Revoking forces a fresh sign-in, which always reads the current DB role.
+  try {
+    await auth.api.revokeUserSessions({
+      headers: headersList,
+      body: { userId: user.id },
     });
+  } catch (err) {
+    console.error("[ApproveSellerAccountRequest] Failed to revoke prior sessions:", err);
   }
 
   await prisma.sellerAccountRequest.update({

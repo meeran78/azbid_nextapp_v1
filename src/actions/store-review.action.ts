@@ -254,6 +254,22 @@ export async function getStoreReviewsForModeration(options: {
 }
 
 /**
+ * Count of reviews awaiting moderation. Admin only (used for sidebar badge).
+ */
+export async function getPendingStoreReviewCountAction() {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "ADMIN") return { count: 0 };
+
+  const count = await prisma.storeReview.count({
+    where: { status: "PENDING" },
+  });
+
+  return { count };
+}
+
+/**
  * Moderate a review (approve or reject). Admin only. Updates store aggregate on approve/reject.
  */
 export async function moderateStoreReview(

@@ -34,7 +34,7 @@ export async function sendEmailAction({
             return { success: false };
         }
 
-        await resend.emails.send({
+        const { error } = await resend.emails.send({
             from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
             to: [to],
             subject: `Az-Bid - ${subject}`,
@@ -52,6 +52,13 @@ export async function sendEmailAction({
                 contentType: attachment.contentType,
             })),
         });
+
+        // The Resend SDK resolves (rather than throws) on API-level failures
+        // like an unverified sending domain, so this must be checked explicitly.
+        if (error) {
+            console.error("[SendEmail] Resend API error:", error);
+            return { success: false };
+        }
 
         return { success: true };
     } catch (err) {

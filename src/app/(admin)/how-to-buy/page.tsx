@@ -387,7 +387,7 @@ const HowToBuy = () => {
 						AZ-Bid. Create your account today and start winning!
 					</p>
 					<div className='flex flex-col sm:flex-row gap-4 justify-center'>
-						<Button size='lg' onClick={() => navigate.push('/auth')}>
+						<Button size='lg' onClick={() => navigate.push('/join-our-community')}>
 							<User className='mr-2 h-5 w-5' />
 							Create Account
 						</Button>
