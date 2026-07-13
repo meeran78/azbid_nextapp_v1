@@ -5,7 +5,6 @@ import {
 import { getFeaturedSellersForHero } from "@/actions/public-seller.action";
 import { ActiveStoresSection } from "@/components/ActiveStoresSection";
 import { ActiveLotsSection } from "@/app/components/ActiveLotsSection";
-import { ShopByCategorySection } from "@/app/components/ShopByCategorySection";
 import HowItWorksSection from "@/app/components/HowItWorksSection";
 import HighlightedFeature from "@/app/components/HighlightedFeature";
 // import SocialRedirect from "@/app/components/SocialRedirect";
@@ -53,8 +52,7 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       <AuctionHero slides={heroSlides} />
-      <ActiveStoresSection searchParams={searchParams} />    
-      <ShopByCategorySection />
+      <ActiveStoresSection searchParams={searchParams} />
       <HowItWorksSection />
       <HighlightedFeature />    
       <SocialMediaLinks />

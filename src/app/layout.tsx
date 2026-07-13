@@ -5,6 +5,7 @@ import "./globals.css";
 
 //Components
 import Header from "@/components/Header";
+import { CategoryNavBar } from "@/app/components/CategoryNavBar";
 import Footer from "@/components/Footer";
 import { AiChat } from "@/components/AiChat";
 import { BidVerificationResume } from "@/app/components/stripe/BidVerificationResume";
@@ -48,6 +49,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Header liveAuctionCount={liveAuctionCount} />
+        <CategoryNavBar />
         <BidVerificationResume />
         {children}
         <Footer />
