@@ -32,14 +32,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
+import { PillPagination } from "@/app/components/PillPagination";
 import { Package, Eye, Check, X, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -91,8 +84,6 @@ export function LotsManagementClient({
     const [localSearch, setLocalSearch] = useState(searchQuery);
 
     const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
 
     const updateParams = (updates: Record<string, string>) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -117,6 +108,12 @@ export function LotsManagementClient({
         const params = new URLSearchParams(searchParams.toString());
         params.set("page", String(newPage));
         router.push(`/lots-management?${params.toString()}`);
+    };
+
+    const buildPageHref = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", String(newPage));
+        return `/lots-management?${params.toString()}`;
     };
 
     const handleReject = async () => {
@@ -313,25 +310,13 @@ export function LotsManagementClient({
             </Card>
 
             {totalPages > 1 && (
-               <div className="flex flex-wrap justify-center gap-2">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (hasPrevPage) handlePageChange(page - 1); }} className={!hasPrevPage ? "pointer-events-none opacity-50" : ""} />
-                            </PaginationItem>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                .filter((p) => p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2))
-                                .map((p, idx, arr) => (
-                                    <PaginationItem key={p}>
-                                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-2">…</span>}
-                                        <PaginationLink href="#" onClick={(e) => { e.preventDefault(); handlePageChange(p); }} isActive={p === page}>{p}</PaginationLink>
-                                    </PaginationItem>
-                                ))}
-                            <PaginationItem>
-                                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (hasNextPage) handlePageChange(page + 1); }} className={!hasNextPage ? "pointer-events-none opacity-50" : ""} />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
+                <div className="flex flex-wrap justify-center gap-2">
+                    <PillPagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        getHref={buildPageHref}
+                        onNavigate={(newPage) => handlePageChange(newPage)}
+                    />
                 </div>
             )}
 

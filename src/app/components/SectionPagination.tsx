@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useTransition } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -11,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PillPagination } from "@/app/components/PillPagination";
 
 const PER_PAGE_OPTIONS = [6, 10, 12, 24] as const;
 
@@ -65,7 +64,6 @@ export function SectionPagination({
   const pageKey = `${paramPrefix}_page`;
   const perPageKey = `${paramPrefix}_per_page`;
   const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
 
   const hasExplicitPerPage = baseParams[perPageKey] !== undefined;
   const hasSyncedRef = useRef(false);
@@ -126,77 +124,13 @@ export function SectionPagination({
         <span className="text-muted-foreground">per page</span>
       </div>
 
-      {totalPages > 1 && (
-        <nav
-          role="navigation"
-          aria-label="pagination"
-          aria-busy={isPending}
-          className={`flex items-center gap-3 transition-opacity duration-200 ${isPending ? "pointer-events-none opacity-60" : ""}`}
-        >
-          {currentPage > 1 ? (
-            <Link
-              href={buildHref(currentPage - 1)}
-              onClick={(e) => {
-                e.preventDefault();
-                handleNav(buildHref(currentPage - 1));
-              }}
-              className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
-              aria-label="Go to previous page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Previous</span>
-            </Link>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled>
-              <ChevronLeft className="h-4 w-4" />
-              <span>Previous</span>
-            </span>
-          )}
-          <div className="flex items-center gap-2">
-            {pageNumbers.map((n) => {
-              const isActive = n === currentPage;
-              return (
-                <Link
-                  key={n}
-                  href={buildHref(n)}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNav(buildHref(n));
-                  }}
-                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "bg-[#e7685b] text-white"
-                      : "bg-slate-600 text-white hover:bg-slate-500"
-                  }`}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={`Go to page ${n}`}
-                >
-                  {n}
-                </Link>
-              );
-            })}
-          </div>
-          {currentPage < totalPages ? (
-            <Link
-              href={buildHref(currentPage + 1)}
-              onClick={(e) => {
-                e.preventDefault();
-                handleNav(buildHref(currentPage + 1));
-              }}
-              className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
-              aria-label="Go to next page"
-            >
-              <span>Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled="true">
-              <span>Next</span>
-              <ChevronRight className="h-4 w-4" />
-            </span>
-          )}
-        </nav>
-      )}
+      <PillPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        getHref={buildHref}
+        onNavigate={(_page, href) => handleNav(href)}
+        disabled={isPending}
+      />
     </div>
   );
 }

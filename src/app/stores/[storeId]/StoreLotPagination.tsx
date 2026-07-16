@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useState } from "react";
+import { PillPagination } from "@/app/components/PillPagination";
 
 type StoreLotPaginationProps = {
   storeId: string;
@@ -55,55 +54,13 @@ export function StoreLotPagination({
       <p className="text-sm text-muted-foreground">
         Showing {from}-{to} of {totalLotCount} lots
       </p>
-      <div className="flex items-center gap-2">
-        {currentPage > 1 ? (
-          <Link
-            href={buildHref(storeId, currentPage - 1, perPage)}
-            onClick={(e) => {
-              e.preventDefault();
-              if (!isPending) handleNav(currentPage - 1);
-            }}
-            className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
-            aria-label="Go to previous page"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Previous</span>
-          </Link>
-        ) : (
-          <span
-            className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed"
-            aria-disabled="true"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Previous</span>
-          </span>
-        )}
-        <span className="text-muted-foreground px-2">
-          Page {currentPage} of {totalPages}
-        </span>
-        {currentPage < totalPages ? (
-          <Link
-            href={buildHref(storeId, currentPage + 1, perPage)}
-            onClick={(e) => {
-              e.preventDefault();
-              if (!isPending) handleNav(currentPage + 1);
-            }}
-            className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground hover:text-foreground transition-colors font-normal"
-            aria-label="Go to next page"
-          >
-            <span>Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        ) : (
-          <span
-            className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed"
-            aria-disabled="true"
-          >
-            <span>Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </span>
-        )}
-      </div>
+      <PillPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        getHref={(page) => buildHref(storeId, page, perPage)}
+        onNavigate={(page) => handleNav(page)}
+        disabled={isPending}
+      />
     </nav>
   );
 }

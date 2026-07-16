@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
@@ -14,10 +13,7 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { createSetupIntent, setDefaultPaymentMethodFromSetupIntent } from "@/actions/payment.action";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  : null;
+import { stripePromise } from "@/lib/stripe-client";
 
 function SetupForm({ onSuccess }: { onSuccess: () => void }) {
   const stripe = useStripe();

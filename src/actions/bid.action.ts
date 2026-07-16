@@ -24,7 +24,7 @@ import { ensureBuyerHasValidCard } from "@/actions/payment.action";
 export async function placeBidAction(
   itemId: string,
   amount: number
-): Promise<{ success: true } | { error: string }> {
+): Promise<{ success: true } | { error: string; code?: "CARD_VERIFICATION_REQUIRED" }> {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -39,6 +39,20 @@ export async function placeBidAction(
   const cardCheck = await ensureBuyerHasValidCard();
   if (!cardCheck.valid) {
     return { error: cardCheck.error };
+  }
+
+  // Source of truth for "has this buyer completed CVC/3DS verification" — read fresh from the
+  // DB rather than trusting any client-supplied flag, since placeBidAction is a server action
+  // any authenticated buyer could otherwise invoke directly to skip verification entirely.
+  const buyer = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { cardVerifiedAt: true },
+  });
+  if (!buyer?.cardVerifiedAt) {
+    return {
+      error: "Please verify your card before bidding.",
+      code: "CARD_VERIFICATION_REQUIRED",
+    };
   }
 
   if (typeof amount !== "number" || !isFinite(amount) || amount <= 0) {

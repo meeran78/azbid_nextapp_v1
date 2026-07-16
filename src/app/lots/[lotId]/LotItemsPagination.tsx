@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useState } from "react";
+import { PillPagination } from "@/app/components/PillPagination";
 
 type LotItemsPaginationProps = {
   lotId: string;
@@ -53,55 +52,13 @@ export function LotItemsPagination({
       <p className="text-sm text-muted-foreground">
         Showing {from}-{to} of {totalItemCount} items
       </p>
-      <div className="flex items-center gap-3">
-        {currentPage > 1 ? (
-          <Link
-            href={buildHref(lotId, currentPage - 1, perPage)}
-            onClick={(e) => {
-              e.preventDefault();
-              if (!isPending) handleNav(currentPage - 1);
-            }}
-            className={`inline-flex items-center gap-1.5 py-1.5 px-0 font-normal transition-colors ${
-              isPending ? "pointer-events-none opacity-50 cursor-wait" : "text-muted-foreground hover:text-foreground"
-            }`}
-            aria-label="Previous page"
-            aria-disabled={isPending}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span>Previous</span>
-          </Link>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled>
-            <ChevronLeft className="h-4 w-4" />
-            <span>Previous</span>
-          </span>
-        )}
-        <span className="min-w-[4rem] text-center text-sm text-muted-foreground">
-          Page {currentPage} of {totalPages}
-        </span>
-        {currentPage < totalPages ? (
-          <Link
-            href={buildHref(lotId, currentPage + 1, perPage)}
-            onClick={(e) => {
-              e.preventDefault();
-              if (!isPending) handleNav(currentPage + 1);
-            }}
-            className={`inline-flex items-center gap-1.5 py-1.5 px-0 font-normal transition-colors ${
-              isPending ? "pointer-events-none opacity-50 cursor-wait" : "text-muted-foreground hover:text-foreground"
-            }`}
-            aria-label="Next page"
-            aria-disabled={isPending}
-          >
-            <span>Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 py-1.5 px-0 text-muted-foreground opacity-50 cursor-not-allowed" aria-disabled>
-            <span>Next</span>
-            <ChevronRight className="h-4 w-4" />
-          </span>
-        )}
-      </div>
+      <PillPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        getHref={(page) => buildHref(lotId, page, perPage)}
+        onNavigate={(page) => handleNav(page)}
+        disabled={isPending}
+      />
     </nav>
   );
 }

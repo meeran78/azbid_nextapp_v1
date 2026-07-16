@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import type { PublicStoreLotItem } from "@/actions/public-store.action";
 
 export type LotStatusFilter = "ALL" | "LIVE" | "SCHEDULED";
 
@@ -40,6 +41,23 @@ export async function getActiveCategoriesForFilter(): Promise<{ id: string; name
   return prisma.category.findMany({
     where: { status: "ACTIVE" },
     select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+/**
+ * Get active stores with at least one live/scheduled lot, for the "By Store"
+ * selector. Public, no auth.
+ */
+export async function getActiveStoresForFilter(): Promise<
+  { id: string; name: string; logoUrl: string | null }[]
+> {
+  return prisma.store.findMany({
+    where: {
+      status: "ACTIVE",
+      lots: { some: { status: { in: ["LIVE", "SCHEDULED"] } } },
+    },
+    select: { id: true, name: true, logoUrl: true },
     orderBy: { name: "asc" },
   });
 }
@@ -186,6 +204,139 @@ export async function getActiveLotsFiltered(
       })),
     };
   }),
+    totalCount,
+  };
+}
+
+export type ActiveItem = PublicStoreLotItem & {
+  lotId: string;
+  lotStatus: string;
+  lotDisplayId: string | null;
+  storeId: string;
+  storeName: string;
+  storeLogoUrl: string | null;
+};
+
+const DEFAULT_ITEM_PAGE_SIZE = 9;
+const MAX_ITEM_PAGE_SIZE = 24;
+
+/**
+ * Get individual items (flattened across lots/stores) with optional filters
+ * and pagination. Public - no auth. Only includes items whose lot is
+ * LIVE/SCHEDULED and whose store is ACTIVE.
+ */
+export async function getActiveItemsFiltered(
+  searchQuery?: string | null,
+  statusFilter?: LotStatusFilter | null,
+  location?: string | null,
+  itemTitle?: string | null,
+  storeId?: string | null,
+  page = 1,
+  pageSize = DEFAULT_ITEM_PAGE_SIZE
+): Promise<{ items: ActiveItem[]; totalCount: number }> {
+  const hasSearch = searchQuery?.trim();
+  const hasLocation = location?.trim();
+  const hasItemTitle = itemTitle?.trim();
+  const hasStoreId = storeId?.trim();
+
+  const statuses: ("LIVE" | "SCHEDULED")[] =
+    !statusFilter || statusFilter === "ALL"
+      ? ["LIVE", "SCHEDULED"]
+      : statusFilter === "LIVE"
+        ? ["LIVE"]
+        : ["SCHEDULED"];
+
+  const storeWhere: { status: "ACTIVE"; owner?: { OR: Array<Record<string, unknown>> } } = {
+    status: "ACTIVE",
+  };
+
+  if (hasLocation) {
+    const loc = hasLocation.trim();
+    storeWhere.owner = {
+      OR: [
+        { city: { contains: loc, mode: "insensitive" } },
+        { state: { contains: loc, mode: "insensitive" } },
+        { country: { contains: loc, mode: "insensitive" } },
+        { displayLocation: { contains: loc, mode: "insensitive" } },
+      ],
+    };
+  }
+
+  const lotWhere: Record<string, unknown> = {
+    status: { in: statuses },
+    store: storeWhere,
+  };
+  if (hasStoreId) lotWhere.storeId = hasStoreId.trim();
+  if (hasSearch) {
+    const term = hasSearch.trim();
+    lotWhere.OR = [
+      { title: { contains: term, mode: "insensitive" } },
+      { description: { contains: term, mode: "insensitive" } },
+    ];
+  }
+
+  const where: Record<string, unknown> = { lot: lotWhere };
+  if (hasItemTitle) where.title = { contains: hasItemTitle.trim(), mode: "insensitive" };
+
+  const take = Math.min(MAX_ITEM_PAGE_SIZE, Math.max(1, pageSize));
+  const skip = (Math.max(1, page) - 1) * take;
+
+  const [totalCount, items] = await Promise.all([
+    prisma.item.count({ where }),
+    prisma.item.findMany({
+      where,
+      skip,
+      take,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        condition: true,
+        imageUrls: true,
+        startPrice: true,
+        reservePrice: true,
+        currentPrice: true,
+        retailPrice: true,
+        createdAt: true,
+        category: { select: { name: true } },
+        _count: { select: { bids: true } },
+        lot: {
+          select: {
+            id: true,
+            status: true,
+            lotDisplayId: true,
+            closesAt: true,
+            store: {
+              select: { id: true, name: true, logoUrl: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ lot: { closesAt: "asc" } }, { createdAt: "asc" }],
+    }),
+  ]);
+
+  return {
+    items: items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      condition: item.condition,
+      imageUrls: item.imageUrls ?? [],
+      startPrice: item.startPrice,
+      reservePrice: item.reservePrice,
+      currentPrice: item.currentPrice,
+      retailPrice: item.retailPrice,
+      createdAt: item.createdAt,
+      category: item.category,
+      bidCount: item._count?.bids ?? 0,
+      lotId: item.lot.id,
+      lotStatus: item.lot.status,
+      lotDisplayId: item.lot.lotDisplayId,
+      storeId: item.lot.store.id,
+      storeName: item.lot.store.name,
+      storeLogoUrl: item.lot.store.logoUrl,
+    })),
     totalCount,
   };
 }

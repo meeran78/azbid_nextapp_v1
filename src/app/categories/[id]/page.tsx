@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getItemsByCategory } from "@/actions/category-browse.action";
+import { getActiveCategoriesForFilter } from "@/actions/active-lots.action";
 import { getUserFavouriteItemIds } from "@/actions/item-favourite.action";
 import { getUserWatchedItemIds } from "@/actions/item-watch.action";
 import { CategoryItemsGrid } from "@/app/components/CategoryItemsGrid";
+import { CategorySelect } from "@/app/components/CategorySelect";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
@@ -13,10 +15,11 @@ export default async function CategoryPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: categoryId } = await params;
-  const [data, favouriteItemIds, watchedItemIds] = await Promise.all([
+  const [data, favouriteItemIds, watchedItemIds, categories] = await Promise.all([
     getItemsByCategory(categoryId),
     getUserFavouriteItemIds(),
     getUserWatchedItemIds(),
+    getActiveCategoriesForFilter(),
   ]);
 
   if (!data) notFound();
@@ -41,6 +44,8 @@ export default async function CategoryPage({
           {items.length} item{items.length !== 1 ? "s" : ""} with bidding
         </p>
       </div>
+
+      <CategorySelect categories={categories} selectedId={category.id} />
 
       <CategoryItemsGrid
         items={items}

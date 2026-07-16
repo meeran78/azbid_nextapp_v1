@@ -4,12 +4,9 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cancelBidVerification } from "@/actions/payment.action";
 import { placeBidAction } from "@/actions/bid.action";
-import {
-  BID_VERIFY_PENDING_KEY,
-  setCardVerifiedForBidSession,
-} from "@/lib/bid-session";
+import { BID_VERIFY_PENDING_KEY } from "@/lib/bid-session";
 import { toast } from "sonner";
-import { authClient, useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-client";
 
 /**
  * After Stripe confirmPayment redirect (e.g. 3DS), Stripe adds payment_intent params to return_url.
@@ -110,14 +107,6 @@ export function BidVerificationResume() {
         }
         sessionStorage.removeItem(BID_VERIFY_PENDING_KEY);
         sessionStorage.removeItem(lockKey);
-        let verifiedUserId = pending.userId ?? session?.user?.id ?? undefined;
-        if (!verifiedUserId) {
-          const fresh = await authClient.getSession();
-          verifiedUserId = fresh.data?.user?.id;
-        }
-        if (verifiedUserId) {
-          setCardVerifiedForBidSession(verifiedUserId);
-        }
         toast.dismiss(toastId);
         toast.success("Bid placed successfully!");
         cleanupUrl();

@@ -46,12 +46,7 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
   const lot = await prisma.lot.findUnique({
     where: { id: lotId },
     include: {
-      items: {
-        include: {
-          // Primary: highest amount wins. Secondary: earliest bid at that amount wins (first in time).
-          bids: { orderBy: [{ amount: "desc" }, { createdAt: "asc" }], take: 1 },
-        },
-      },
+      items: { select: { id: true, title: true } },
       store: {
         select: {
           id: true,
@@ -75,26 +70,10 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
   const sellerId = lot.store.ownerId;
   const buyerPremiumPct = parseBuyerPremiumPct(lot.auction?.buyersPremium ?? null);
 
-  const wonItems: Array<{
-    itemId: string;
-    winningBidId: string;
-    winningBidAmount: number;
-    buyerId: string;
-  }> = [];
-
-  for (const item of lot.items) {
-    const winningBid = item.bids[0];
-    if (winningBid) {
-      wonItems.push({
-        itemId: item.id,
-        winningBidId: winningBid.id,
-        winningBidAmount: Number(winningBid.amount), // Prisma returns Decimal; convert explicitly
-        buyerId: winningBid.userId,
-      });
-    }
-  }
-
-  const lotStatus: "SOLD" | "UNSOLD" = wonItems.length > 0 ? "SOLD" : "UNSOLD";
+  // Set inside the transaction once the fresh winner read resolves it; read by the final
+  // return below. Safe to mutate from the transaction closure — this is plain in-process JS,
+  // not shared across concurrent requests.
+  let resolvedLotStatus: "SOLD" | "UNSOLD" = "UNSOLD";
 
   // Declared inside and returned from the transaction so it is only populated when the
   // transaction commits. If the transaction rolls back, we never attempt payment or emails
@@ -106,6 +85,43 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
       itemTitles: string[];
       total: number;
     }> = [];
+
+    // Re-read winning bids *inside* the transaction, immediately before the atomic status
+    // flip below. A bid can legally land right up until the lot's status actually changes
+    // to non-LIVE (placeBidAction checks status fresh in its own transaction) — reading bids
+    // here, as late as possible, instead of before the transaction started, keeps the window
+    // in which a just-placed bid could be missed as small as the optimistic lock itself,
+    // rather than spanning the entire pre-transaction query + computation.
+    const itemsWithBids = await tx.item.findMany({
+      where: { lotId },
+      select: {
+        id: true,
+        // Primary: highest amount wins. Secondary: earliest bid at that amount wins (first in time).
+        bids: { orderBy: [{ amount: "desc" }, { createdAt: "asc" }], take: 1 },
+      },
+    });
+
+    const wonItems: Array<{
+      itemId: string;
+      winningBidId: string;
+      winningBidAmount: number;
+      buyerId: string;
+    }> = [];
+    for (const item of itemsWithBids) {
+      const winningBid = item.bids[0];
+      if (winningBid) {
+        wonItems.push({
+          itemId: item.id,
+          winningBidId: winningBid.id,
+          winningBidAmount: Number(winningBid.amount), // Prisma returns Decimal; convert explicitly
+          buyerId: winningBid.userId,
+        });
+      }
+    }
+
+    const lotStatus: "SOLD" | "UNSOLD" = wonItems.length > 0 ? "SOLD" : "UNSOLD";
+    resolvedLotStatus = lotStatus;
+
     // 1. Atomically mark lot SOLD/UNSOLD — only succeeds if status is still LIVE.
     //    If a concurrent cron run already closed it, count === 0 and we bail out.
     const updatedLot = await tx.lot.updateMany({
@@ -228,7 +244,7 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
 
   // Transaction may return undefined if it exited early (concurrent close already ran).
   if (!createdInvoices || createdInvoices.length === 0) {
-    return { success: true, lotStatus, ordersCreated: 0 };
+    return { success: true, lotStatus: resolvedLotStatus, ordersCreated: 0 };
   }
 
   // 5. Trigger payment flow then auto-charge stored payment method for each invoice
@@ -319,5 +335,5 @@ export async function closeLot(lotId: string): Promise<CloseLotResult> {
   revalidatePath(`/stores/${lot.store.id}`);
   revalidatePath(`/buyers-dashboard`);
   revalidatePath(`/buyers-dashboard/bids`);
-  return { success: true, lotStatus, ordersCreated: createdInvoices.length };
+  return { success: true, lotStatus: resolvedLotStatus, ordersCreated: createdInvoices.length };
 }

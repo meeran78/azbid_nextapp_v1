@@ -8,8 +8,10 @@ import { transferToSellerForInvoice } from "@/actions/stripe-connect.action";
  * Stripe webhook – event sync.
  * Verify STRIPE_WEBHOOK_SECRET and handle:
  * - payment_intent.succeeded       → mark Invoice/Order PAID, create Payment, trigger seller payout
- * - payment_intent.payment_failed  → mark invoice as requiring action so buyer knows to retry
+ * - payment_intent.payment_failed  → mark invoice as requiring action, record a FAILED Payment
  * - setup_intent.succeeded         → set payment method as default on customer
+ * - charge.refunded                → on a full refund, mark Invoice/Order/Payment REFUNDED
+ * - charge.dispute.created/.closed → log loudly (no dispute tracking table yet — see comment below)
  *
  * All handlers are idempotent: if the invoice is already PAID, the succeeded handler skips
  * the DB writes and payout so duplicate webhook deliveries are safe.
@@ -99,18 +101,127 @@ export async function POST(request: Request) {
       case "payment_intent.payment_failed": {
         const pi = event.data.object as Stripe.PaymentIntent;
         const invoiceId = pi.metadata?.invoiceId;
+        const failureReason = pi.last_payment_error?.message ?? "Unknown error";
         console.warn(
           "Payment failed:",
           pi.id,
-          pi.last_payment_error?.message,
+          failureReason,
           invoiceId ? `(invoice ${invoiceId})` : ""
         );
         if (invoiceId) {
-          await prisma.invoice.updateMany({
-            where: { id: invoiceId, status: "PENDING" },
-            data: { paymentRequiresAction: true },
+          const invoice = await prisma.invoice.findUnique({
+            where: { id: invoiceId },
+            include: { order: { select: { id: true } } },
           });
+          if (invoice?.order && invoice.status === "PENDING") {
+            // Only "requires_action" (e.g. 3DS not completed) warrants the "additional
+            // verification needed" messaging on the pay page — a plain decline (insufficient
+            // funds, expired card, etc.) leaves the PI in requires_payment_method and should
+            // NOT be mislabeled as requiring 3DS.
+            const requiresAction = pi.status === "requires_action";
+            await prisma.$transaction([
+              prisma.invoice.update({
+                where: { id: invoiceId },
+                data: { paymentRequiresAction: requiresAction },
+              }),
+              prisma.payment.upsert({
+                where: { orderId: invoice.order.id },
+                create: {
+                  orderId: invoice.order.id,
+                  provider: "STRIPE",
+                  providerRef: pi.id,
+                  amount: invoice.invoiceTotal,
+                  status: "FAILED",
+                  failureReason,
+                },
+                update: {
+                  providerRef: pi.id,
+                  status: "FAILED",
+                  failureReason,
+                },
+              }),
+            ]);
+          }
         }
+        break;
+      }
+
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id;
+        if (!paymentIntentId) break;
+
+        // charge.refunded fires for partial refunds too — `refunded` is only true once the
+        // full charge amount has been refunded. We don't have a PARTIALLY_REFUNDED status,
+        // so partial refunds are logged but don't change Invoice/Order/Payment state.
+        if (!charge.refunded) {
+          console.warn(
+            `Partial refund on charge ${charge.id} (payment_intent ${paymentIntentId}): ` +
+              `${charge.amount_refunded} of ${charge.amount} refunded. No DB status change.`
+          );
+          break;
+        }
+
+        const invoice = await prisma.invoice.findFirst({
+          where: { stripePaymentIntentId: paymentIntentId },
+          include: { order: { select: { id: true } } },
+        });
+        if (!invoice?.order || invoice.status === "REFUNDED") break;
+
+        await prisma.$transaction([
+          prisma.invoice.update({
+            where: { id: invoice.id },
+            data: { status: "REFUNDED" },
+          }),
+          prisma.order.update({
+            where: { id: invoice.order.id },
+            data: { status: "REFUNDED" },
+          }),
+          prisma.payment.updateMany({
+            where: { orderId: invoice.order.id },
+            data: { status: "REFUNDED" },
+          }),
+        ]);
+
+        // No automatic clawback of the seller payout — Stripe Connect transfer reversals need
+        // a deliberate decision (who eats the loss), not an automatic one. Surface it loudly.
+        if (invoice.sellerPayoutTransferId) {
+          console.error(
+            `REFUND ALERT: invoice ${invoice.id} was refunded but had already paid out to the ` +
+              `seller (transfer ${invoice.sellerPayoutTransferId}). Manual review/clawback required.`
+          );
+        }
+        break;
+      }
+
+      case "charge.dispute.created":
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const paymentIntentId =
+          typeof dispute.payment_intent === "string"
+            ? dispute.payment_intent
+            : dispute.payment_intent?.id;
+        const invoice = paymentIntentId
+          ? await prisma.invoice.findFirst({
+              where: { stripePaymentIntentId: paymentIntentId },
+              select: { id: true, sellerPayoutTransferId: true, invoiceDisplayId: true },
+            })
+          : null;
+
+        // No Dispute model/table yet — this is intentionally log-only so a dispute is never
+        // silently missed. Wire up real alerting (Sentry/Slack/email) on this log line.
+        console.error(
+          `STRIPE DISPUTE ${event.type === "charge.dispute.created" ? "OPENED" : "CLOSED"}: ` +
+            `dispute ${dispute.id}, status=${dispute.status}, reason=${dispute.reason}, ` +
+            `amount=${dispute.amount} ${dispute.currency}, ` +
+            `invoice=${invoice?.invoiceDisplayId ?? invoice?.id ?? "unknown"}` +
+            (invoice?.sellerPayoutTransferId
+              ? ` (already paid out to seller via transfer ${invoice.sellerPayoutTransferId} — manual review required)`
+              : "")
+        );
         break;
       }
 

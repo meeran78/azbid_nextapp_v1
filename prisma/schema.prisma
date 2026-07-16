@@ -203,6 +203,7 @@ model User {
   //Stripe
   stripeCustomerId     String? @unique
   stripeConnectAccountId String? @unique // Stripe Connect Express account for seller payouts
+  cardVerifiedAt       DateTime? // Set once a bid-time CVC/3DS verification PaymentIntent succeeds; gates placeBidAction server-side
 
   @@map("users")
 }

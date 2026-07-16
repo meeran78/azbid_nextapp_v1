@@ -24,16 +24,19 @@ export async function getOrCreateConnectAccount(
   }
   const stripe = getStripe();
   if (!stripe) return { error: "Stripe is not configured." };
-  const account = await stripe.accounts.create({
-    type: "express",
-    country: "US",
-    email: user.email ?? undefined,
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
+  const account = await stripe.accounts.create(
+    {
+      type: "express",
+      country: "US",
+      email: user.email ?? undefined,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: { userId: user.id },
     },
-    metadata: { userId: user.id },
-  });
+    { idempotencyKey: `connect-account-${userId}` }
+  );
   await prisma.user.update({
     where: { id: userId },
     data: { stripeConnectAccountId: account.id },
@@ -58,12 +61,18 @@ export async function createConnectAccountLink(
   const result = await getOrCreateConnectAccount(session.user.id);
   if ("error" in result) return result;
 
-  const link = await stripe.accountLinks.create({
-    account: result.accountId,
-    refresh_url: refreshUrl,
-    return_url: returnUrl,
-    type: "account_onboarding",
-  });
+  // Bucketed key: guards against accidental double-clicks without preventing a legitimately
+  // fresh onboarding link later (account links are short-lived and meant to be regenerated).
+  const idempotencyBucket = Math.floor(Date.now() / 60_000);
+  const link = await stripe.accountLinks.create(
+    {
+      account: result.accountId,
+      refresh_url: refreshUrl,
+      return_url: returnUrl,
+      type: "account_onboarding",
+    },
+    { idempotencyKey: `connect-link-${result.accountId}-${idempotencyBucket}` }
+  );
   return { url: link.url };
 }
 
@@ -115,13 +124,19 @@ export async function transferToSellerForInvoice(
   if (!stripe) return { transferred: false, reason: "Stripe not configured." };
 
   try {
-    const transfer = await stripe.transfers.create({
-      amount: amountCents,
-      currency: "usd",
-      destination: accountId,
-      description: `Payout for invoice ${invoice.invoiceDisplayId ?? invoiceId}`,
-      metadata: { invoiceId, sellerId: invoice.sellerId },
-    });
+    // Deterministic idempotency key tied to the invoice: even if this function is invoked
+    // concurrently (e.g. webhook + chargeInvoiceWithStoredPayment racing) or retried before
+    // sellerPayoutTransferId is persisted, Stripe guarantees only one Transfer is ever created.
+    const transfer = await stripe.transfers.create(
+      {
+        amount: amountCents,
+        currency: "usd",
+        destination: accountId,
+        description: `Payout for invoice ${invoice.invoiceDisplayId ?? invoiceId}`,
+        metadata: { invoiceId, sellerId: invoice.sellerId },
+      },
+      { idempotencyKey: `transfer-${invoiceId}` }
+    );
     await prisma.invoice.update({
       where: { id: invoiceId },
       data: { sellerPayoutTransferId: transfer.id },

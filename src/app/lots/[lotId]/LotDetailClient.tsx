@@ -21,7 +21,6 @@ import {
 import { Package, ChevronDown, Heart, Eye, Share2, History } from "lucide-react";
 import { getMinimumNextBid } from "@/lib/bid-increment";
 import { BidConfirmCvcModal } from "@/app/components/stripe/BidConfirmCvcModal";
-import { getCardVerifiedForBidSession, clearCardVerifiedForBidSession } from "@/lib/bid-session";
 import { placeBidAction } from "@/actions/bid.action";
 import { toggleItemFavouriteAction } from "@/actions/item-favourite.action";
 import { toggleItemWatchAction } from "@/actions/item-watch.action";
@@ -171,11 +170,6 @@ function ItemBidForm({
   const currentPrice = Number(item.currentPrice ?? item.startPrice ?? 0);
   const minBid = getMinimumNextBid(currentPrice);
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) clearCardVerifiedForBidSession();
-  }, [session, isPending]);
-
   const handleBid = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const numAmount = parseFloat(amount);
@@ -183,27 +177,29 @@ function ItemBidForm({
       toast.error(`Minimum bid is $${minBid.toFixed(2)}`);
       return;
     }
-    if (session?.user?.id && getCardVerifiedForBidSession(session.user.id)) {
-      setIsSubmitting(true);
-      try {
-        const result = await placeBidAction(item.id, numAmount);
-        if ("error" in result) {
-          toast.error(result.error);
+    // Try placing the bid directly — placeBidAction is the source of truth for whether card
+    // verification is still required. If it isn't, fall back to the CVC confirmation modal.
+    setIsSubmitting(true);
+    try {
+      const result = await placeBidAction(item.id, numAmount);
+      if ("error" in result) {
+        if (result.code === "CARD_VERIFICATION_REQUIRED") {
+          setConfirmItemId(item.id);
+          setConfirmAmount(numAmount);
+          setConfirmOpen(true);
         } else {
-          toast.success("Bid placed successfully!");
-          setAmount("");
-          router.refresh();
+          toast.error(result.error);
         }
-      } catch {
-        toast.error("Failed to place bid");
-      } finally {
-        setIsSubmitting(false);
+      } else {
+        toast.success("Bid placed successfully!");
+        setAmount("");
+        router.refresh();
       }
-      return;
+    } catch {
+      toast.error("Failed to place bid");
+    } finally {
+      setIsSubmitting(false);
     }
-    setConfirmItemId(item.id);
-    setConfirmAmount(numAmount);
-    setConfirmOpen(true);
   };
 
   if (isPending) {

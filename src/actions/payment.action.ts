@@ -26,11 +26,14 @@ export async function getOrCreateStripeCustomer(
   if (!stripe) {
     return { error: "Stripe is not configured." };
   }
-  const customer = await stripe.customers.create({
-    email: user.email ?? undefined,
-    name: user.name ?? undefined,
-    metadata: { userId: user.id },
-  });
+  const customer = await stripe.customers.create(
+    {
+      email: user.email ?? undefined,
+      name: user.name ?? undefined,
+      metadata: { userId: user.id },
+    },
+    { idempotencyKey: `customer-create-${userId}` }
+  );
   await prisma.user.update({
     where: { id: userId },
     data: { stripeCustomerId: customer.id },
@@ -136,19 +139,25 @@ export async function createBidVerificationIntent(
 
   // Small manual-capture PI for bid verification. No payment_method here — the client confirms
   // with Payment Element so buyers pick a saved card and enter CVC / 3DS when required.
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: 50, // $0.50 minimum for USD
-    currency: "usd",
-    customer: customerResult.customerId,
-    capture_method: "manual",
-    confirmation_method: "automatic",
-    payment_method_types: ["card"],
-    metadata: {
-      type: "bid_verification",
-      itemId,
-      userId: session.user.id,
+  // Idempotency key is bucketed per-minute so an accidental double-invocation (e.g. a duplicate
+  // click or effect re-fire) reuses the same PI, while a genuinely later attempt gets a fresh one.
+  const idempotencyBucket = Math.floor(Date.now() / 60_000);
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: 50, // $0.50 minimum for USD
+      currency: "usd",
+      customer: customerResult.customerId,
+      capture_method: "manual",
+      confirmation_method: "automatic",
+      payment_method_types: ["card"],
+      metadata: {
+        type: "bid_verification",
+        itemId,
+        userId: session.user.id,
+      },
     },
-  });
+    { idempotencyKey: `bid-verify-${session.user.id}-${itemId}-${idempotencyBucket}` }
+  );
   return {
     clientSecret: paymentIntent.client_secret!,
     paymentIntentId: paymentIntent.id,
@@ -193,6 +202,12 @@ export async function cancelBidVerification(
     };
   }
 
+  // "requires_capture" is the only status that means the buyer actually completed CVC/3DS
+  // confirmation successfully (the manual-capture authorization succeeded and is on hold).
+  // We record this server-side — placeBidAction checks it directly rather than trusting any
+  // client-supplied "verified" flag, which is what previously made verification bypassable.
+  const wasSuccessfullyAuthorized = pi.status === "requires_capture";
+
   // Void authorization or abandon an unconfirmed intent.
   const cancelable: Stripe.PaymentIntent.Status[] = [
     "requires_payment_method",
@@ -211,6 +226,14 @@ export async function cancelBidVerification(
       return { error: "Could not release card verification. Try again or contact support." };
     }
   }
+
+  if (wasSuccessfullyAuthorized) {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { cardVerifiedAt: new Date() },
+    });
+  }
+
   return { success: true };
 }
 
@@ -283,13 +306,17 @@ export async function createSetupIntent(): Promise<
   if (!stripe) {
     return { error: "Stripe is not configured." };
   }
-  const setupIntent = await stripe.setupIntents.create({
-    customer: customerResult.customerId,
-    usage: "off_session",
-    metadata: { userId: session.user.id },
-    // Card-only so bidding + ensureBuyerHasValidCard (card list) stay in sync. Link-only saves looked "successful" but failed bid checks.
-    payment_method_types: ["card"],
-  });
+  const idempotencyBucket = Math.floor(Date.now() / 60_000);
+  const setupIntent = await stripe.setupIntents.create(
+    {
+      customer: customerResult.customerId,
+      usage: "off_session",
+      metadata: { userId: session.user.id },
+      // Card-only so bidding + ensureBuyerHasValidCard (card list) stay in sync. Link-only saves looked "successful" but failed bid checks.
+      payment_method_types: ["card"],
+    },
+    { idempotencyKey: `setup-intent-${session.user.id}-${idempotencyBucket}` }
+  );
   return {
     success: true,
     clientSecret: setupIntent.client_secret ?? "",
@@ -377,13 +404,19 @@ export async function triggerPaymentFlow(
 
   // Use payment_method_types: ["card"] (not automatic_payment_methods) so this PI can be
   // confirmed off-session without Stripe requiring a return_url.
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: amountCents,
-    currency: "usd",
-    customer: customerId,
-    payment_method_types: ["card"],
-    metadata: { invoiceId },
-  });
+  // Deterministic idempotency key: a concurrent/retried call for the same invoice always
+  // resolves to the same PaymentIntent at the Stripe API layer, on top of the DB-level reuse
+  // check above.
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: amountCents,
+      currency: "usd",
+      customer: customerId,
+      payment_method_types: ["card"],
+      metadata: { invoiceId },
+    },
+    { idempotencyKey: `invoice-payment-${invoiceId}` }
+  );
 
   await prisma.invoice.update({
     where: { id: invoiceId },
@@ -483,10 +516,14 @@ export async function chargeInvoiceWithStoredPayment(
   }
 
   try {
-    const pi = await stripe.paymentIntents.confirm(paymentIntentId, {
-      payment_method: pmId,
-      off_session: true,
-    });
+    const pi = await stripe.paymentIntents.confirm(
+      paymentIntentId,
+      {
+        payment_method: pmId,
+        off_session: true,
+      },
+      { idempotencyKey: `confirm-${paymentIntentId}` }
+    );
     if (pi.status === "succeeded") {
       await prisma.$transaction([
         prisma.invoice.update({

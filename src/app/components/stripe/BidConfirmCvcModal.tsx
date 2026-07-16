@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { stripePromise } from "@/lib/stripe-client";
 import {
   Dialog,
   DialogContent,
@@ -24,16 +24,9 @@ import {
   cancelBidVerification,
 } from "@/actions/payment.action";
 import { placeBidAction } from "@/actions/bid.action";
-import {
-  setCardVerifiedForBidSession,
-  BID_VERIFY_PENDING_KEY,
-} from "@/lib/bid-session";
+import { BID_VERIFY_PENDING_KEY } from "@/lib/bid-session";
 import { toast } from "sonner";
 import { useSession } from "@/lib/auth-client";
-
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  : null;
 
 type BidConfirmCvcModalProps = {
   open: boolean;
@@ -118,7 +111,6 @@ function ConfirmCvcInner({
         return;
       }
       onVerifiedFlowComplete();
-      setCardVerifiedForBidSession(userId);
       toast.success("Bid placed successfully!");
       onSuccess();
     } catch (err) {

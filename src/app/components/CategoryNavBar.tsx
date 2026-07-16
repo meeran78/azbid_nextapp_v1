@@ -1,8 +1,13 @@
+import { headers } from "next/headers";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 import { getCategoriesForShopCarousel } from "@/actions/category-browse.action";
 import { CategoryNavList } from "@/app/components/CategoryNavList";
 
 export async function CategoryNavBar() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session?.user?.role === "SELLER" || session?.user?.role === "ADMIN") return null;
+
   const categories = await getCategoriesForShopCarousel();
   if (categories.length === 0) return null;
 

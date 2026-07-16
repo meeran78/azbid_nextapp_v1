@@ -78,20 +78,25 @@ export type CategoryItemWithLot = {
 
 /**
  * Get items in a category that are in LIVE or SCHEDULED lots. Public.
+ * Pass "all" as categoryId to get items across every active category.
  * Shape matches PublicStoreLotItem + lotId, lotStatus, storeId for LotItemCard.
  */
 export async function getItemsByCategory(
   categoryId: string
 ): Promise<{ category: { id: string; name: string; description: string | null }; items: CategoryItemWithLot[] } | null> {
-  const category = await prisma.category.findUnique({
-    where: { id: categoryId, status: "ACTIVE" },
-    select: { id: true, name: true, description: true },
-  });
+  const isAll = categoryId === "all";
+
+  const category = isAll
+    ? { id: "all", name: "All Categories", description: null }
+    : await prisma.category.findUnique({
+        where: { id: categoryId, status: "ACTIVE" },
+        select: { id: true, name: true, description: true },
+      });
   if (!category) return null;
 
   const items = await prisma.item.findMany({
     where: {
-      categoryId,
+      ...(isAll ? {} : { categoryId }),
       lot: {
         status: { in: ["LIVE", "SCHEDULED"] },
         store: { status: "ACTIVE" },

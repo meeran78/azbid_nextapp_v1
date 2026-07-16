@@ -3,7 +3,6 @@ import {
   type HeroSlide,
 } from "@/app/components/hero-slides";
 import { getFeaturedSellersForHero } from "@/actions/public-seller.action";
-import { ActiveStoresSection } from "@/components/ActiveStoresSection";
 import { ActiveLotsSection } from "@/app/components/ActiveLotsSection";
 import HowItWorksSection from "@/app/components/HowItWorksSection";
 import HighlightedFeature from "@/app/components/HighlightedFeature";
@@ -14,14 +13,14 @@ const HERO_FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1920&q=80";
 
 type HomeSearchParams = {
-  q?: string;
-  status?: string;
-  location?: string;
+  lot_view?: string;
   lot_q?: string;
   lot_status?: string;
   lot_location?: string;
   lot_item?: string;
-  lot_category?: string;
+  lot_store?: string;
+  lot_page?: string;
+  lot_per_page?: string;
 };
 
 type HomeProps = {
@@ -52,7 +51,7 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       <AuctionHero slides={heroSlides} />
-      <ActiveStoresSection searchParams={searchParams} />
+      <ActiveLotsSection searchParams={searchParams} />
       <HowItWorksSection />
       <HighlightedFeature />    
       <SocialMediaLinks />
