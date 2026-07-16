@@ -27,6 +27,7 @@ import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { BiddingHistoryModal } from "@/app/components/seller/BiddingHistoryModal";
 import type { PublicStoreLotItem } from "@/actions/public-store.action";
+import { LotCountdown } from "@/app/stores/[storeId]/LotCountdown";
 
 const NEW_ITEM_DAYS = 7;
 
@@ -178,6 +179,13 @@ function ItemBidForm({
           setConfirmItemId(item.id);
           setConfirmAmount(numAmount);
           setConfirmOpen(true);
+        } else if (result.code === "NO_PAYMENT_METHOD") {
+          toast.error(result.error, {
+            action: {
+              label: "Add a card",
+              onClick: () => router.push("/buyers-dashboard/payment-methods"),
+            },
+          });
         } else {
           toast.error(result.error);
         }
@@ -300,6 +308,8 @@ interface LotItemCardProps {
   item: PublicStoreLotItem;
   lotId: string;
   lotStatus: string;
+  closesAt: Date;
+  showCountdown?: boolean;
   storeId?: string;
   isFavourited?: boolean;
   isWatched?: boolean;
@@ -309,6 +319,8 @@ export function LotItemCard({
   item,
   lotId,
   lotStatus,
+  closesAt,
+  showCountdown = true,
   storeId,
   isFavourited: initialFavourited = false,
   isWatched: initialWatched = false,
@@ -435,6 +447,12 @@ export function LotItemCard({
             </div>
           </CollapsibleContent>
         </Collapsible>
+
+        {showCountdown && (
+          <div className="px-1">
+            <LotCountdown closesAt={closesAt} />
+          </div>
+        )}
 
         <div
           id={`item-${item.id}`}

@@ -24,7 +24,13 @@ import { ensureBuyerHasValidCard } from "@/actions/payment.action";
 export async function placeBidAction(
   itemId: string,
   amount: number
-): Promise<{ success: true } | { error: string; code?: "CARD_VERIFICATION_REQUIRED" }> {
+): Promise<
+  | { success: true }
+  | {
+      error: string;
+      code?: "CARD_VERIFICATION_REQUIRED" | "NO_PAYMENT_METHOD";
+    }
+> {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -38,7 +44,10 @@ export async function placeBidAction(
 
   const cardCheck = await ensureBuyerHasValidCard();
   if (!cardCheck.valid) {
-    return { error: cardCheck.error };
+    return {
+      error: cardCheck.error,
+      code: cardCheck.suggestAddCard ? "NO_PAYMENT_METHOD" : undefined,
+    };
   }
 
   // Source of truth for "has this buyer completed CVC/3DS verification" — read fresh from the

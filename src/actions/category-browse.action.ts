@@ -73,6 +73,7 @@ export type CategoryItemWithLot = {
   };
   lotId: string;
   lotStatus: string;
+  lotClosesAt: Date;
   storeId: string;
 };
 
@@ -103,7 +104,7 @@ export async function getItemsByCategory(
       },
     },
     include: {
-      lot: { select: { id: true, status: true, storeId: true } },
+      lot: { select: { id: true, status: true, storeId: true, closesAt: true } },
       category: { select: { name: true } },
       _count: { select: { bids: true } },
     },
@@ -133,6 +134,7 @@ export async function getItemsByCategory(
       },
       lotId: i.lot.id,
       lotStatus: i.lot.status,
+      lotClosesAt: i.lot.closesAt,
       storeId: i.lot.storeId,
     })),
   };

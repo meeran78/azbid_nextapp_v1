@@ -1,8 +1,9 @@
 name: Close Expired Auction Lots
 
-# Runs every 5 minutes (GitHub Actions minimum reliable interval).
-# The endpoint is idempotent — concurrent runs with Vercel cron are safe due
-# to the optimistic lock on lot status in close-lot.action.ts.
+# Runs every 5 minutes (GitHub Actions minimum reliable interval). This is the sole
+# scheduler for lot closing. The endpoint is idempotent (optimistic lock on lot status in
+# close-lot.action.ts), so it's also safe to trigger manually or from another scheduler
+# without risk of double-closing a lot.
 on:
   schedule:
     - cron: "*/5 * * * *"

@@ -212,6 +212,7 @@ export type ActiveItem = PublicStoreLotItem & {
   lotId: string;
   lotStatus: string;
   lotDisplayId: string | null;
+  lotClosesAt: Date;
   storeId: string;
   storeName: string;
   storeLogoUrl: string | null;
@@ -333,6 +334,7 @@ export async function getActiveItemsFiltered(
       lotId: item.lot.id,
       lotStatus: item.lot.status,
       lotDisplayId: item.lot.lotDisplayId,
+      lotClosesAt: item.lot.closesAt,
       storeId: item.lot.store.id,
       storeName: item.lot.store.name,
       storeLogoUrl: item.lot.store.logoUrl,

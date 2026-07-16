@@ -187,6 +187,13 @@ function ItemBidForm({
           setConfirmItemId(item.id);
           setConfirmAmount(numAmount);
           setConfirmOpen(true);
+        } else if (result.code === "NO_PAYMENT_METHOD") {
+          toast.error(result.error, {
+            action: {
+              label: "Add a card",
+              onClick: () => router.push("/buyers-dashboard/payment-methods"),
+            },
+          });
         } else {
           toast.error(result.error);
         }

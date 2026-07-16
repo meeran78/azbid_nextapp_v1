@@ -102,6 +102,7 @@ export default async function LotDetailPage({
                     item={item}
                     lotId={lot.id}
                     lotStatus={lot.status}
+                    closesAt={lot.closesAt}
                     storeId={lot.store.id}
                     isFavourited={favouriteItemIds.includes(item.id)}
                     isWatched={watchedItemIds.includes(item.id)}

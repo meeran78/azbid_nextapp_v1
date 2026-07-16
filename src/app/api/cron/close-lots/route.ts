@@ -10,9 +10,10 @@ import { closeExpiredLots } from "@/actions/close-expired-lots.action";
  * 3. Auto-charge buyer's saved payment method (Stripe); if none or charge fails, invoice stays PENDING
  * 4. Email buyers and seller
  *
- * Schedule: see `vercel.json` `crons`. For external cron (e.g. GitHub Actions),
- * call with GET or POST. Set CRON_SECRET in env and send it as Authorization: Bearer <CRON_SECRET>
- * or x-cron-secret header. If CRON_SECRET is set and missing/wrong, returns 401.
+ * Schedule: see `.github/workflows/close-lots.yml` (GitHub Actions, every 5 minutes).
+ * Also callable from any external cron. Call with GET or POST. Set CRON_SECRET in env and
+ * send it as Authorization: Bearer <CRON_SECRET> or x-cron-secret header. If CRON_SECRET is
+ * set and missing/wrong, returns 401.
  */
 async function handleCron(request: Request) {
   const auth = request.headers.get("authorization");

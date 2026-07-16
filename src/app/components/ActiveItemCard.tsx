@@ -33,6 +33,7 @@ export function ActiveItemCard({
         item={item}
         lotId={item.lotId}
         lotStatus={item.lotStatus}
+        closesAt={item.lotClosesAt}
         storeId={item.storeId}
         isFavourited={isFavourited}
         isWatched={isWatched}

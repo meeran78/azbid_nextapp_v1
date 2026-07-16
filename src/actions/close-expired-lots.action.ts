@@ -21,7 +21,8 @@ export type CloseExpiredLotsResult = {
  * Vercel when many lots expire at once. closeLot() uses an optimistic lock on the
  * lot's status so concurrent cron invocations cannot double-close the same lot.
  *
- * Invoked by the cron endpoint GET/POST /api/cron/close-lots (see vercel.json).
+ * Invoked by the cron endpoint GET/POST /api/cron/close-lots (see
+ * .github/workflows/close-lots.yml).
  */
 export async function closeExpiredLots(): Promise<CloseExpiredLotsResult> {
   const now = new Date();

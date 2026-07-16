@@ -273,9 +273,11 @@ This section describes the full lifecycle from bidding through lot close, order 
 
 **Location:** `src/app/api/cron/close-lots/route.ts` → `src/actions/close-expired-lots.action.ts`
 
-- A cron job (e.g. every minute via `vercel.json`) calls `closeExpiredLots()`.
-- It finds lots with `status: "LIVE"` and `closesAt <= now` (after any soft-close extensions).
-- For each such lot it calls `closeLot(lotId)`. Errors are collected and returned.
+- A GitHub Actions workflow (`.github/workflows/close-lots.yml`, every 5 min) POSTs to
+  `/api/cron/close-lots` (auth'd via `CRON_SECRET`).
+- The endpoint calls `closeExpiredLots()`, which finds lots with `status: "LIVE"` and
+  `closesAt <= now` (after any soft-close extensions) and calls `closeLot(lotId)` on each.
+  Errors are collected and returned.
 
 ---
 
