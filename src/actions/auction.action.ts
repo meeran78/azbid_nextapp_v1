@@ -177,6 +177,22 @@ export async function getStoresForAdmin() {
   return stores;
 }
 
+// Get open auctions for a store, for the lot-review "assign to auction" picker (Admin only)
+export async function getAuctionsForStoreOptions(storeId: string) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "ADMIN") {
+    redirect("/sign-in");
+  }
+
+  return prisma.auction.findMany({
+    where: { storeId, status: { in: ["DRAFT", "SCHEDULED", "LIVE"] } },
+    select: { id: true, title: true, auctionDisplayId: true, status: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 // Create auction (Admin only)
 // Optionally associate selected lots by updating their auctionId
 export async function createAuctionAction(

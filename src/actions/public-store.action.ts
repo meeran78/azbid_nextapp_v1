@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type PublicStoreLotItem = {
   id: string;
@@ -29,6 +30,7 @@ export type PublicStoreLot = {
   itemCount: number;
   imageUrls: string[];
   auctionDisplayId: string | null;
+  auctionEndAt: Date;
   buyersPremium: string | null;
   items: PublicStoreLotItem[];
 };
@@ -64,7 +66,11 @@ export async function getPublicStore(
 ): Promise<PublicStore | null> {
   type CountArgs = NonNullable<Parameters<typeof prisma.lot.count>[0]>;
   type LotWhereInput = CountArgs["where"];
-  const lotWhere = { storeId, status: { in: ["LIVE", "SCHEDULED"] } } as LotWhereInput;
+  const lotWhere = {
+    storeId,
+    status: { in: ["LIVE", "SCHEDULED"] },
+    auctionId: { not: null },
+  } as LotWhereInput;
   const [totalLotCount, lotStats, store] = await Promise.all([
     prisma.lot.count({ where: lotWhere }),
     prisma.lot.findMany({
@@ -84,7 +90,10 @@ export async function getPublicStore(
           },
         },
         lots: {
-          where: { status: { in: ["LIVE", "SCHEDULED"] as ("LIVE" | "SCHEDULED")[] } },
+          where: {
+            status: { in: ["LIVE", "SCHEDULED"] as ("LIVE" | "SCHEDULED")[] },
+            auctionId: { not: null },
+          },
           skip: (Math.max(1, page) - 1) * Math.max(1, Math.min(24, pageSize)),
           take: Math.max(1, Math.min(24, pageSize)),
           include: {
@@ -106,7 +115,7 @@ export async function getPublicStore(
               },
             },
             auction: {
-              select: { auctionDisplayId: true, buyersPremium: true },
+              select: { auctionDisplayId: true, buyersPremium: true, endAt: true },
             },
             _count: { select: { items: true } },
           },
@@ -154,6 +163,7 @@ export async function getPublicStore(
         itemCount: (lot as { _count?: { items: number } })._count?.items ?? 0,
         imageUrls,
         auctionDisplayId: lot.auction?.auctionDisplayId ?? null,
+        auctionEndAt: reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt),
         buyersPremium: lot.auction?.buyersPremium ?? null,
         items: lot.items.map((item) => ({
           id: item.id,

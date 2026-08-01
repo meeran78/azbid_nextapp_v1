@@ -62,6 +62,7 @@ export async function getPublicLot(
       where: {
         id: lotId,
         status: { in: ["LIVE", "SCHEDULED"] },
+        auctionId: { not: null },
       },
       include: {
         store: {

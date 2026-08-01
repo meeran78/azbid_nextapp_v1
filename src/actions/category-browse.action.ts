@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type ShopCategory = {
   id: string;
@@ -36,6 +37,7 @@ export async function getCategoriesForShopCarousel(): Promise<ShopCategory[]> {
       categoryId: { not: null },
       lot: {
         status: { in: ["LIVE", "SCHEDULED"] },
+        auctionId: { not: null },
         store: { status: "ACTIVE" },
       },
     },
@@ -74,6 +76,7 @@ export type CategoryItemWithLot = {
   lotId: string;
   lotStatus: string;
   lotClosesAt: Date;
+  lotAuctionEndAt: Date;
   storeId: string;
 };
 
@@ -100,11 +103,20 @@ export async function getItemsByCategory(
       ...(isAll ? {} : { categoryId }),
       lot: {
         status: { in: ["LIVE", "SCHEDULED"] },
+        auctionId: { not: null },
         store: { status: "ACTIVE" },
       },
     },
     include: {
-      lot: { select: { id: true, status: true, storeId: true, closesAt: true } },
+      lot: {
+        select: {
+          id: true,
+          status: true,
+          storeId: true,
+          closesAt: true,
+          auction: { select: { endAt: true } },
+        },
+      },
       category: { select: { name: true } },
       _count: { select: { bids: true } },
     },
@@ -135,6 +147,7 @@ export async function getItemsByCategory(
       lotId: i.lot.id,
       lotStatus: i.lot.status,
       lotClosesAt: i.lot.closesAt,
+      lotAuctionEndAt: reconcileAuctionEndAt(i.lot.closesAt, i.lot.auction?.endAt),
       storeId: i.lot.storeId,
     })),
   };

@@ -3,6 +3,8 @@ import {
   type HeroSlide,
 } from "@/app/components/hero-slides";
 import { getFeaturedSellersForHero } from "@/actions/public-seller.action";
+import { getFeaturedAuctions } from "@/actions/featured-auctions.action";
+import { FeaturedAuctionsSection } from "@/app/components/FeaturedAuctionsSection";
 import { ActiveLotsSection } from "@/app/components/ActiveLotsSection";
 import HowItWorksSection from "@/app/components/HowItWorksSection";
 import HighlightedFeature from "@/app/components/HighlightedFeature";
@@ -28,7 +30,10 @@ type HomeProps = {
 };
 
 export default async function Home({ searchParams }: HomeProps) {
-  const featuredSellers = await getFeaturedSellersForHero(6);
+  const [featuredSellers, featuredAuctions] = await Promise.all([
+    getFeaturedSellersForHero(6),
+    getFeaturedAuctions(10),
+  ]);
   const sellerSlides: HeroSlide[] = featuredSellers.map((s) => ({
     // One row per store; seller id can repeat when a seller has multiple hero stores.
     id: `store-${s.storeId}`,
@@ -51,6 +56,7 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       <AuctionHero slides={heroSlides} />
+      <FeaturedAuctionsSection auctions={featuredAuctions} />
       <ActiveLotsSection searchParams={searchParams} />
       <HowItWorksSection />
       <HighlightedFeature />    

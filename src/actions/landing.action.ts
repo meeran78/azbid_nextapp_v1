@@ -59,7 +59,7 @@ export async function getActiveStoresWithLotsFiltered(
 
   const where: {
     status?: "ACTIVE" | "PENDING" | "SUSPENDED";
-    lots?: { some: { status: "LIVE" } };
+    lots?: { some: { status: "LIVE"; auctionId: { not: null } } };
     OR?: Array<
       | { name: { contains: string; mode: "insensitive" } }
       | { description: { contains: string; mode: "insensitive" } | null }
@@ -77,7 +77,8 @@ export async function getActiveStoresWithLotsFiltered(
 
   if (status) where.status = status;
   // When showing only ACTIVE stores, require at least one LIVE lot for relevance
-  if (status === "ACTIVE" || !statusFilter) where.lots = { some: { status: "LIVE" } };
+  if (status === "ACTIVE" || !statusFilter)
+    where.lots = { some: { status: "LIVE", auctionId: { not: null } } };
 
   if (hasSearch) {
     const term = hasSearch.trim();
@@ -123,7 +124,7 @@ export async function getActiveStoresWithLotsFiltered(
           },
         },
         lots: {
-          where: { status: { in: ["LIVE"] } },
+          where: { status: { in: ["LIVE"] }, auctionId: { not: null } },
           include: {
             auction: { select: { endAt: true } },
             items: {

@@ -6,7 +6,7 @@ import { CategoryNavList } from "@/app/components/CategoryNavList";
 
 export async function CategoryNavBar() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (session?.user?.role === "SELLER" || session?.user?.role === "ADMIN") return null;
+  if (session?.user?.role !== "BUYER") return null;
 
   const categories = await getCategoriesForShopCarousel();
   if (categories.length === 0) return null;

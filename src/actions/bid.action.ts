@@ -10,11 +10,13 @@ import { ensureBuyerHasValidCard } from "@/actions/payment.action";
 /**
  * Place a bid on an item. Requires signed-in user with BUYER role.
  *
- * Soft-close extension: if a bid is placed while **positive** time remains until close
- * and that remaining time is within softCloseWindowSec (e.g. last 2 minutes), closesAt
- * is extended by softCloseExtendSec (e.g. 60 seconds). Repeats until softCloseExtendLimit.
- * If closesAt is already past but the lot is still LIVE (cron not run yet), remaining time
- * is 0 — we do **not** extend (avoid treating overtime as "in the soft-close window").
+ * Soft-close extension: all lots in an auction share one closing clock, the auction's
+ * endAt. If a bid is placed while **positive** time remains until the auction's endAt
+ * and that remaining time is within softCloseWindowSec (e.g. last 2 minutes), endAt
+ * is extended by softCloseExtendSec (e.g. 60 seconds) — extending the whole auction,
+ * so every lot in it closes together. Repeats until softCloseExtendLimit. If endAt is
+ * already past but the lot is still LIVE (cron not run yet), remaining time is 0 — we
+ * do **not** extend (avoid treating overtime as "in the soft-close window").
  *
  * Race-condition safety: all validation and writes happen inside a single interactive
  * transaction. An optimistic lock on item.currentPrice ensures that if another bid lands
@@ -90,7 +92,10 @@ export async function placeBidAction(
               storeId: true,
               auction: {
                 select: {
+                  id: true,
                   status: true,
+                  endAt: true,
+                  extendedCount: true,
                   softCloseEnabled: true,
                   softCloseWindowSec: true,
                   softCloseExtendSec: true,
@@ -154,12 +159,14 @@ export async function placeBidAction(
         data: { itemId, userId: session.user.id, amount: bidAmount },
       });
 
-      // Soft-close extension
+      // Soft-close extension — all lots in an auction share one closing clock
+      // (auction.endAt). Falls back to the lot's own closesAt/extendedCount only if
+      // the lot somehow has no linked auction (shouldn't happen: LIVE lots always
+      // have one, enforced at approval time).
       const now = new Date();
-      const remainingSeconds = Math.max(
-        0,
-        (item.lot.closesAt.getTime() - now.getTime()) / 1000
-      );
+      const closingClock = auction?.endAt ?? item.lot.closesAt;
+      const closingExtendedCount = auction ? auction.extendedCount : item.lot.extendedCount;
+      const remainingSeconds = Math.max(0, (closingClock.getTime() - now.getTime()) / 1000);
       const softCloseEnabled = auction?.softCloseEnabled ?? true;
       const softCloseWindowSec = auction?.softCloseWindowSec ?? 120;
       const softCloseExtendSec = auction?.softCloseExtendSec ?? 60;
@@ -170,17 +177,29 @@ export async function placeBidAction(
         softCloseExtendSec > 0 &&
         remainingSeconds > 0 &&
         remainingSeconds <= softCloseWindowSec &&
-        item.lot.extendedCount < softCloseExtendLimit;
+        closingExtendedCount < softCloseExtendLimit;
 
       if (shouldExtend) {
-        await tx.lot.update({
-          where: { id: item.lot.id },
-          data: {
-            closesAt: new Date(item.lot.closesAt.getTime() + softCloseExtendSec * 1000),
-            extendedCount: { increment: 1 },
-            lastExtendedAt: now,
-          },
-        });
+        const newClosingClock = new Date(closingClock.getTime() + softCloseExtendSec * 1000);
+        if (auction) {
+          await tx.auction.update({
+            where: { id: auction.id },
+            data: {
+              endAt: newClosingClock,
+              extendedCount: { increment: 1 },
+              lastExtendedAt: now,
+            },
+          });
+        } else {
+          await tx.lot.update({
+            where: { id: item.lot.id },
+            data: {
+              closesAt: newClosingClock,
+              extendedCount: { increment: 1 },
+              lastExtendedAt: now,
+            },
+          });
+        }
       }
 
       return { lotId: item.lot.id, storeId: item.lot.storeId };

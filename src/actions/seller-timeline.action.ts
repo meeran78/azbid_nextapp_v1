@@ -48,7 +48,7 @@ export async function getSellerTimelineEvents(
 
   const events: SellerTimelineEvent[] = [];
 
-  // Lots: submitted (createdAt), reviewed (reviewedAt), soft-close (lastExtendedAt)
+  // Lots: submitted (createdAt), reviewed (reviewedAt)
   const lots = await prisma.lot.findMany({
     where: { storeId: { in: storeIds } },
     select: {
@@ -58,7 +58,6 @@ export async function getSellerTimelineEvents(
       reviewedAt: true,
       adminNotes: true,
       status: true,
-      lastExtendedAt: true,
     },
   });
 
@@ -81,21 +80,14 @@ export async function getSellerTimelineEvents(
         approved,
       });
     }
-    if (lot.lastExtendedAt) {
-      events.push({
-        type: "soft_close",
-        at: lot.lastExtendedAt,
-        title: "Soft-close triggered",
-        lotId: lot.id,
-        lotTitle: lot.title,
-      });
-    }
   }
 
-  // Auctions: went live (use startAt for auctions that are/were LIVE)
+  // Auctions: went live (use startAt for auctions that are/were LIVE), soft-close
+  // (lastExtendedAt) — all lots in an auction share one closing clock, so this is
+  // one event per auction rather than one per lot.
   const auctions = await prisma.auction.findMany({
     where: { storeId: { in: storeIds }, status: { in: ["LIVE", "COMPLETED"] } },
-    select: { id: true, title: true, startAt: true },
+    select: { id: true, title: true, startAt: true, lastExtendedAt: true },
   });
   for (const a of auctions) {
     events.push({
@@ -105,6 +97,15 @@ export async function getSellerTimelineEvents(
       auctionId: a.id,
       auctionTitle: a.title,
     });
+    if (a.lastExtendedAt) {
+      events.push({
+        type: "soft_close",
+        at: a.lastExtendedAt,
+        title: "Soft-close triggered",
+        auctionId: a.id,
+        auctionTitle: a.title,
+      });
+    }
   }
 
   // Invoices: issued (auction/lot closed), paid (payment completed), payout (same as paid)

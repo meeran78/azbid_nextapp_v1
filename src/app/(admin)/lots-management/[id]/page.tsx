@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminLotDetailClient } from "./AdminLotDetailClient";
+import { getAuctionsForStoreOptions } from "@/actions/auction.action";
 
 export default async function AdminLotDetailPage({
   params,
@@ -36,6 +37,11 @@ export default async function AdminLotDetailPage({
 
   if (!lot) notFound();
 
+  const storeAuctions =
+    lot.status === "SCHEDULED" && !lot.auctionId
+      ? await getAuctionsForStoreOptions(lot.storeId)
+      : [];
+
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-10xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -52,6 +58,7 @@ export default async function AdminLotDetailPage({
 
       <AdminLotDetailClient
         lot={JSON.parse(JSON.stringify(lot))}
+        storeAuctions={storeAuctions}
       />
     </div>
   );

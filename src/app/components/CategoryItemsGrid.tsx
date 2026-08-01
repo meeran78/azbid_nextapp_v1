@@ -25,13 +25,13 @@ export function CategoryItemsGrid({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {items.map(({ item, lotId, lotStatus, lotClosesAt, storeId }) => (
+      {items.map(({ item, lotId, lotStatus, lotAuctionEndAt, storeId }) => (
         <LotItemCard
           key={item.id}
           item={item as PublicStoreLotItem}
           lotId={lotId}
           lotStatus={lotStatus}
-          closesAt={lotClosesAt}
+          auctionEndAt={lotAuctionEndAt}
           storeId={storeId}
           isFavourited={favouriteItemIds.includes(item.id)}
           isWatched={watchedItemIds.includes(item.id)}

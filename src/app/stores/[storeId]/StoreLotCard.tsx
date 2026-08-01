@@ -99,7 +99,7 @@ export function StoreLotCard({
               <span className="text-muted-foreground block mb-1.5 font-semibold">
                 Time to Lot Closing:
               </span>
-              <LotCountdown closesAt={lot.closesAt} />
+              <LotCountdown endAt={lot.auctionEndAt} />
             </div>
 
           </div>
@@ -179,7 +179,7 @@ export function StoreLotCard({
                 item={item}
                 lotId={lot.id}
                 lotStatus={lot.status}
-                closesAt={lot.closesAt}
+                auctionEndAt={lot.auctionEndAt}
                 showCountdown={false}
                 storeId={storeId}
                 isFavourited={favouriteItemIds.includes(item.id)}

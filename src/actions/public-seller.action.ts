@@ -76,7 +76,7 @@ export async function getFeaturedSellersForHero(
       id: true,
       name: true,
       lots: {
-        where: { status: "LIVE" },
+        where: { status: "LIVE", auctionId: { not: null } },
         orderBy: { closesAt: "asc" },
         take: 3,
         select: {

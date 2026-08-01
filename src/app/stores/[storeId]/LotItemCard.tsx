@@ -308,7 +308,7 @@ interface LotItemCardProps {
   item: PublicStoreLotItem;
   lotId: string;
   lotStatus: string;
-  closesAt: Date;
+  auctionEndAt: Date;
   showCountdown?: boolean;
   storeId?: string;
   isFavourited?: boolean;
@@ -319,7 +319,7 @@ export function LotItemCard({
   item,
   lotId,
   lotStatus,
-  closesAt,
+  auctionEndAt,
   showCountdown = true,
   storeId,
   isFavourited: initialFavourited = false,
@@ -450,7 +450,7 @@ export function LotItemCard({
 
         {showCountdown && (
           <div className="px-1">
-            <LotCountdown closesAt={closesAt} />
+            <LotCountdown endAt={auctionEndAt} />
           </div>
         )}
 

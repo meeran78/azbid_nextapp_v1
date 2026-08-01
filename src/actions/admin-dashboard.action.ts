@@ -143,11 +143,11 @@ export async function getMostCompetitiveAuctions(
       id: true,
       auctionDisplayId: true,
       title: true,
+      extendedCount: true,
       store: { select: { name: true } },
       lots: {
         select: {
           id: true,
-          extendedCount: true,
           items: {
             select: { _count: { select: { bids: true } } },
           },
@@ -163,7 +163,9 @@ export async function getMostCompetitiveAuctions(
         sum + lot.items.reduce((s, it) => s + it._count.bids, 0),
       0
     );
-    const extendedLotsCount = a.lots.filter((l) => l.extendedCount > 0).length;
+    // All lots in an auction share one soft-close clock — either the whole
+    // auction (and every lot in it) was extended, or none were.
+    const extendedLotsCount = a.extendedCount > 0 ? lotCount : 0;
     return {
       auctionId: a.id,
       auctionDisplayId: a.auctionDisplayId,

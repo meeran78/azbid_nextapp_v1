@@ -9,6 +9,7 @@ import { LotItemsPagination } from "./LotItemsPagination";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import type { PublicStoreLotItem } from "@/actions/public-store.action";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 const DEFAULT_ITEM_PER_PAGE = 9;
 
@@ -102,7 +103,7 @@ export default async function LotDetailPage({
                     item={item}
                     lotId={lot.id}
                     lotStatus={lot.status}
-                    closesAt={lot.closesAt}
+                    auctionEndAt={reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt)}
                     storeId={lot.store.id}
                     isFavourited={favouriteItemIds.includes(item.id)}
                     isWatched={watchedItemIds.includes(item.id)}

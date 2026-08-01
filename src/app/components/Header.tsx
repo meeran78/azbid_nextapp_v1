@@ -61,6 +61,7 @@ const Header = ({ liveAuctionCount = 0 }: HeaderProps) => {
 						</div>
 					</div>
 					<div className='flex items-center space-x-4'>
+					
 						<span className=' animate-bounce'> 📧 info@az-bid.com</span>
 						<span className='animate-bounce'>📞 24/7 Support</span>
 						<span className='hidden sm:inline animate-bounce'>🔥 New Arrivals Daily</span>

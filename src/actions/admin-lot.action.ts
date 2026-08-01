@@ -21,7 +21,7 @@ export async function getPendingLotCountAction() {
   return { count };
 }
 
-export async function approveLotAction(lotId: string) {
+export async function approveLotAction(lotId: string, auctionId?: string) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -40,10 +40,28 @@ export async function approveLotAction(lotId: string) {
   if (!lot) return { error: "Lot not found" };
   if (lot.status !== "SCHEDULED") return { error: "Lot is not in SCHEDULED status" };
 
+  const effectiveAuctionId = lot.auctionId ?? auctionId ?? null;
+  if (!effectiveAuctionId) {
+    return { error: "Assign this lot to an auction before approving." };
+  }
+
+  // If assigning an auction now (lot didn't already have one), verify it belongs to
+  // the same store — the picker is scoped client-side, but don't trust that alone.
+  if (!lot.auctionId) {
+    const auction = await prisma.auction.findUnique({
+      where: { id: effectiveAuctionId },
+      select: { storeId: true },
+    });
+    if (!auction || auction.storeId !== lot.storeId) {
+      return { error: "Selected auction does not belong to this store." };
+    }
+  }
+
   await prisma.lot.update({
     where: { id: lotId },
     data: {
       status: "LIVE",
+      auctionId: effectiveAuctionId,
       reviewedAt: new Date(),
       reviewedById: session.user.id,
       adminNotes: null,

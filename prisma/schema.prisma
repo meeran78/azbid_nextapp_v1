@@ -409,6 +409,11 @@ model Auction {
   softCloseExtendSec   Int     @default(60)
   softCloseExtendLimit Int     @default(10)
 
+  // 🔥 Soft-close tracking — all lots in this auction share one closing clock;
+  // a late bid on any of them extends endAt (see placeBidAction in bid.action.ts).
+  extendedCount  Int       @default(0)
+  lastExtendedAt DateTime?
+
   lots Lot[]
 
   createdAt DateTime @default(now())

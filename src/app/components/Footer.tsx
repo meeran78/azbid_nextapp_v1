@@ -1,21 +1,73 @@
 'use client';
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { AuctionCalendarAppointmentDialog } from '@/app/components/AuctionCalendarAppointmentDialog';
-import {  
+import { toast } from 'sonner';
+import {
     Phone,
     MapPin,
     Gavel,
     ShieldCheck,
-	
+
 } from 'lucide-react';
 
 type Props = {}
 
 const Footer = (props: Props) => {
 	const navigate = useRouter();
+	const [email, setEmail] = useState('');
+	const [joining, setJoining] = useState(false);
+
+	const handleJoin = async () => {
+		if (!email.trim()) {
+			toast.error('Please enter your email address');
+			return;
+		}
+		setJoining(true);
+		try {
+			// Simulate API call for newsletter signup
+			await new Promise((resolve) => setTimeout(resolve, 800));
+			toast.success("You're in! Check your inbox to confirm.");
+			setEmail('');
+		} catch {
+			toast.error('Failed to join. Please try again.');
+		} finally {
+			setJoining(false);
+		}
+	};
+
   return (
+	<>
+		<div className='bg-background py-4 border-b border-border'>
+			<div className='container mx-auto px-4 max-w-3xl'>
+				<h2 className='text-3xl md:text-4xl font-bold text-foreground mb-3'>
+					Let&apos;s go treasure-hunting.
+				</h2>
+				<p className='text-muted-foreground mb-6'>
+					Join the world&apos;s best auctions for one-of-a-kind art, antiques &
+					luxury goods.
+				</p>
+				<div className='flex max-w-xl overflow-hidden rounded-md border border-input'>
+					<Input
+						type='email'
+						placeholder='Enter your email'
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+						disabled={joining}
+						className='h-12 flex-1 rounded-none border-0 px-4 shadow-none focus-visible:ring-0'
+					/>
+					<Button
+						onClick={handleJoin}
+						disabled={joining}
+						className='h-12 rounded-none bg-slate-700 px-8 font-semibold tracking-wide text-white hover:bg-slate-800'>
+						{joining ? 'JOINING...' : 'JOIN'}
+					</Button>
+				</div>
+			</div>
+		</div>
 
 			<footer className='bg-foreground text-background py-16'>
 				<div className='container mx-auto px-4'>
@@ -220,6 +272,7 @@ const Footer = (props: Props) => {
 					</div>
 				</div>
 			</footer>
+	</>
   )
 }
 

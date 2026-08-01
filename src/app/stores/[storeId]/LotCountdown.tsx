@@ -4,19 +4,19 @@ import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
 
 interface LotCountdownProps {
-  closesAt: Date;
+  endAt: Date;
 }
 
 function pad(n: number) {
   return String(Math.max(0, Math.floor(n))).padStart(2, "0");
 }
 
-export function LotCountdown({ closesAt }: LotCountdownProps) {
+export function LotCountdown({ endAt }: LotCountdownProps) {
   const [diff, setDiff] = useState({ days: 0, hrs: 0, min: 0, sec: 0 });
 
   useEffect(() => {
     const update = () => {
-      const end = new Date(closesAt).getTime();
+      const end = new Date(endAt).getTime();
       const now = Date.now();
       const total = Math.max(0, end - now);
       setDiff({
@@ -29,7 +29,7 @@ export function LotCountdown({ closesAt }: LotCountdownProps) {
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [closesAt]);
+  }, [endAt]);
 
   return (
     <div className="flex items-center gap-2">

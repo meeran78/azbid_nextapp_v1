@@ -9,6 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -22,6 +29,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Check, X, Package, Calendar, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "sonner";
 
 interface Item {
@@ -50,17 +58,33 @@ interface Lot {
   items: Item[];
 }
 
-export function AdminLotDetailClient({ lot }: { lot: Lot }) {
+interface AuctionOption {
+  id: string;
+  title: string;
+  auctionDisplayId: string | null;
+  status: string;
+}
+
+export function AdminLotDetailClient({
+  lot,
+  storeAuctions,
+}: {
+  lot: Lot;
+  storeAuctions: AuctionOption[];
+}) {
   const router = useRouter();
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [adminNotes, setAdminNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [selectedAuctionId, setSelectedAuctionId] = useState<string>("");
+
+  const needsAuction = !lot.auction;
 
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      const result = await approveLotAction(lot.id);
+      const result = await approveLotAction(lot.id, selectedAuctionId || undefined);
       if (result.error) {
         toast.error(result.error);
       } else {
@@ -233,19 +257,57 @@ export function AdminLotDetailClient({ lot }: { lot: Lot }) {
             <CardHeader>
               <CardTitle>Admin Actions</CardTitle>
             </CardHeader>
-            <CardContent className="flex gap-4">
-              <Button onClick={handleApprove} disabled={isSubmitting}>
-                <Check className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Approving..." : "Approve & Publish"}
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setRejectDialogOpen(true)}
-                disabled={isSubmitting}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Reject (Send Back)
-              </Button>
+            <CardContent className="space-y-4">
+              {needsAuction && (
+                storeAuctions.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="assignAuction">Assign to Auction *</Label>
+                    <Select value={selectedAuctionId} onValueChange={setSelectedAuctionId}>
+                      <SelectTrigger id="assignAuction" className="w-full sm:w-[320px]">
+                        <SelectValue placeholder="Select an auction" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {storeAuctions.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.title}
+                            {a.auctionDisplayId ? ` (${a.auctionDisplayId})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      A lot must belong to an auction before it can be approved.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg text-sm space-y-1">
+                    <p>No open auctions for this store yet.</p>
+                    <Link
+                      href="/auctions-management/new"
+                      className="text-violet-600 hover:text-violet-700 dark:text-violet-400 font-medium"
+                    >
+                      Create one in Auctions Management &rarr;
+                    </Link>
+                  </div>
+                )
+              )}
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleApprove}
+                  disabled={isSubmitting || (needsAuction && !selectedAuctionId)}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  {isSubmitting ? "Approving..." : "Approve & Publish"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setRejectDialogOpen(true)}
+                  disabled={isSubmitting}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Reject (Send Back)
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

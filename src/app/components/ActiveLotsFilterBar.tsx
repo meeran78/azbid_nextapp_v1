@@ -70,7 +70,7 @@ export function ActiveLotsFilterBar() {
   return (
     <div className="mb-10 rounded-lg border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-[180px] flex-1 space-y-2">
+        {/* <div className="min-w-[180px] flex-1 space-y-2">
           <label htmlFor="lot-name" className="text-sm font-medium text-muted-foreground">
             Lot name
           </label>
@@ -85,8 +85,8 @@ export function ActiveLotsFilterBar() {
               className="pl-9"
             />
           </div>
-        </div>
-        <div className="min-w-[160px] flex-1 space-y-2">
+        </div> */}
+        <div className="min-w-15 flex-1 space-y-2">
           <label className="text-sm font-medium text-muted-foreground">Status</label>
           <Select
             value={lotStatus}
@@ -110,7 +110,7 @@ export function ActiveLotsFilterBar() {
             </SelectContent>
           </Select>
         </div>
-        <div className="min-w-[180px] flex-1 space-y-2">
+        <div className="min-w-45 flex-1 space-y-2">
           <label htmlFor="lot-location" className="text-sm font-medium text-muted-foreground">
             Location
           </label>

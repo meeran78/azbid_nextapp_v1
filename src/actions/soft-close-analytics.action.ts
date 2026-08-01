@@ -24,7 +24,10 @@ const TOP_LOTS_LIMIT = 20;
 
 /**
  * Platform-wide soft-close & extension analytics for admin.
- * Lots with extendedCount > 0 are "bidding war" lots (late bids triggered extensions).
+ * Lots belonging to an auction with extendedCount > 0 are "bidding war" lots (a
+ * late bid on any lot in the auction triggered an extension, shared by every lot
+ * in it — extension counts live on Auction, not Lot; summing per auction, not per
+ * lot, avoids double-counting a shared extension once per lot).
  */
 export async function getAdminSoftCloseAnalytics(): Promise<SoftCloseAnalytics> {
   const headersList = await headers();
@@ -35,23 +38,22 @@ export async function getAdminSoftCloseAnalytics(): Promise<SoftCloseAnalytics> 
 
   const [lotsWithBiddingWars, extensionSum, topLotsRaw] = await Promise.all([
     prisma.lot.count({
-      where: { extendedCount: { gt: 0 } },
+      where: { auction: { extendedCount: { gt: 0 } } },
     }),
-    prisma.lot.aggregate({
+    prisma.auction.aggregate({
       where: { extendedCount: { gt: 0 } },
       _sum: { extendedCount: true },
     }),
     prisma.lot.findMany({
-      where: { extendedCount: { gt: 0 } },
-      orderBy: { extendedCount: "desc" },
+      where: { auction: { extendedCount: { gt: 0 } } },
+      orderBy: { auction: { extendedCount: "desc" } },
       take: TOP_LOTS_LIMIT,
       select: {
         id: true,
         lotDisplayId: true,
         title: true,
         status: true,
-        extendedCount: true,
-        lastExtendedAt: true,
+        auction: { select: { extendedCount: true, lastExtendedAt: true } },
         store: { select: { name: true } },
       },
     }),
@@ -63,8 +65,8 @@ export async function getAdminSoftCloseAnalytics(): Promise<SoftCloseAnalytics> 
     lotDisplayId: lot.lotDisplayId,
     title: lot.title,
     storeName: lot.store.name,
-    extendedCount: lot.extendedCount,
-    lastExtendedAt: lot.lastExtendedAt,
+    extendedCount: lot.auction?.extendedCount ?? 0,
+    lastExtendedAt: lot.auction?.lastExtendedAt ?? null,
     status: lot.status,
   }));
 
@@ -93,25 +95,24 @@ export async function getSellerSoftCloseAnalytics(
     return { lotsWithBiddingWars: 0, totalExtensions: 0, topLots: [] };
   }
 
-  const where = { storeId: { in: storeIds }, extendedCount: { gt: 0 } };
+  const lotWhere = { storeId: { in: storeIds }, auction: { extendedCount: { gt: 0 } } };
 
   const [lotsWithBiddingWars, extensionSum, topLotsRaw] = await Promise.all([
-    prisma.lot.count({ where }),
-    prisma.lot.aggregate({
-      where,
+    prisma.lot.count({ where: lotWhere }),
+    prisma.auction.aggregate({
+      where: { storeId: { in: storeIds }, extendedCount: { gt: 0 } },
       _sum: { extendedCount: true },
     }),
     prisma.lot.findMany({
-      where,
-      orderBy: { extendedCount: "desc" },
+      where: lotWhere,
+      orderBy: { auction: { extendedCount: "desc" } },
       take: TOP_LOTS_LIMIT,
       select: {
         id: true,
         lotDisplayId: true,
         title: true,
         status: true,
-        extendedCount: true,
-        lastExtendedAt: true,
+        auction: { select: { extendedCount: true, lastExtendedAt: true } },
         store: { select: { name: true } },
       },
     }),
@@ -123,8 +124,8 @@ export async function getSellerSoftCloseAnalytics(
     lotDisplayId: lot.lotDisplayId,
     title: lot.title,
     storeName: lot.store.name,
-    extendedCount: lot.extendedCount,
-    lastExtendedAt: lot.lastExtendedAt,
+    extendedCount: lot.auction?.extendedCount ?? 0,
+    lastExtendedAt: lot.auction?.lastExtendedAt ?? null,
     status: lot.status,
   }));
 
