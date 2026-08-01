@@ -6,7 +6,7 @@ let stripeInstance: Stripe | null = null;
  * Pinned explicitly so an SDK upgrade (e.g. `npm update stripe`) can never silently shift
  * which Stripe API version our requests target. Bump deliberately after testing.
  */
-const STRIPE_API_VERSION = "2026-01-28.clover";
+const STRIPE_API_VERSION = "2026-02-25.clover";
 
 /** Server-side Stripe instance (uses STRIPE_SECRET_KEY). */
 export function getStripe(): Stripe | null {
