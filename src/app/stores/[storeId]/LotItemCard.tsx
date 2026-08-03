@@ -308,6 +308,7 @@ interface LotItemCardProps {
   item: PublicStoreLotItem;
   lotId: string;
   lotStatus: string;
+  lotDisplayId?: string | null;
   auctionEndAt: Date;
   showCountdown?: boolean;
   storeId?: string;
@@ -319,6 +320,7 @@ export function LotItemCard({
   item,
   lotId,
   lotStatus,
+  lotDisplayId,
   auctionEndAt,
   showCountdown = true,
   storeId,
@@ -428,7 +430,7 @@ export function LotItemCard({
             {item.category.name}
           </span>
             <span className="inline-block rounded-full bg-muted px-6 py-1 text-xs font-medium text-foreground">
-           {item.lotDisplayId ?? `#${item.lotId.slice(0, 8)}`}
+           {lotDisplayId ?? `#${lotId.slice(0, 8)}`}
           </span>
           
 
