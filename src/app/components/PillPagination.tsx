@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/components/lib/utils";
 
 type PillPaginationProps = {
   currentPage: number;
@@ -33,8 +34,6 @@ export function PillPagination({
   onNavigate,
   disabled = false,
 }: PillPaginationProps) {
-  if (totalPages <= 1) return null;
-
   const pageWindow = getPageWindow(currentPage, totalPages);
 
   return (
@@ -51,7 +50,7 @@ export function PillPagination({
             e.preventDefault();
             onNavigate(currentPage - 1, getHref(currentPage - 1));
           }}
-          className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-zinc-900 transition-colors hover:bg-amber-300"
+          className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground transition-colors hover:text-primary"
           aria-label="Go to previous page"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -59,7 +58,7 @@ export function PillPagination({
         </Link>
       ) : (
         <span
-          className="inline-flex cursor-not-allowed items-center gap-1 rounded-full bg-amber-400/40 px-4 py-2 text-sm font-bold text-zinc-900/50"
+          className="inline-flex cursor-not-allowed items-center gap-1 whitespace-nowrap text-sm font-medium text-muted-foreground/40"
           aria-disabled
         >
           <ChevronLeft className="h-4 w-4" />
@@ -67,7 +66,7 @@ export function PillPagination({
         </span>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {pageWindow.map((entry, idx) =>
           entry === "ellipsis" ? (
             <span key={`ellipsis-${idx}`} className="px-1 text-sm text-muted-foreground">
@@ -81,11 +80,12 @@ export function PillPagination({
                 e.preventDefault();
                 onNavigate(entry, getHref(entry));
               }}
-              className={`inline-flex h-9 min-w-9 items-center justify-center rounded-full px-3 text-sm font-bold transition-colors ${
+              className={cn(
+                "inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-sm font-medium transition-colors",
                 entry === currentPage
-                  ? "bg-orange-500 text-white"
-                  : "bg-amber-400 text-zinc-900 hover:bg-amber-300"
-              }`}
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-muted"
+              )}
               aria-current={entry === currentPage ? "page" : undefined}
               aria-label={`Go to page ${entry}`}
             >
@@ -102,7 +102,7 @@ export function PillPagination({
             e.preventDefault();
             onNavigate(currentPage + 1, getHref(currentPage + 1));
           }}
-          className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-4 py-2 text-sm font-bold text-zinc-900 transition-colors hover:bg-amber-300"
+          className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-foreground transition-colors hover:text-primary"
           aria-label="Go to next page"
         >
           <span>Next</span>
@@ -110,7 +110,7 @@ export function PillPagination({
         </Link>
       ) : (
         <span
-          className="inline-flex cursor-not-allowed items-center gap-1 rounded-full bg-amber-400/40 px-4 py-2 text-sm font-bold text-zinc-900/50"
+          className="inline-flex cursor-not-allowed items-center gap-1 whitespace-nowrap text-sm font-medium text-muted-foreground/40"
           aria-disabled="true"
         >
           <span>Next</span>

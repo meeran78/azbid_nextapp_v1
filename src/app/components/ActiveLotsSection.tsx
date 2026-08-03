@@ -75,7 +75,7 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
         Browse lots by name, location, item, or store. Filter by status and find live or scheduled auctions.
       </p>
 
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-start mb-6">
         <ActiveLotsViewToggle view={view} />
       </div>
 
@@ -137,7 +137,15 @@ async function ActiveItemsView({
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-100">
+     <SectionPagination
+        paramPrefix="lot"
+        baseParams={baseParams}
+        currentPage={page}
+        perPage={perPage}
+        totalCount={totalCount}
+        syncResponsivePerPage
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-100 my-10">
         {items.map((item) => (
           <ActiveItemCard
             key={item.id}

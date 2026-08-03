@@ -2,16 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useTransition } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PillPagination } from "@/app/components/PillPagination";
-
-const PER_PAGE_OPTIONS = [6, 10, 12, 24] as const;
 
 /** Responsive page size: sm 6, md 9, lg 12 */
 function getResponsivePageSize(): number {
@@ -96,34 +87,10 @@ export function SectionPagination({
 
   if (totalCount <= 0) return null;
 
-  return (
-    <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>
-          Showing {(currentPage - 1) * perPage + 1}-{Math.min(currentPage * perPage, totalCount)} of {totalCount}
-        </span>
-        <Select
-          value={String(perPage)}
-          disabled={isPending}
-          onValueChange={(v) => {
-            const next = Number(v);
-            startTransition(() => router.push(buildHref(1, next)));
-          }}
-        >
-          <SelectTrigger className="w-[72px] h-8">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PER_PAGE_OPTIONS.map((n) => (
-              <SelectItem key={n} value={String(n)}>
-                {n}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-muted-foreground">per page</span>
-      </div>
+  const shownCount = Math.min(currentPage * perPage, totalCount);
 
+  return (
+    <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-full border bg-card px-6 py-3 shadow-sm sm:flex-row">
       <PillPagination
         currentPage={currentPage}
         totalPages={totalPages}
@@ -131,6 +98,9 @@ export function SectionPagination({
         onNavigate={(_page, href) => handleNav(href)}
         disabled={isPending}
       />
+      <span className="whitespace-nowrap text-sm text-muted-foreground">
+        Showing {shownCount.toLocaleString()} of {totalCount.toLocaleString()} results
+      </span>
     </div>
   );
 }

@@ -4,14 +4,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, MapPin, Filter, Package, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, MapPin, Package, X } from "lucide-react";
+import { cn } from "@/components/lib/utils";
 import type { LotStatusFilter } from "@/actions/active-lots.action";
 
 const STATUS_OPTIONS: { value: LotStatusFilter; label: string }[] = [
@@ -86,29 +81,38 @@ export function ActiveLotsFilterBar() {
             />
           </div>
         </div> */}
-        <div className="min-w-15 flex-1 space-y-2">
+        <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">Status</label>
-          <Select
-            value={lotStatus}
-            onValueChange={(v) => {
-              const params = new URLSearchParams(searchParams.toString());
-              if (v === "ALL") params.delete("lot_status");
-              else params.set("lot_status", v);
-              router.push(params.toString() ? `/?${params.toString()}#active-lots` : "/#active-lots");
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <Filter className="h-4 w-4 mr-1.5 shrink-0" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_OPTIONS.map((opt) => {
+              const isActive = lotStatus === opt.value;
+              return (
+                <Badge
+                  key={opt.value}
+                  asChild
+                  variant={isActive ? "default" : "outline"}
+                  className={cn(
+                    "cursor-pointer px-3 py-1.5 text-sm",
+                    !isActive && "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams.toString());
+                      if (opt.value === "ALL") params.delete("lot_status");
+                      else params.set("lot_status", opt.value);
+                      router.push(
+                        params.toString() ? `/?${params.toString()}#active-lots` : "/#active-lots"
+                      );
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
         </div>
         <div className="min-w-45 flex-1 space-y-2">
           <label htmlFor="lot-location" className="text-sm font-medium text-muted-foreground">
