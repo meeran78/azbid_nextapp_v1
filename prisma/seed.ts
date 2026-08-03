@@ -1,4 +1,8 @@
-import "dotenv/config";
+import { config } from "dotenv";
+
+// Node scripts (unlike Next.js itself) don't auto-load .env.local, and this
+// project keeps DATABASE_URL there rather than in a plain .env.
+config({ path: ".env.local" });
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
@@ -27,6 +31,51 @@ const sellers = [
   { name: "Seller Four", email: "seller4@example.com" },
   { name: "Seller Five", email: "seller5@example.com" },
 ];
+
+// One store location per seller, spread across VA / MD / DC — mirrors the
+// address fields collected on a real SellerAccountRequest.
+const storeLocations = [
+  {
+    companyName: "Richmond Estate Liquidators",
+    companyRegistrationNumber: "VA-REG-10001",
+    addressLine1: "100 E Broad St",
+    city: "Richmond",
+    state: "VA",
+    zipcode: "23219",
+  },
+  {
+    companyName: "Arlington Surplus Auctions",
+    companyRegistrationNumber: "VA-REG-10002",
+    addressLine1: "2200 Clarendon Blvd",
+    city: "Arlington",
+    state: "VA",
+    zipcode: "22201",
+  },
+  {
+    companyName: "Baltimore Harbor Auction Co.",
+    companyRegistrationNumber: "MD-REG-20001",
+    addressLine1: "300 W Pratt St",
+    city: "Baltimore",
+    state: "MD",
+    zipcode: "21201",
+  },
+  {
+    companyName: "Silver Spring Estate Sales",
+    companyRegistrationNumber: "MD-REG-20002",
+    addressLine1: "8500 Georgia Ave",
+    city: "Silver Spring",
+    state: "MD",
+    zipcode: "20910",
+  },
+  {
+    companyName: "Capital City Auction House",
+    companyRegistrationNumber: "DC-REG-30001",
+    addressLine1: "1400 K St NW",
+    city: "Washington",
+    state: "DC",
+    zipcode: "20001",
+  },
+] as const;
 
 async function seedUsers(hashedPassword: string, now: Date) {
   for (const u of [...buyers, ...sellers]) {
@@ -106,6 +155,63 @@ async function getOrCreateAdmin(hashedPassword: string, now: Date): Promise<stri
   return admin.id;
 }
 
+/**
+ * Mirrors approveSellerAccountRequestAction: creates an already-APPROVED
+ * SellerAccountRequest and copies its address fields onto the seller's User,
+ * so seed sellers look exactly like a real seller who cleared the admin
+ * approval flow (not just a store flipped to ACTIVE behind the scenes).
+ */
+async function seedApprovedSellerAccountRequest(
+  seller: { id: string; email: string; name: string },
+  location: (typeof storeLocations)[number],
+  now: Date
+) {
+  const displayLocation = `${location.city}, ${location.state}`;
+
+  const existingRequest = await prisma.sellerAccountRequest.findFirst({
+    where: { userId: seller.id },
+  });
+  const requestData = {
+    userId: seller.id,
+    requesterName: seller.name,
+    requesterEmail: seller.email,
+    companyName: location.companyName,
+    companyRegistrationNumber: location.companyRegistrationNumber,
+    addressLine1: location.addressLine1,
+    city: location.city,
+    state: location.state,
+    zipcode: location.zipcode,
+    country: "USA",
+    status: "APPROVED" as const,
+    contractSentAt: now,
+    acknowledgedAt: now,
+    approvedAt: now,
+  };
+  if (existingRequest) {
+    await prisma.sellerAccountRequest.update({
+      where: { id: existingRequest.id },
+      data: requestData,
+    });
+  } else {
+    await prisma.sellerAccountRequest.create({ data: requestData });
+  }
+
+  await prisma.user.update({
+    where: { id: seller.id },
+    data: {
+      role: "SELLER",
+      companyName: location.companyName,
+      companyRegistrationNumber: location.companyRegistrationNumber,
+      addressLine1: location.addressLine1,
+      city: location.city,
+      state: location.state,
+      zipcode: location.zipcode,
+      country: "USA",
+      displayLocation,
+    },
+  });
+}
+
 function futureDate(daysFromNow: number, hour = 18): Date {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
@@ -143,7 +249,13 @@ async function main() {
 
   for (let sIdx = 0; sIdx < sellerUsers.length; sIdx++) {
     const seller = sellerUsers[sIdx];
-    const storeName = `${seller.name}'s Store`;
+    const location = storeLocations[sIdx % storeLocations.length];
+    const storeName = location.companyName;
+
+    // Run the seller through the same admin-approval trail a real seller
+    // account request would leave behind (SellerAccountRequest -> APPROVED,
+    // address copied onto the User), before the store itself is approved.
+    await seedApprovedSellerAccountRequest(seller, location, now);
 
     let store = await prisma.store.findFirst({
       where: { ownerId: seller.id },
@@ -153,7 +265,7 @@ async function main() {
         where: { id: store.id },
         data: {
           name: storeName,
-          description: `Seed store for ${seller.name} with admin approval.`,
+          description: `Seed store for ${seller.name}, based in ${location.city}, ${location.state}. Admin-approved.`,
           status: "ACTIVE",
           approvedById: adminId,
           approvedAt: now,
@@ -165,7 +277,7 @@ async function main() {
         data: {
           ownerId: seller.id,
           name: storeName,
-          description: `Seed store for ${seller.name} with admin approval.`,
+          description: `Seed store for ${seller.name}, based in ${location.city}, ${location.state}. Admin-approved.`,
           status: "ACTIVE",
           approvedById: adminId,
           approvedAt: now,
@@ -245,13 +357,15 @@ async function main() {
     }
 
     console.log(
-      `Store "${storeName}": ${existingLots >= LOTS_PER_STORE ? "already has 5 lots" : `created ${lotsToCreate} lots (20 items each)`}. Auctions: ${existingAuctions >= AUCTIONS_PER_STORE ? "already has 3" : `created ${auctionsToCreate}`}.`
+      `Store "${storeName}" (${location.city}, ${location.state}): ${existingLots >= LOTS_PER_STORE ? "already has 5 lots" : `created ${lotsToCreate} lots (20 items each)`}. Auctions: ${existingAuctions >= AUCTIONS_PER_STORE ? "already has 3" : `created ${auctionsToCreate}`}.`
     );
   }
 
   console.log("\nSeed completed.");
   console.log("- 5 buyers, 5 sellers, 1 admin. Password for all: " + SEED_PASSWORD);
-  console.log("- 5 stores (ACTIVE, admin-approved), 5 lots per store, 20 items per lot, 3 auctions per store.");
+  console.log(
+    "- 5 sellers approved via SellerAccountRequest (VA/MD/DC addresses), 5 stores (ACTIVE, admin-approved), 5 lots per store, 20 items per lot, 3 auctions per store."
+  );
 }
 
 main()

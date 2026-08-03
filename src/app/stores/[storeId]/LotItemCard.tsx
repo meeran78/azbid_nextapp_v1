@@ -423,9 +423,24 @@ export function LotItemCard({
       <ItemCarousel item={item} lotStatus={lotStatus} />
       <div className="p-4 space-y-4">
         {item.category && (
-          <span className="inline-block rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
+          <div>
+             <span className="inline-block rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">
             {item.category.name}
           </span>
+            <span className="inline-block rounded-full bg-muted px-6 py-1 text-xs font-medium text-foreground">
+           {item.lotDisplayId ?? `#${item.lotId.slice(0, 8)}`}
+          </span>
+          
+
+          </div>
+
+         
+          //  <Link
+          //           href={`/lots/${item.lotId}`}
+          //           className="shrink-0 whitespace-nowrap text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
+          //         >
+          //           Lot {item.lotDisplayId ?? `#${item.lotId.slice(0, 8)}`}
+          //         </Link>
         )}
         <Collapsible defaultOpen={false} className="group/desc">
           <CollapsibleTrigger asChild>
