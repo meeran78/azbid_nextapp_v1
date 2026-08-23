@@ -14,6 +14,7 @@ import {
 import { Edit, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
 import { deleteAuctionAction } from "@/actions/auction.action";
+import { formatEastern } from "@/lib/timezone";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -176,10 +177,10 @@ export function AuctionList({ auctions }: AuctionListProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm whitespace-nowrap">
-                    {new Date(auction.startAt).toLocaleString()}
+                    {formatEastern(new Date(auction.startAt))}
                   </TableCell>
                   <TableCell className="text-sm whitespace-nowrap">
-                    {new Date(auction.endAt).toLocaleString()}
+                    {formatEastern(new Date(auction.endAt))}
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="space-y-1">
@@ -240,8 +241,8 @@ export function AuctionList({ auctions }: AuctionListProps) {
                 <p className="font-medium">{auction.title}</p>
                 <p className="text-sm text-muted-foreground">{auction.store.name}</p>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p>Start: {new Date(auction.startAt).toLocaleString()}</p>
-                  <p>End: {new Date(auction.endAt).toLocaleString()}</p>
+                  <p>Start: {formatEastern(new Date(auction.startAt))}</p>
+                  <p>End: {formatEastern(new Date(auction.endAt))}</p>
                   <p>{auction._count?.lots ?? auction.lots?.length ?? 0} lot(s)</p>
                 </div>
                 {auction.lots && auction.lots.length > 0 && (

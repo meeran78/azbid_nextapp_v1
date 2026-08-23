@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -16,7 +17,7 @@ function formatDisplay(date: Date): string {
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
   const yyyy = date.getFullYear();
-  let h = date.getHours();
+  const h = date.getHours();
   const m = date.getMinutes();
   const am = h < 12;
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
@@ -24,14 +25,20 @@ function formatDisplay(date: Date): string {
   return `${mm}/${dd}/${yyyy} ${String(h12).padStart(2, "0")}:${min} ${am ? "AM" : "PM"}`;
 }
 
-function parseToLocalDate(isoOrLocalString: string): Date {
-  const s = isoOrLocalString.length === 16 ? isoOrLocalString + "Z" : isoOrLocalString;
-  const d = new Date(s);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+/**
+ * `value` holds the true UTC instant's ISO slice ("YYYY-MM-DDTHH:mm", matching
+ * `instant.toISOString().slice(0, 16)`). All calendar/time widget state is kept as a
+ * date-fns-tz "zoned" Date — one whose ordinary (system-local) getters/setters read and
+ * write `timeZone`'s wall clock for that instant, DST included — so the picker always
+ * shows and edits the same wall-clock time in `timeZone` regardless of the viewer's
+ * own browser timezone.
+ */
+function parseToZonedDate(isoSlice: string, timeZone: string): Date {
+  return toZonedTime(new Date(isoSlice + "Z"), timeZone);
 }
 
-function toISOSlice(date: Date): string {
-  return date.toISOString().slice(0, 16);
+function zonedDateToISOSlice(zonedDate: Date, timeZone: string): string {
+  return fromZonedTime(zonedDate, timeZone).toISOString().slice(0, 16);
 }
 
 const HOURS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -40,6 +47,8 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 export interface DateTimePickerProps {
   value: string; // ISO slice "YYYY-MM-DDTHH:mm" (UTC) or empty
   onChange: (value: string) => void;
+  /** IANA timezone the calendar/time widgets display and edit wall-clock time in. */
+  timeZone: string;
   placeholder?: string;
   disabled?: boolean;
   id?: string;
@@ -50,6 +59,7 @@ export interface DateTimePickerProps {
 export function DateTimePicker({
   value,
   onChange,
+  timeZone,
   placeholder = "mm/dd/yyyy --:-- --",
   disabled,
   id,
@@ -57,7 +67,7 @@ export function DateTimePicker({
   "aria-label": ariaLabel,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const dateFromValue = value ? parseToLocalDate(value) : null;
+  const dateFromValue = value ? parseToZonedDate(value, timeZone) : null;
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(
     dateFromValue ?? undefined
   );
@@ -73,7 +83,7 @@ export function DateTimePicker({
 
   React.useEffect(() => {
     if (value) {
-      const d = parseToLocalDate(value);
+      const d = parseToZonedDate(value, timeZone);
       setSelectedDate(d);
       setHour(d.getHours() % 12 || 12);
       setMinute(d.getMinutes());
@@ -84,7 +94,7 @@ export function DateTimePicker({
       setMinute(0);
       setAm(true);
     }
-  }, [value]);
+  }, [value, timeZone]);
 
   const buildDate = React.useCallback(() => {
     if (!selectedDate) return null;
@@ -96,9 +106,9 @@ export function DateTimePicker({
 
   const handleApply = React.useCallback(() => {
     const d = buildDate();
-    if (d) onChange(toISOSlice(d));
+    if (d) onChange(zonedDateToISOSlice(d, timeZone));
     setOpen(false);
-  }, [buildDate, onChange]);
+  }, [buildDate, onChange, timeZone]);
 
   const handleClear = React.useCallback(() => {
     onChange("");
@@ -110,14 +120,18 @@ export function DateTimePicker({
   }, [onChange]);
 
   const handleToday = React.useCallback(() => {
-    const today = new Date();
+    const today = toZonedTime(new Date(), timeZone);
     setSelectedDate(today);
     setHour(today.getHours() % 12 || 12);
     setMinute(today.getMinutes());
     setAm(today.getHours() < 12);
-  }, []);
+  }, [timeZone]);
 
-  const displayText = value ? formatDisplay(parseToLocalDate(value)) : "";
+  const displayText = value
+    ? formatDisplay(parseToZonedDate(value, timeZone))
+    : "";
+
+  const zonedNow = toZonedTime(new Date(), timeZone);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -147,8 +161,8 @@ export function DateTimePicker({
               onSelect={setSelectedDate}
               initialFocus
               captionLayout="dropdown"
-              startMonth={new Date()}
-              endMonth={new Date(new Date().getFullYear() + 10, 11)}
+              startMonth={zonedNow}
+              endMonth={new Date(zonedNow.getFullYear() + 10, 11)}
             />
             <div className="flex justify-between border-t pt-2 mt-2 gap-2">
               <button
@@ -170,7 +184,7 @@ export function DateTimePicker({
           {/* Time */}
           <div className="flex flex-col p-3 border-l bg-muted/30">
             <div className="text-xs font-medium text-muted-foreground mb-2 text-center">
-              Time
+              Time (Eastern)
             </div>
             <div className="flex gap-1">
               <ScrollArea className="h-[180px] w-12 rounded-md border bg-background">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { approveLotAction, rejectLotAction } from "@/actions/admin-lot.action";
 import { reconcileAuctionEndAt } from "@/lib/lot-timing";
+import { formatEastern } from "@/lib/timezone";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,22 +152,24 @@ export function AdminLotDetailClient({
                 <Calendar className="h-4 w-4" />
                 <span>
                   Closes:{" "}
-                  {reconcileAuctionEndAt(
-                    new Date(lot.closesAt),
-                    lot.auction?.endAt ? new Date(lot.auction.endAt) : null
-                  ).toLocaleString()}
+                  {formatEastern(
+                    reconcileAuctionEndAt(
+                      new Date(lot.closesAt),
+                      lot.auction?.endAt ? new Date(lot.auction.endAt) : null
+                    )
+                  )}
                 </span>
               </div>
               {lot.inspectionAt && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>Inspection: {new Date(lot.inspectionAt).toLocaleString()}</span>
+                  <span>Inspection: {formatEastern(new Date(lot.inspectionAt))}</span>
                 </div>
               )}
               {lot.removalStartAt && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>Removal start: {new Date(lot.removalStartAt).toLocaleString()}</span>
+                  <span>Removal start: {formatEastern(new Date(lot.removalStartAt))}</span>
                 </div>
               )}
             </div>

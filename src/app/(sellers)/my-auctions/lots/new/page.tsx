@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
+import { toEasternInputValue, fromEasternInputValue } from "@/lib/timezone";
 
 // Generate human-friendly lot ID
 function generateLotId(): string {
@@ -61,10 +62,11 @@ export default function CreateLotPage() {
   const [stores, setStores] = useState<any[]>([]);
   const [error, setError] = useState("");
 
-  // Set default closing date to tomorrow
-  const defaultClosesAt = new Date();
-  defaultClosesAt.setDate(defaultClosesAt.getDate() + 1);
-  defaultClosesAt.setHours(18, 0, 0, 0); // 6 PM
+  // Set default closing date to tomorrow, 6 PM Eastern
+  const tomorrowEasternDate = toEasternInputValue(
+    new Date(Date.now() + 24 * 60 * 60 * 1000)
+  ).slice(0, 10);
+  const defaultClosesAt = fromEasternInputValue(`${tomorrowEasternDate}T18:00`);
 
   const form = useForm<CreateLotFormData>({
     resolver: zodResolver(createLotSchema) as Resolver<CreateLotFormData>,
@@ -417,20 +419,16 @@ export default function CreateLotPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Closing Date & Time <span className="text-red-500">*</span>
+                          Closing Date & Time (Eastern) <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={
-                              field.value
-                                ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                  .toISOString()
-                                  .slice(0, 16)
-                                : ""
-                            }
+                            value={toEasternInputValue(field.value)}
                             onChange={(e) =>
-                              field.onChange(e.target.value ? new Date(e.target.value) : new Date())
+                              field.onChange(
+                                e.target.value ? fromEasternInputValue(e.target.value) : new Date()
+                              )
                             }
                           />
                         </FormControl>
@@ -444,20 +442,14 @@ export default function CreateLotPage() {
                     name="inspectionAt"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inspection Date & Time ( Must be after closing date )</FormLabel>
+                        <FormLabel>Inspection Date & Time (Eastern) ( Must be after closing date )</FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={
-                              field.value
-                                ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                  .toISOString()
-                                  .slice(0, 16)
-                                : ""
-                            }
+                            value={toEasternInputValue(field.value)}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? new Date(e.target.value) : null
+                                e.target.value ? fromEasternInputValue(e.target.value) : null
                               )
                             }
                           />
@@ -475,20 +467,14 @@ export default function CreateLotPage() {
                     name="removalStartAt"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Removal Start Date & Time ( Must be after closing date )</FormLabel>
+                        <FormLabel>Removal Start Date & Time (Eastern) ( Must be after closing date )</FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={
-                              field.value
-                                ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                  .toISOString()
-                                  .slice(0, 16)
-                                : ""
-                            }
+                            value={toEasternInputValue(field.value)}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? new Date(e.target.value) : null
+                                e.target.value ? fromEasternInputValue(e.target.value) : null
                               )
                             }
                           />

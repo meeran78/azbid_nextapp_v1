@@ -2,11 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { format } from "date-fns";
 import { Package } from "lucide-react";
 import { LotCountdown } from "./LotCountdown";
 import { LotItemCard } from "./LotItemCard";
 import type { PublicStoreLot } from "@/actions/public-store.action";
+import { formatEastern } from "@/lib/timezone";
 
 const REMOVAL_DISCLAIMER =
   "Removal Date Firm, No Exceptions. Sign up for pick-up time on paid invoice. Any late removal will incur $50 storage fee.";
@@ -109,14 +109,14 @@ export function StoreLotCard({
             <div>
               <span className="text-muted-foreground font-semibold">Start Closing Date: </span>
               <span className="font-medium">
-                {format(new Date(lot.auctionEndAt), "EEEE, MMMM d, yyyy h:mm a")}
+                {formatEastern(new Date(lot.auctionEndAt), "EEEE, MMMM d, yyyy h:mm a")}
               </span>
             </div>
             {lot.inspectionAt && (
               <div>
                 <span className="text-muted-foreground font-semibold">Inspection Date: </span>
                 <span className="font-medium">
-                  {format(new Date(lot.inspectionAt), "EEEE, MMMM d, yyyy h:mm a")}
+                  {formatEastern(new Date(lot.inspectionAt), "EEEE, MMMM d, yyyy h:mm a")}
                 </span>
               </div>
             )}
@@ -124,7 +124,7 @@ export function StoreLotCard({
               <div>
                 <span className="text-muted-foreground font-semibold">Removal Date: </span>
                 <span className="font-medium">
-                  {format(new Date(lot.removalStartAt), "EEEE, MMMM d, yyyy h:mm a")}
+                  {formatEastern(new Date(lot.removalStartAt), "EEEE, MMMM d, yyyy h:mm a")}
                 </span>
                 <p className="text-muted-foreground text-xs mt-1">
                   {REMOVAL_DISCLAIMER}

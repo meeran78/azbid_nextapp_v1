@@ -9,8 +9,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
 import { motion } from "framer-motion";
+import { formatEastern } from "@/lib/timezone";
 
 interface Auction {
   id: string;
@@ -73,10 +73,10 @@ export function AuctionsTable({ auctions }: AuctionsTableProps) {
               <TableCell className="font-medium">{auction.title}</TableCell>
               <TableCell>{auction.store?.name ?? "N/A"}</TableCell>
               <TableCell>
-                {format(new Date(auction.startAt), "MMM dd, yyyy HH:mm")}
+                {formatEastern(new Date(auction.startAt), "MMM dd, yyyy HH:mm")}
               </TableCell>
               <TableCell>
-                {format(new Date(auction.endAt), "MMM dd, yyyy HH:mm")}
+                {formatEastern(new Date(auction.endAt), "MMM dd, yyyy HH:mm")}
               </TableCell>
               <TableCell>{auction._count?.lots ?? 0}</TableCell>
               <TableCell>

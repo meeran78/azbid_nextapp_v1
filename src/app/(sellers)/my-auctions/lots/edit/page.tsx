@@ -41,6 +41,7 @@ import { createLotAction } from "@/actions/create-lot.action";
 import { getLotAction } from "@/actions/get-lot.action";
 import { deleteLotItemImagesAction } from "@/actions/delete-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
+import { toEasternInputValue, fromEasternInputValue } from "@/lib/timezone";
 
 
 export default function EditLotPage() {
@@ -481,20 +482,16 @@ export default function EditLotPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Closing Date & Time <span className="text-red-500">*</span>
+                          Closing Date & Time (Eastern) <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={
-                              field.value
-                                ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                  .toISOString()
-                                  .slice(0, 16)
-                                : ""
-                            }
+                            value={toEasternInputValue(field.value)}
                             onChange={(e) =>
-                              field.onChange(e.target.value ? new Date(e.target.value) : new Date())
+                              field.onChange(
+                                e.target.value ? fromEasternInputValue(e.target.value) : new Date()
+                              )
                             }
                           />
                         </FormControl>
@@ -508,20 +505,14 @@ export default function EditLotPage() {
                     name="inspectionAt"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Inspection Date & Time ( Must be after closing date )</FormLabel>
+                        <FormLabel>Inspection Date & Time (Eastern) ( Must be after closing date )</FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={
-                              field.value
-                                ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                  .toISOString()
-                                  .slice(0, 16)
-                                : ""
-                            }
+                            value={toEasternInputValue(field.value)}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? new Date(e.target.value) : null
+                                e.target.value ? fromEasternInputValue(e.target.value) : null
                               )
                             }
                           />
@@ -536,20 +527,14 @@ export default function EditLotPage() {
                     name="removalStartAt"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Removal Start Date & Time ( Must be after closing date )</FormLabel>
+                        <FormLabel>Removal Start Date & Time (Eastern) ( Must be after closing date )</FormLabel>
                         <FormControl>
                           <Input
                             type="datetime-local"
-                            value={
-                              field.value
-                                ? new Date(field.value.getTime() - field.value.getTimezoneOffset() * 60000)
-                                  .toISOString()
-                                  .slice(0, 16)
-                                : ""
-                            }
+                            value={toEasternInputValue(field.value)}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? new Date(e.target.value) : null
+                                e.target.value ? fromEasternInputValue(e.target.value) : null
                               )
                             }
                           />

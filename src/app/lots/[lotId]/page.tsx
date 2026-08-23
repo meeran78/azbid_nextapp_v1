@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import type { PublicStoreLotItem } from "@/actions/public-store.action";
 import { reconcileAuctionEndAt } from "@/lib/lot-timing";
+import { formatEastern } from "@/lib/timezone";
 
 const DEFAULT_ITEM_PER_PAGE = 9;
 
@@ -62,7 +63,7 @@ export default async function LotDetailPage({
           </p>
           <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
             <span>Store: {lot.store.name}</span>
-            <span>Closes: {realClosesAt.toLocaleString()}</span>
+            <span>Closes: {formatEastern(realClosesAt)}</span>
             {lot.auction && (
               <span>Auction: {lot.auction.title}</span>
             )}

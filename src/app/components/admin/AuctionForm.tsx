@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { AUCTION_TIME_ZONE } from "@/lib/timezone";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -320,8 +321,11 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
           description: values.description?.trim() || null,
           buyersPremium: values.buyersPremium?.trim() || null,
           status: values.status,
-          startAt: new Date(values.startAt),
-          endAt: new Date(values.endAt),
+          // values.startAt/endAt are UTC-instant ISO slices ("YYYY-MM-DDTHH:mm", no "Z")
+          // produced by DateTimePicker — append "Z" so this parses as that instant
+          // rather than as local time in the browser running the form.
+          startAt: new Date(`${values.startAt}:00Z`),
+          endAt: new Date(`${values.endAt}:00Z`),
           softCloseEnabled: values.softCloseEnabled,
           softCloseWindowSec: values.softCloseWindowSec,
           softCloseExtendSec: values.softCloseExtendSec,
@@ -564,14 +568,15 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Start Date & Time <span className="text-red-500">*</span>
+                      Start Date & Time (Eastern) <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <DateTimePicker
                         value={field.value}
                         onChange={field.onChange}
+                        timeZone={AUCTION_TIME_ZONE}
                         placeholder="mm/dd/yyyy --:-- --"
-                        aria-label="Start date and time"
+                        aria-label="Start date and time (Eastern)"
                       />
                     </FormControl>
                     <FormMessage />
@@ -584,14 +589,15 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      End Date & Time <span className="text-red-500">*</span>
+                      End Date & Time (Eastern) <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <DateTimePicker
                         value={field.value}
                         onChange={field.onChange}
+                        timeZone={AUCTION_TIME_ZONE}
                         placeholder="mm/dd/yyyy --:-- --"
-                        aria-label="End date and time"
+                        aria-label="End date and time (Eastern)"
                       />
                     </FormControl>
                     <FormMessage />

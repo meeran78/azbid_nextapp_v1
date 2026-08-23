@@ -11,6 +11,7 @@ import {
   type CarouselApi,
 } from "@/app/components/ui/carousel";
 import type { FeaturedAuction } from "@/actions/featured-auctions.action";
+import { AUCTION_TIME_ZONE } from "@/lib/timezone";
 
 const AUTOPLAY_INTERVAL_MS = 5000;
 
@@ -21,6 +22,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
   timeZoneName: "short",
+  timeZone: AUCTION_TIME_ZONE,
 });
 
 function AuctionCard({ auction }: { auction: FeaturedAuction }) {
