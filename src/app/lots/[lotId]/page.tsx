@@ -43,6 +43,8 @@ export default async function LotDetailPage({
     })
   );
 
+  const realClosesAt = reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-10xl">
       <Button variant="ghost" asChild className="mb-6">
@@ -60,7 +62,7 @@ export default async function LotDetailPage({
           </p>
           <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
             <span>Store: {lot.store.name}</span>
-            <span>Closes: {new Date(lot.closesAt).toLocaleString()}</span>
+            <span>Closes: {realClosesAt.toLocaleString()}</span>
             {lot.auction && (
               <span>Auction: {lot.auction.title}</span>
             )}
@@ -103,7 +105,7 @@ export default async function LotDetailPage({
                     item={item}
                     lotId={lot.id}
                     lotStatus={lot.status}
-                    auctionEndAt={reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt)}
+                    auctionEndAt={realClosesAt}
                     storeId={lot.store.id}
                     isFavourited={favouriteItemIds.includes(item.id)}
                     isWatched={watchedItemIds.includes(item.id)}

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type SellerAlertMetrics = {
   lotsPendingAdminApproval: number;
@@ -49,7 +50,7 @@ export async function getSellerAlertMetrics(
   const [
     lotsPendingAdminApproval,
     lotsSentBackResend,
-    lotsEndingSoon,
+    liveLotsForEndingSoon,
     buyerPaymentFailures,
   ] = await Promise.all([
     // Lots in DRAFT not yet reviewed (pending admin approval)
@@ -67,12 +68,16 @@ export async function getSellerAlertMetrics(
         status: "RESEND",
       },
     }),
-    // Live lots closing within the next ENDING_SOON_HOURS
-    prisma.lot.count({
+    // Live lots — filtered below by real closing time (auction.endAt shared clock,
+    // not the lot's own possibly-stale closesAt; see reconcileAuctionEndAt).
+    prisma.lot.findMany({
       where: {
         storeId: { in: storeIds },
         status: "LIVE",
-        closesAt: { gte: now, lte: endingSoonThreshold },
+      },
+      select: {
+        closesAt: true,
+        auction: { select: { endAt: true } },
       },
     }),
     // Invoices (buyer payments) that failed
@@ -83,6 +88,13 @@ export async function getSellerAlertMetrics(
       },
     }),
   ]);
+
+  // Live lots closing within the next ENDING_SOON_HOURS, using each lot's real
+  // closing time rather than its own (possibly stale) closesAt.
+  const lotsEndingSoon = liveLotsForEndingSoon.filter((lot) => {
+    const realClosesAt = reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt);
+    return realClosesAt >= now && realClosesAt <= endingSoonThreshold;
+  }).length;
 
   // No Dispute model yet; reserve for future use
   const disputedTransactions = 0;

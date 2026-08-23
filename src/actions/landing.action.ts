@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type LandingStoreLot = {
   id: string;
@@ -205,7 +206,7 @@ function mapStoresToLanding(stores: StoreWithRelations[]): LandingStore[] {
         lotDisplayId: lot.lotDisplayId,
         closesAt: lot.closesAt,
         status: lot.status,
-        auctionEndAt: lot.auction?.endAt ?? null,
+        auctionEndAt: reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt),
         firstItemImage,
       };
     });

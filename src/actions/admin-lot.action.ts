@@ -45,16 +45,30 @@ export async function approveLotAction(lotId: string, auctionId?: string) {
     return { error: "Assign this lot to an auction before approving." };
   }
 
-  // If assigning an auction now (lot didn't already have one), verify it belongs to
-  // the same store — the picker is scoped client-side, but don't trust that alone.
-  if (!lot.auctionId) {
-    const auction = await prisma.auction.findUnique({
-      where: { id: effectiveAuctionId },
-      select: { storeId: true },
-    });
-    if (!auction || auction.storeId !== lot.storeId) {
-      return { error: "Selected auction does not belong to this store." };
-    }
+  // Once LIVE, all lots in an auction share one closing clock — the auction's endAt
+  // (see close-expired-lots.action.ts). Load it to validate below, and (if assigning
+  // an auction now, since the lot didn't already have one) verify it belongs to the
+  // same store — the picker is scoped client-side, but don't trust that alone.
+  const auction = await prisma.auction.findUnique({
+    where: { id: effectiveAuctionId },
+    select: { storeId: true, endAt: true },
+  });
+  if (!auction) {
+    return { error: "Selected auction not found." };
+  }
+  if (!lot.auctionId && auction.storeId !== lot.storeId) {
+    return { error: "Selected auction does not belong to this store." };
+  }
+
+  // The lot's own closesAt is only display-relevant once it has an auction — the
+  // cron closes it at auction.endAt regardless. If closesAt is later than that, every
+  // countdown/date shown to buyers and sellers would overpromise how long the lot
+  // stays open. Require the dates to agree before going LIVE.
+  if (lot.closesAt > auction.endAt) {
+    return {
+      error:
+        "This lot's closing date is later than its auction's end date. Adjust the lot's closing date or the auction's end date before approving.",
+    };
   }
 
   await prisma.lot.update({

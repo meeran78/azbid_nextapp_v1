@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type BuyerDashboardMetrics = {
   // Bidding performance (Won = highest bidder on CLOSED auction; Lost = participated but not winner)
@@ -100,7 +101,7 @@ export async function getBuyerDashboardMetrics(): Promise<BuyerDashboardMetrics 
           lotId: true,
           currentPrice: true,
           startPrice: true,
-          lot: { select: { closesAt: true } },
+          lot: { select: { closesAt: true, auction: { select: { endAt: true } } } },
         },
       },
     },
@@ -118,7 +119,7 @@ export async function getBuyerDashboardMetrics(): Promise<BuyerDashboardMetrics 
   const tenMinutesFromNow = new Date(Date.now() + 10 * 60 * 1000);
   const lotClosesAtMap = new Map<string, Date>();
   for (const b of activeBids) {
-    const closesAt = b.item.lot.closesAt;
+    const closesAt = reconcileAuctionEndAt(b.item.lot.closesAt, b.item.lot.auction?.endAt);
     if (!lotClosesAtMap.has(b.item.lotId)) lotClosesAtMap.set(b.item.lotId, closesAt);
   }
   const endingSoonCount = [...lotClosesAtMap.values()].filter(

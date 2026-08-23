@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-      <AuctionHero slides={heroSlides} />
+      {/* <AuctionHero slides={heroSlides} /> */}
       <FeaturedAuctionsSection auctions={featuredAuctions} />
       <ActiveLotsSection searchParams={searchParams} />
       <HowItWorksSection />

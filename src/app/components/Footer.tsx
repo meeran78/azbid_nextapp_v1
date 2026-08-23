@@ -40,7 +40,7 @@ const Footer = (props: Props) => {
 
   return (
 	<>
-		<div className='bg-background py-4 border-b border-border'>
+		{/* <div className='bg-background py-4 border-b border-border'>
 			<div className='container mx-auto px-4 max-w-3xl'>
 				<h2 className='text-3xl md:text-4xl font-bold text-foreground mb-3'>
 					Let&apos;s go treasure-hunting.
@@ -67,7 +67,7 @@ const Footer = (props: Props) => {
 					</Button>
 				</div>
 			</div>
-		</div>
+		</div> */}
 
 			<footer className='bg-foreground text-background py-16'>
 				<div className='container mx-auto px-4'>

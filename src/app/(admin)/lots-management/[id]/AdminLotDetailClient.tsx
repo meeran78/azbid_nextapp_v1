@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { approveLotAction, rejectLotAction } from "@/actions/admin-lot.action";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,7 +55,7 @@ interface Lot {
   removalStartAt: string | null;
   adminNotes: string | null;
   store: { name: string; owner: { name: string; email: string } };
-  auction: { title: string; status: string } | null;
+  auction: { title: string; status: string; endAt: string } | null;
   items: Item[];
 }
 
@@ -148,7 +149,13 @@ export function AdminLotDetailClient({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span>Closes: {new Date(lot.closesAt).toLocaleString()}</span>
+                <span>
+                  Closes:{" "}
+                  {reconcileAuctionEndAt(
+                    new Date(lot.closesAt),
+                    lot.auction?.endAt ? new Date(lot.auction.endAt) : null
+                  ).toLocaleString()}
+                </span>
               </div>
               {lot.inspectionAt && (
                 <div className="flex items-center gap-2">

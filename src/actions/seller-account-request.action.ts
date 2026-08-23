@@ -261,7 +261,7 @@ export async function sendSellerContractAction(formData: FormData) {
 
   const requestId = String(formData.get("requestId") ?? "");
   const contractDetails = String(formData.get("contractDetails") ?? "").trim();
-  if (!requestId || !contractDetails) return { error: "Request and contract details are required." };
+  if (!requestId) return { error: "Request is required." };
 
   const contractPdf = await readPdfAttachment(formData, "contractPdf", "Contract PDF", true);
   if (contractPdf.error) return { error: contractPdf.error };
@@ -274,6 +274,29 @@ export async function sendSellerContractAction(formData: FormData) {
   if (!req) return { error: "Request not found." };
 
   const token = randomUUID();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const ackLink = `${appUrl}/seller-account-request/acknowledge?token=${token}`;
+  const attachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
+  if (contractPdf.attachment) attachments.push(contractPdf.attachment);
+  if (termsPdf.attachment) attachments.push(termsPdf.attachment);
+  if (policyPdf.attachment) attachments.push(policyPdf.attachment);
+
+  // Send before persisting: if the email fails, the request should stay in its
+  // current status (not flip to CONTRACT_SENT) so the admin knows to retry.
+  const sendResult = await sendEmailAction({
+    to: req.requesterEmail,
+    subject: "Seller Contract Details & Acknowledgement Required",
+    meta: {
+      description: `${contractDetails}\n\nPlease review and acknowledge to continue seller onboarding.`,
+      link: ackLink,
+    },
+    attachments,
+  });
+
+  if (!sendResult.success) {
+    return { error: sendResult.error ? `Failed to send email: ${sendResult.error}` : "Failed to send email." };
+  }
+
   await prisma.sellerAccountRequest.update({
     where: { id: requestId },
     data: {
@@ -283,22 +306,6 @@ export async function sendSellerContractAction(formData: FormData) {
       acknowledgementToken: token,
       adminNotes: null,
     },
-  });
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const ackLink = `${appUrl}/seller-account-request/acknowledge?token=${token}`;
-  const attachments: Array<{ filename: string; content: Buffer; contentType?: string }> = [];
-  if (contractPdf.attachment) attachments.push(contractPdf.attachment);
-  if (termsPdf.attachment) attachments.push(termsPdf.attachment);
-  if (policyPdf.attachment) attachments.push(policyPdf.attachment);
-  await sendEmailAction({
-    to: req.requesterEmail,
-    subject: "Seller Contract Details & Acknowledgement Required",
-    meta: {
-      description: `${contractDetails}\n\nPlease review and acknowledge to continue seller onboarding.`,
-      link: ackLink,
-    },
-    attachments,
   });
 
   revalidatePath("/seller-account-requests");

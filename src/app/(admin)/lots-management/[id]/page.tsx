@@ -28,7 +28,7 @@ export default async function AdminLotDetailPage({
       store: {
         include: { owner: { select: { name: true, email: true } } },
       },
-      auction: { select: { title: true, status: true } },
+      auction: { select: { title: true, status: true, endAt: true } },
       items: {
         include: { category: { select: { name: true } } },
       },

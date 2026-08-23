@@ -266,7 +266,11 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
     },
   });
 
-  const storeId = useWatch({ control: form.control, name: "storeId", defaultValue: "" }) as string;
+  const storeId = useWatch({
+    control: form.control,
+    name: "storeId",
+    defaultValue: initialData?.storeId ?? "",
+  }) as string;
 
   // Load store lots when store is selected (both new and edit)
   // Create: only available lots (auctionId: null). Edit: available + lots already in this auction
@@ -397,8 +401,8 @@ export function AuctionForm({ initialData, stores }: AuctionFormProps) {
                 <h4 className="font-medium">{isEditing ? "Associated Lots" : "Associate Lots"}</h4>
                 <FormDescription>
                   {isEditing
-                    ? "Select lots from this store. Only available lots (not in another auction) can be added."
-                    : "Select available lots from this store. Lots already in another auction are not shown."}
+                    ? "Select submitted lots from this store. Only lots not in another auction, and not still DRAFT or RESEND, can be added."
+                    : "Select submitted lots from this store. Lots already in another auction, or still DRAFT/RESEND, are not shown."}
                 </FormDescription>
                 {lotsLoading ? (
                   <p className="text-sm text-muted-foreground">Loading lots...</p>

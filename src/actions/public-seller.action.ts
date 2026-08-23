@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type PublicSeller = {
   id: string;
@@ -81,6 +82,7 @@ export async function getFeaturedSellersForHero(
         take: 3,
         select: {
           closesAt: true,
+          auction: { select: { endAt: true } },
           items: {
             take: 3,
             orderBy: { createdAt: "asc" },
@@ -115,7 +117,12 @@ export async function getFeaturedSellersForHero(
       .filter(Boolean)
       .slice(0, 3);
 
-    const closingDate = s.lots[0]?.closesAt ?? null;
+    // Real closing time (auction.endAt shared clock), not the lot's own possibly-stale
+    // closesAt — see reconcileAuctionEndAt. Soonest across the fetched lots.
+    const closingDate = s.lots.reduce<Date | null>((soonest, lot) => {
+      const realClosesAt = reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt);
+      return !soonest || realClosesAt < soonest ? realClosesAt : soonest;
+    }, null);
     return {
       sellerId: o.id,
       sellerName: o.companyName || o.name,

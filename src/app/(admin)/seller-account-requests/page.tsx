@@ -32,7 +32,10 @@ export default async function SellerAccountRequestsPage({
 
   async function sendContractFormAction(formData: FormData) {
     "use server";
-    await sendSellerContractAction(formData);
+    const result = await sendSellerContractAction(formData);
+    if (result?.error) {
+      redirect(`/seller-account-requests?error=${encodeURIComponent(result.error)}`);
+    }
   }
 
   async function approveFormAction(formData: FormData) {

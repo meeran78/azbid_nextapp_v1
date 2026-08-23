@@ -51,10 +51,9 @@ export async function getActiveStoresForFilter(
       },
       lots: {
         where: { status: { in: statuses }, auctionId: { not: null } },
-        orderBy: { closesAt: "asc" },
-        take: 1,
         select: {
           closesAt: true,
+          auction: { select: { endAt: true } },
           items: {
             take: 1,
             orderBy: { createdAt: "asc" },
@@ -67,7 +66,18 @@ export async function getActiveStoresForFilter(
   });
 
   return stores.map((s) => {
-    const nearestLot = s.lots[0];
+    // "Nearest closing" must use each lot's real closing time (auction.endAt shared
+    // clock), not the lot's own possibly-stale closesAt — otherwise both the picked
+    // lot and the date shown for it can be wrong (see reconcileAuctionEndAt).
+    const nearestLot = s.lots.reduce<
+      { closesAt: Date; realClosesAt: Date; items: { imageUrls: string[] }[] } | null
+    >((soonest, lot) => {
+      const realClosesAt = reconcileAuctionEndAt(lot.closesAt, lot.auction?.endAt);
+      if (!soonest || realClosesAt < soonest.realClosesAt) {
+        return { closesAt: lot.closesAt, realClosesAt, items: lot.items };
+      }
+      return soonest;
+    }, null);
     const owner = s.owner;
     const location =
       owner.displayLocation ||
@@ -80,7 +90,7 @@ export async function getActiveStoresForFilter(
       logoUrl: s.logoUrl,
       bannerImageUrl: nearestLot?.items[0]?.imageUrls?.[0] ?? null,
       location,
-      closesAt: nearestLot?.closesAt ?? null,
+      closesAt: nearestLot?.realClosesAt ?? null,
     };
   });
 }

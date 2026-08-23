@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { rejectLotAction } from "@/actions/admin-lot.action";
+import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ type LotWithRelations = {
     adminNotes: string | null;
     closesAt: Date;
     createdAt: Date;
+    auction: { endAt: Date } | null;
     store: {
         name: string;
         owner: { name: string; email: string };
@@ -225,7 +227,7 @@ export function LotsManagementClient({
                                             <div>
                                                 <p>Submitted: {new Date(lot.createdAt).toLocaleDateString()}</p>
                                                 <p className="text-muted-foreground">
-                                                    Closes: {new Date(lot.closesAt).toLocaleString()}
+                                                    Closes: {reconcileAuctionEndAt(new Date(lot.closesAt), lot.auction?.endAt ? new Date(lot.auction.endAt) : null).toLocaleString()}
                                                 </p>
                                             </div>
                                         </TableCell>
@@ -279,7 +281,7 @@ export function LotsManagementClient({
                                             <p className="text-sm text-muted-foreground">{lot.store.owner.name}</p>
                                             <div className="text-xs text-muted-foreground space-y-1">
                                                 <p>Submitted: {new Date(lot.createdAt).toLocaleDateString()}</p>
-                                                <p>Closes: {new Date(lot.closesAt).toLocaleString()}</p>
+                                                <p>Closes: {reconcileAuctionEndAt(new Date(lot.closesAt), lot.auction?.endAt ? new Date(lot.auction.endAt) : null).toLocaleString()}</p>
                                                 <p>{lot._count.items} item(s)</p>
                                             </div>
                                             {lot.adminNotes && (

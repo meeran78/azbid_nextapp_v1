@@ -5,7 +5,7 @@ import { closeExpiredLots } from "@/actions/close-expired-lots.action";
  * Auto-close lots backend job (cron).
  *
  * Runs periodically to:
- * 1. Find LIVE lots where closesAt has passed
+ * 1. Find LIVE auctions where endAt has passed, and close every LIVE lot in them
  * 2. Close each lot (SOLD/UNSOLD), create Order + Invoice per winning buyer
  * 3. Auto-charge buyer's saved payment method (Stripe); if none or charge fails, invoice stays PENDING
  * 4. Email buyers and seller

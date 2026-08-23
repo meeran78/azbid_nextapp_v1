@@ -31,7 +31,8 @@ export async function sendEmailAction({
 }) {
     try {
         if (!resend) {
-            return { success: false };
+            console.error("[SendEmail] RESEND_API_KEY is not configured; email not sent.");
+            return { success: false, error: "Email service is not configured." };
         }
 
         const { error } = await resend.emails.send({
@@ -48,7 +49,6 @@ export async function sendEmailAction({
             attachments: attachments.map((attachment) => ({
                 filename: attachment.filename,
                 content: attachment.content.toString("base64"),
-                encoding: "base64",
                 contentType: attachment.contentType,
             })),
         });
@@ -57,12 +57,12 @@ export async function sendEmailAction({
         // like an unverified sending domain, so this must be checked explicitly.
         if (error) {
             console.error("[SendEmail] Resend API error:", error);
-            return { success: false };
+            return { success: false, error: error.message || "Email provider rejected the request." };
         }
 
-        return { success: true };
+        return { success: true, error: null };
     } catch (err) {
         console.error("[SendEmail]:", err);
-        return { success: false };
+        return { success: false, error: err instanceof Error ? err.message : "Failed to send email." };
     }
 }

@@ -120,8 +120,12 @@ export async function getAuction(id: string) {
 }
 
 // Get lots by store for admin (for associating lots to auction)
-// - Create: only lots with auctionId: null (available)
-// - Edit: lots with auctionId: null OR auctionId: forAuctionId (available + already in this auction)
+// Only lots the seller has actually submitted (SCHEDULED) are offered as available —
+// DRAFT (still being worked on, unvalidated) and RESEND (rejected, needs seller fixes)
+// lots are excluded so an admin can't attach unfinished/rejected work and have it go
+// LIVE automatically when the auction's status cascade fires.
+// - Create: only available (unassigned + SCHEDULED) lots
+// - Edit: available lots + lots already in this auction (any status, so existing associations stay visible)
 export async function getLotsByStoreForAdmin(
   storeId: string,
   options?: { forAuctionId?: string }
@@ -138,11 +142,11 @@ export async function getLotsByStoreForAdmin(
       ? {
           storeId,
           OR: [
-            { auctionId: null },
+            { auctionId: null, status: "SCHEDULED" as const },
             { auctionId: options.forAuctionId },
           ],
         }
-      : { storeId, auctionId: null };
+      : { storeId, auctionId: null, status: "SCHEDULED" as const };
 
   const lots = await prisma.lot.findMany({
     where,

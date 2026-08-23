@@ -109,7 +109,7 @@ export function StoreLotCard({
             <div>
               <span className="text-muted-foreground font-semibold">Start Closing Date: </span>
               <span className="font-medium">
-                {format(new Date(lot.closesAt), "EEEE, MMMM d, yyyy h:mm a")}
+                {format(new Date(lot.auctionEndAt), "EEEE, MMMM d, yyyy h:mm a")}
               </span>
             </div>
             {lot.inspectionAt && (

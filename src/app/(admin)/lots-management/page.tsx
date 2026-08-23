@@ -50,6 +50,7 @@ export default async function AdminLotsPage({
         store: {
           include: { owner: { select: { name: true, email: true } } },
         },
+        auction: { select: { endAt: true } },
         _count: { select: { items: true } },
       },
       orderBy: { status: "desc" },
