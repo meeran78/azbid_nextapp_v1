@@ -112,16 +112,20 @@ export function FeaturedAuctionsSection({ auctions }: { auctions: FeaturedAuctio
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
-        {/* <div className="mb-8 flex items-end justify-between"> */}
-          {/* <h2 className="text-3xl font-bold text-foreground">Featured Auctions</h2>
-          <Link
+         <div className="mb-8 flex items-end justify-between">
+         <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Ongoing <span className="text-gradient-primary italic">Auctions</span></h2>
+          {/* <Link
             href="/live-auctions"
             className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
           >
             View All
             <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div> */}
+          </Link> */}
+        
+      {/* <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
+        Browse lots by name, location, item, or store. Filter by status and find live or scheduled auctions.
+      </p> */}
+        </div>
 
         <div className="relative">
           <Carousel setApi={setApi} opts={{ align: "start", loop: false }}>

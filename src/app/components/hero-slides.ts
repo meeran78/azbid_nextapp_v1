@@ -8,13 +8,8 @@ export type HeroSlide = {
   mediaUrl: string;
   ctaLabel?: string;
   ctaHref?: string;
-  itemImageUrls?: string[];
-  auctionClosingAt?: string | null;
-  /** Seller spotlight slide: show seller image/name/location and link to store */
+  /** Upcoming (not-yet-started) auction this slide announces. */
+  auctionStartAt?: string | null;
   storeId?: string;
-  sellerId?: string;
-  sellerName?: string;
-  sellerImageUrl?: string | null;
-  sellerLocation?: string | null;
+  storeLocation?: string | null;
 };
-
