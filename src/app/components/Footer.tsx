@@ -241,7 +241,7 @@ const Footer = (props: Props) => {
 
 					<div className='border-t border-muted-foreground/20 pt-8 flex flex-col md:flex-row justify-between items-center text-sm'>
 						<div className='text-muted-foreground mb-4 md:mb-0'>
-							© 2025 AZ-Bid. All rights reserved.
+							© {new Date().getFullYear()} <span className='text-gradient-primary font-semibold not-italic'>AZ-Bid</span>. All rights reserved.
 						</div>
 						<div className='flex space-x-6 text-muted-foreground'>
 							<Button

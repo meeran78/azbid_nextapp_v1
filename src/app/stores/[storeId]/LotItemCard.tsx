@@ -322,7 +322,7 @@ export function LotItemCard({
   lotStatus,
   lotDisplayId,
   auctionEndAt,
-  showCountdown = true,
+  showCountdown = false,
   storeId,
   isFavourited: initialFavourited = false,
   isWatched: initialWatched = false,

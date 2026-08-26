@@ -6,6 +6,27 @@ import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type LotStatusFilter = "ALL" | "LIVE" | "SCHEDULED";
 
+export type NearestEndingAuction = {
+  id: string;
+  title: string;
+  endAt: Date;
+};
+
+/**
+ * Nearest-ending LIVE auction across active stores, for the section-level
+ * countdown banner. Public, no auth.
+ */
+export async function getNearestEndingLiveAuction(): Promise<NearestEndingAuction | null> {
+  return prisma.auction.findFirst({
+    where: {
+      status: "LIVE",
+      store: { status: "ACTIVE" },
+    },
+    orderBy: { endAt: "asc" },
+    select: { id: true, title: true, endAt: true },
+  });
+}
+
 /**
  * Get active categories for filter dropdown. Public, no auth.
  */

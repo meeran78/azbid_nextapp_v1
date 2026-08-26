@@ -1,6 +1,7 @@
 import {
   getActiveItemsFiltered,
   getActiveStoresForFilter,
+  getNearestEndingLiveAuction,
   type LotStatusFilter,
 } from "@/actions/active-lots.action";
 import { getUserFavouriteItemIds } from "@/actions/item-favourite.action";
@@ -9,6 +10,7 @@ import { ActiveLotsFilterBar } from "@/app/components/ActiveLotsFilterBar";
 import { ActiveLotsViewToggle, type ActiveLotsView } from "@/app/components/ActiveLotsViewToggle";
 import { ActiveLotsStoreSelect } from "@/app/components/ActiveLotsStoreSelect";
 import { ActiveItemCard } from "@/app/components/ActiveItemCard";
+import { AuctionCountdown } from "@/app/components/AuctionCountdown";
 import { SectionPagination } from "@/app/components/SectionPagination";
 import { Badge } from "@/components/ui/badge";
 
@@ -39,7 +41,10 @@ type ActiveLotsSectionProps = {
 };
 
 export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps) {
-  const params = searchParams instanceof Promise ? await searchParams : searchParams ?? {};
+  const [params, nearestEndingAuction] = await Promise.all([
+    searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams ?? {}),
+    getNearestEndingLiveAuction(),
+  ]);
   const view: ActiveLotsView = params.lot_view === "store" ? "store" : "items";
   const lotQ = params.lot_q ?? null;
   const lotStatus = (params.lot_status as LotStatusFilter) ?? null;
@@ -59,7 +64,7 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
   };
 
   return (
-    <section id="active-lots" className="container mx-auto px-4 py-16 max-w-7xl">
+    <section id="active-lots" className="container mx-auto px-4  max-w-7xl">
       <div className='flex items-center justify-center space-x-2 mb-4'>
         <Badge
           variant='outline'
@@ -74,6 +79,10 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
       <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
         Browse lots by name, location, item, or store. Filter by status and find live or scheduled auctions.
       </p>
+
+      {nearestEndingAuction && (
+        <AuctionCountdown title={nearestEndingAuction.title} endAt={nearestEndingAuction.endAt} />
+      )}
 
       <div className="flex justify-start mb-6">
         <ActiveLotsViewToggle view={view} />

@@ -79,37 +79,45 @@ const HighlightedFeature = () => {
 
 				{/* How to Use Cards */}
 				<div className='grid md:grid-cols-2 gap-6'>
-					<Card className='overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-amber-50 to-orange-100 dark:from-amber-950 dark:to-orange-950 border-amber-200 dark:border-amber-800'>
+					<Card
+						className='overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 animate-fade-in'
+						style={{ animationDelay: '0.4s' }}>
 						<CardContent className='p-8 flex items-center justify-between'>
 							<div>
-								<h4 className='text-xl font-bold mb-2 text-amber-800 dark:text-amber-200'>
+								<h4 className='text-xl font-bold mb-2 text-primary'>
 									How to buy a product
 								</h4>
 								<Button
 									variant='outline'
-									className='border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900'
+									className='border-primary/30 text-primary hover:bg-primary/10'
 									onClick={() => navigate.push('/how-to-buy')}>
 									Learn More →
 								</Button>
 							</div>
-							<div className='text-4xl'>🛒</div>
+							<div className='text-4xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6'>
+								🛒
+							</div>
 						</CardContent>
 					</Card>
 
-					<Card className='overflow-hidden group hover:shadow-lg transition-all duration-300 bg-gradient-to-r from-teal-50 to-cyan-100 dark:from-teal-950 dark:to-cyan-950 border-teal-200 dark:border-teal-800'>
+					<Card
+						className='overflow-hidden group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-gradient-to-r from-accent/15 to-accent/5 border-accent/30 animate-fade-in'
+						style={{ animationDelay: '0.5s' }}>
 						<CardContent className='p-8 flex items-center justify-between'>
 							<div>
-								<h4 className='text-xl font-bold mb-2 text-teal-800 dark:text-teal-200'>
+								<h4 className='text-xl font-bold mb-2 text-accent-foreground'>
 									How to sell your product
 								</h4>
 								<Button
 									variant='outline'
-									className='border-teal-300 text-teal-800 hover:bg-teal-100 dark:border-teal-700 dark:text-teal-200 dark:hover:bg-teal-900'
+									className='border-accent/40 text-accent-foreground hover:bg-accent/10'
 									onClick={() => navigate.push('/how-to-sell')}>
 									Learn More →
 								</Button>
 							</div>
-							<div className='text-4xl'>💰</div>
+							<div className='text-4xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6'>
+								💰
+							</div>
 						</CardContent>
 					</Card>
 				</div>
