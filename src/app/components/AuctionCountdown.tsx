@@ -34,8 +34,8 @@ export function AuctionCountdown({ title, endAt }: AuctionCountdownProps) {
 
   return (
     <div className="mb-6 flex flex-col items-center text-center">
-      {/* <h3 className="text-xl md:text-2xl font-bold">Auction Ends </h3>
-      <p className="text-sm text-muted-foreground mt-1">{title}</p> */}
+      <h3 className="text-xl md:text-2xl font-bold">Next  <span className="text-gradient-primary italic">Auction Ends</span> </h3>
+      <p className="text-sm text-muted-foreground mt-1">{title}</p>
 
       <div className="mt-1 flex items-center justify-center gap-2 md:gap-3">
         <Hourglass className="h-6 w-6 md:h-8 md:w-8 text-primary shrink-0" />
