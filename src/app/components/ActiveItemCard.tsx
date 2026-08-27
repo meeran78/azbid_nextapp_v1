@@ -13,17 +13,15 @@ export function ActiveItemCard({
 	isWatched: boolean;
 }) {
 	return (
-		<div className='space-y-2'>
-			<div className='flex items-center justify-between gap-2 px-1 text-sm '>
-				<Link
-					href={`/stores/${item.storeId}`}
-					className='flex min-w-0 items-center gap-1.5 truncate font-medium text-muted-foreground transition-colors hover:text-foreground'>
-					<div className='inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-muted px-6 py-1 text-xs font-medium text-foreground'>
-						<Store className='h-3.5 w-3.5 shrink-0' />
-						<span className=" whitespace-nowrap">{item.storeName}</span>
-					</div>
-				</Link>
-			</div>
+		<div className='relative pt-4'>
+			<Link
+				href={`/stores/${item.storeId}`}
+				className='group absolute -top-1 left-3 z-10 inline-flex min-w-0 max-w-[calc(100%-1.5rem)]'>
+				<div className='animate-fade-in inline-flex items-center gap-1.5 truncate whitespace-nowrap rounded-full bg-background px-4 py-1.5 text-sm font-semibold text-foreground shadow-md ring-1 ring-border transition-all duration-300 group-hover:scale-105 group-hover:bg-primary/10 group-hover:text-primary group-hover:shadow-lg'>
+					<Store className='h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-rotate-12' />
+					<span className="truncate">{item.storeName}</span>
+				</div>
+			</Link>
 			<LotItemCard
 				item={item}
 				lotId={item.lotId}
