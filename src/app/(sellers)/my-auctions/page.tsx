@@ -25,7 +25,7 @@ import { motion } from "framer-motion";
 export default async function SellersDashboardPage({
     searchParams,
 }: {
-    searchParams: Promise<{ status?: string; storeId?: string; auctionId?: string }>;
+    searchParams: Promise<{ auctionStatus?: string; lotStatus?: string; storeId?: string; auctionId?: string }>;
 }) {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
@@ -43,12 +43,12 @@ export default async function SellersDashboardPage({
     const [auctions, lots, softCloseAnalytics, flowStatus] = await Promise.all([
         getSellerAuctions(
             session.user.id,
-            params.status,
+            params.auctionStatus,
             params.storeId
         ),
         getSellerLots(
             session.user.id,
-            params.status,
+            params.lotStatus,
             params.storeId,
             params.auctionId
         ),
@@ -118,6 +118,7 @@ export default async function SellersDashboardPage({
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-2xl font-semibold">Auctions</h2>
                             <StatusFilter
+                                paramKey="auctionStatus"
                                 triggerClassName="w-[380px]"
                                 options={[
                                     { value: "ALL", label: "All Status" },
@@ -144,6 +145,7 @@ export default async function SellersDashboardPage({
                                     </Link>
                                 </Button>
                                 <StatusFilter
+                                    paramKey="lotStatus"
                                     triggerClassName="w-[180px]"
                                     options={[
                                         { value: "ALL", label: "All Status" },

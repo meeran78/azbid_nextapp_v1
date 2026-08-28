@@ -34,13 +34,15 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ArrowLeft, Package, Plus, Save, Send } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AlertCircle, ArrowLeft, LayoutList, List, Package, Plus, Save, Send } from "lucide-react";
 import { toast } from "sonner";
 import { createLotSchema, CreateLotFormData } from "@/lib/validations/lot.schema";
 import { createLotAction } from "@/actions/create-lot.action";
 import { getLotAction } from "@/actions/get-lot.action";
 import { deleteLotItemImagesAction } from "@/actions/delete-lot.action";
 import { ItemFormCard } from "@/app/components/seller/ItemFormCard";
+import { ItemListRow } from "@/app/components/seller/ItemListRow";
 import { toEasternInputValue, fromEasternInputValue } from "@/lib/timezone";
 
 
@@ -53,6 +55,7 @@ export default function EditLotPage() {
   const [isLoadingLot, setIsLoadingLot] = useState(true);
   const [stores, setStores] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const [itemsView, setItemsView] = useState<"card" | "list">("card");
   /** Original item imageUrls when lot was loaded (by item index). Used to delete removed images from Cloudinary on save. */
   const [originalItemImageUrls, setOriginalItemImageUrls] = useState<string[][]>([]);
 
@@ -550,48 +553,81 @@ export default function EditLotPage() {
             {/* Items Section */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <CardTitle>Items</CardTitle>
                     <CardDescription>
                       Add items to this lot (at least one required)
                     </CardDescription>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      append({
-                        title: "",
-                        categoryId: null,
-                        condition: "Used – Good",
-                        startPrice: 0,
-                        retailPrice: null,
-                        reservePrice: null,
-                        description: "",
-                        images: [],
-                        videos: [],
-                      })
-                    }
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      value={itemsView}
+                      onValueChange={(value) => {
+                        if (value) setItemsView(value as "card" | "list");
+                      }}
+                    >
+                      <ToggleGroupItem value="card" aria-label="Card view" title="Card view">
+                        <LayoutList className="h-4 w-4 mr-1.5" />
+                        Card
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="list" aria-label="List view" title="List view">
+                        <List className="h-4 w-4 mr-1.5" />
+                        List
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        append({
+                          title: "",
+                          categoryId: null,
+                          condition: "Used – Good",
+                          startPrice: 0,
+                          retailPrice: null,
+                          reservePrice: null,
+                          description: "",
+                          images: [],
+                          videos: [],
+                        })
+                      }
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Item
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {fields.map((field, index) => (
-                  <ItemFormCard
-                    key={field.id}
-                    index={index}
-                    totalCount={fields.length}
-                    onRemove={(idx) => remove(idx)}
-                    canRemove={fields.length > 1}
-                    onMoveUp={(idx) => move(idx, idx - 1)}
-                    onMoveDown={(idx) => move(idx, idx + 1)}
-                  />
-                ))}
+                {itemsView === "list"
+                  ? fields.map((field, index) => (
+                      <ItemListRow
+                        key={field.id}
+                        index={index}
+                        totalCount={fields.length}
+                        onRemove={(idx) => remove(idx)}
+                        canRemove={fields.length > 1}
+                        onMoveUp={(idx) => move(idx, idx - 1)}
+                        onMoveDown={(idx) => move(idx, idx + 1)}
+                        onReorder={(from, to) => move(from, to)}
+                        onEdit={() => setItemsView("card")}
+                      />
+                    ))
+                  : fields.map((field, index) => (
+                      <ItemFormCard
+                        key={field.id}
+                        index={index}
+                        totalCount={fields.length}
+                        onRemove={(idx) => remove(idx)}
+                        canRemove={fields.length > 1}
+                        onMoveUp={(idx) => move(idx, idx - 1)}
+                        onMoveDown={(idx) => move(idx, idx + 1)}
+                      />
+                    ))}
               </CardContent>
             </Card>
 

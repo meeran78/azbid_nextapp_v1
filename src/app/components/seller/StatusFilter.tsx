@@ -15,21 +15,30 @@ interface StatusFilterProps {
   options: StatusOption[];
   placeholder?: string;
   triggerClassName?: string;
+  /**
+   * URL query param this filter reads/writes. Must be distinct per filter
+   * instance on the same page — e.g. the Auctions and Lots tabs each need
+   * their own key, otherwise selecting a status in one tab overwrites the
+   * other tab's filter (they'd share the same "status" param and each
+   * tab's status enum has different valid values).
+   */
+  paramKey: string;
 }
 
 export function StatusFilter({
   options,
   placeholder = "Filter by status",
   triggerClassName,
+  paramKey,
 }: StatusFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const value = searchParams.get("status") ?? "ALL";
+  const value = searchParams.get(paramKey) ?? "ALL";
 
   const onValueChange = (newValue: string) => {
     const next = new URLSearchParams(searchParams.toString());
-    if (newValue === "ALL") next.delete("status");
-    else next.set("status", newValue);
+    if (newValue === "ALL") next.delete(paramKey);
+    else next.set(paramKey, newValue);
     router.push(`/my-auctions?${next.toString()}`);
   };
 
