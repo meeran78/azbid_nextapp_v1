@@ -78,7 +78,50 @@ export async function updateSellerProfileAction(input: SellerProfileInput) {
       businessDescription: data.businessDescription || null,
     },
   });
-  revalidatePath("/seller-profile");
-  revalidatePath("/my-auctions");
+  revalidatePath("/business-address");
+  return { success: true };
+}
+
+const newsletterPreferencesSchema = z.object({
+  newsLetterEmailSubscription: z.boolean().optional(),
+  newsLetterSMSSubscription: z.boolean().optional(),
+});
+
+export type NewsletterPreferencesInput = z.infer<typeof newsletterPreferencesSchema>;
+
+/**
+ * Update just the newsletter/SMS subscription prefs, independent of the rest
+ * of the company profile. The full profile form requires company name,
+ * address, phone, etc. before it will save — sellers who haven't finished
+ * that yet still need to be able to opt in/out of these on their own.
+ */
+export async function updateNewsletterPreferencesAction(
+  input: NewsletterPreferencesInput
+): Promise<{ success: true } | { error: string }> {
+  const headersList = await headers();
+  const session = await auth.api.getSession({ headers: headersList });
+
+  if (!session || session.user.role !== "SELLER") {
+    redirect("/sign-in");
+  }
+
+  const data = newsletterPreferencesSchema.parse(input);
+
+  if (data.newsLetterSMSSubscription === true) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { businessPhone: true },
+    });
+    if (!user?.businessPhone) {
+      return { error: "Add a business phone number below before subscribing to SMS updates." };
+    }
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data,
+  });
+
+  revalidatePath("/business-address");
   return { success: true };
 }

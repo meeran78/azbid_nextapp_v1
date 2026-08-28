@@ -1,7 +1,7 @@
 import {
   getActiveItemsFiltered,
   getActiveStoresForFilter,
-  getNearestEndingLiveAuction,
+  getNextAuction,
   type LotStatusFilter,
 } from "@/actions/active-lots.action";
 import { getUserFavouriteItemIds } from "@/actions/item-favourite.action";
@@ -41,9 +41,9 @@ type ActiveLotsSectionProps = {
 };
 
 export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps) {
-  const [params, nearestEndingAuction] = await Promise.all([
+  const [params, nextAuction] = await Promise.all([
     searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams ?? {}),
-    getNearestEndingLiveAuction(),
+    getNextAuction(),
   ]);
   const view: ActiveLotsView = params.lot_view === "store" ? "store" : "items";
   const lotQ = params.lot_q ?? null;
@@ -80,8 +80,8 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
         Browse lots by name, location, item, or store. Filter by status and find live or scheduled auctions.
       </p> */}
 
-      {nearestEndingAuction && (
-        <AuctionCountdown title={nearestEndingAuction.title} endAt={nearestEndingAuction.endAt} />
+      {nextAuction && (
+        <AuctionCountdown title={nextAuction.title} endAt={nextAuction.endAt} />
       )}
 
       <div className="flex justify-start mb-6">
@@ -97,6 +97,7 @@ export async function ActiveLotsSection({ searchParams }: ActiveLotsSectionProps
           lotLocation={lotLocation}
           lotItem={lotItem}
           storeId={null}
+          auctionId={nextAuction?.id ?? null}
           page={page}
           perPage={Math.min(24, Math.max(1, parseInt(params.lot_per_page ?? String(DEFAULT_ITEM_PER_PAGE), 10) || DEFAULT_ITEM_PER_PAGE))}
           baseParams={baseParams}
@@ -114,6 +115,7 @@ async function ActiveItemsView({
   lotLocation,
   lotItem,
   storeId,
+  auctionId,
   page,
   perPage,
   baseParams,
@@ -123,12 +125,22 @@ async function ActiveItemsView({
   lotLocation: string | null;
   lotItem: string | null;
   storeId: string | null;
+  auctionId: string | null;
   page: number;
   perPage: number;
   baseParams: Record<string, string | undefined>;
 }) {
+  // No auctionId means there's no LIVE/SCHEDULED auction to spotlight right now.
+  if (!auctionId) {
+    return (
+      <p className="text-muted-foreground text-center py-12">
+        No auction is currently live or scheduled. Check back soon.
+      </p>
+    );
+  }
+
   const [{ items, totalCount }, favouriteIds, watchedIds] = await Promise.all([
-    getActiveItemsFiltered(lotQ, lotStatus || "ALL", lotLocation, lotItem, storeId, page, perPage),
+    getActiveItemsFiltered(lotQ, lotStatus || "ALL", lotLocation, lotItem, storeId, auctionId, page, perPage),
     getUserFavouriteItemIds(),
     getUserWatchedItemIds(),
   ]);

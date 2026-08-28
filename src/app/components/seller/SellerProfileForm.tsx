@@ -4,7 +4,11 @@ import { useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { SellerProfileInput, updateSellerProfileAction } from "@/actions/seller-profile.action";
+import {
+  SellerProfileInput,
+  updateSellerProfileAction,
+  updateNewsletterPreferencesAction,
+} from "@/actions/seller-profile.action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,6 +78,7 @@ interface SellerProfileFormProps {
 
 export function SellerProfileForm({ initialData }: SellerProfileFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [isSavingPrefs, startPrefsTransition] = useTransition();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -151,6 +156,35 @@ export function SellerProfileForm({ initialData }: SellerProfileFormProps) {
           description: err instanceof Error ? err.message : "Please try again.",
         });
       }
+    });
+  };
+
+  // The full profile form above requires company name, address, phone, etc.
+  // before react-hook-form will let it submit. Newsletter/SMS opt-in must work
+  // for sellers who haven't finished that yet, so these save on their own via
+  // a dedicated action instead of waiting on "Save Profile".
+  const savePreference = (
+    field: "newsLetterEmailSubscription" | "newsLetterSMSSubscription",
+    checked: boolean
+  ) => {
+    const previous = form.getValues(field);
+    form.setValue(field, checked, { shouldDirty: true });
+    startPrefsTransition(async () => {
+      const result = await updateNewsletterPreferencesAction({ [field]: checked });
+      if ("error" in result) {
+        form.setValue(field, previous ?? false);
+        toast.error("Couldn't update subscription", { description: result.error });
+        return;
+      }
+      toast.success(
+        field === "newsLetterEmailSubscription"
+          ? checked
+            ? "Subscribed to the email newsletter"
+            : "Unsubscribed from the email newsletter"
+          : checked
+            ? "Subscribed to SMS updates"
+            : "Unsubscribed from SMS updates"
+      );
     });
   };
 
@@ -443,11 +477,15 @@ export function SellerProfileForm({ initialData }: SellerProfileFormProps) {
                   <FormControl>
                     <Checkbox
                       checked={field.value ?? false}
-                      onCheckedChange={field.onChange}
+                      disabled={isSavingPrefs}
+                      onCheckedChange={(checked) =>
+                        savePreference("newsLetterEmailSubscription", checked === true)
+                      }
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel>Subscribe to email newsletter</FormLabel>
+                    <FormDescription>Saves immediately.</FormDescription>
                   </div>
                 </FormItem>
               )}
@@ -460,11 +498,17 @@ export function SellerProfileForm({ initialData }: SellerProfileFormProps) {
                   <FormControl>
                     <Checkbox
                       checked={field.value ?? false}
-                      onCheckedChange={field.onChange}
+                      disabled={isSavingPrefs}
+                      onCheckedChange={(checked) =>
+                        savePreference("newsLetterSMSSubscription", checked === true)
+                      }
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel>Subscribe to SMS updates</FormLabel>
+                    <FormDescription>
+                      Saves immediately. Requires a business phone number below.
+                    </FormDescription>
                   </div>
                 </FormItem>
               )}

@@ -6,25 +6,32 @@ import { reconcileAuctionEndAt } from "@/lib/lot-timing";
 
 export type LotStatusFilter = "ALL" | "LIVE" | "SCHEDULED";
 
-export type NearestEndingAuction = {
+export type NextAuction = {
   id: string;
   title: string;
   endAt: Date;
+  status: "LIVE" | "SCHEDULED";
 };
 
 /**
- * Nearest-ending LIVE auction across active stores, for the section-level
- * countdown banner. Public, no auth.
+ * The single auction the landing page spotlights: whichever LIVE or
+ * SCHEDULED auction (from an active store) is closing soonest. Once it
+ * closes (status leaves LIVE/SCHEDULED), this naturally rolls over to
+ * whichever auction has the next-soonest endAt — same query, no extra
+ * bookkeeping. Public, no auth.
  */
-export async function getNearestEndingLiveAuction(): Promise<NearestEndingAuction | null> {
-  return prisma.auction.findFirst({
+export async function getNextAuction(): Promise<NextAuction | null> {
+  const auction = await prisma.auction.findFirst({
     where: {
-      status: "LIVE",
+      status: { in: ["LIVE", "SCHEDULED"] },
       store: { status: "ACTIVE" },
     },
     orderBy: { endAt: "asc" },
-    select: { id: true, title: true, endAt: true },
+    select: { id: true, title: true, endAt: true, status: true },
   });
+  if (!auction) return null;
+  // Narrowed by the where clause above — only LIVE/SCHEDULED can come back.
+  return { ...auction, status: auction.status as "LIVE" | "SCHEDULED" };
 }
 
 /**
@@ -134,6 +141,10 @@ const MAX_ITEM_PAGE_SIZE = 24;
  * Get individual items (flattened across lots/stores) with optional filters
  * and pagination. Public - no auth. Only includes items whose lot is
  * LIVE/SCHEDULED and whose store is ACTIVE.
+ *
+ * When auctionId is given, results are scoped to that single auction — the
+ * landing page spotlights one auction at a time (see getNextAuction), and
+ * other filters (search/location/item/store) only narrow within it.
  */
 export async function getActiveItemsFiltered(
   searchQuery?: string | null,
@@ -141,6 +152,7 @@ export async function getActiveItemsFiltered(
   location?: string | null,
   itemTitle?: string | null,
   storeId?: string | null,
+  auctionId?: string | null,
   page = 1,
   pageSize = DEFAULT_ITEM_PAGE_SIZE
 ): Promise<{ items: ActiveItem[]; totalCount: number }> {
@@ -148,6 +160,7 @@ export async function getActiveItemsFiltered(
   const hasLocation = location?.trim();
   const hasItemTitle = itemTitle?.trim();
   const hasStoreId = storeId?.trim();
+  const hasAuctionId = auctionId?.trim();
 
   const statuses: ("LIVE" | "SCHEDULED")[] =
     !statusFilter || statusFilter === "ALL"
@@ -174,7 +187,7 @@ export async function getActiveItemsFiltered(
 
   const lotWhere: Record<string, unknown> = {
     status: { in: statuses },
-    auctionId: { not: null },
+    auctionId: hasAuctionId ? hasAuctionId.trim() : { not: null },
     store: storeWhere,
   };
   if (hasStoreId) lotWhere.storeId = hasStoreId.trim();
