@@ -25,6 +25,7 @@ import {
   Banknote,
   MessageSquare,
   CalendarDays,
+  MapPin,
 } from "lucide-react";
 
 import { useSession } from "@/lib/auth-client";
@@ -75,8 +76,9 @@ const getNavigationItems = (
     case "SELLER":
       return [
         // { title: "Dashboard", url: "/sellers-dashboard", icon: LayoutDashboard },
+        { title: "Business Address", url: "/business-address", icon: MapPin },
         { title: "My Auctions", url: "/my-auctions", icon: Package },
-        { title: "Store Management", url: "/sellers-stores", icon: Store },
+        { title: "Store Management", url: "/sellers-stores", icon: Store },        
         { title: "Payouts", url: "/my-auctions/payouts", icon: Banknote },
         { title: "Payment", url: "/payment", icon: CreditCard },
         { title: "Settings", url: "/seller-settings", icon: Settings },

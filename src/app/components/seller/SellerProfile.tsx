@@ -2,15 +2,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SellerProfileForm } from "@/app/components/seller/SellerProfileForm";
-import { ChevronDownIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 
 export default async function SellerProfile() {
   const headersList = await headers();
@@ -86,24 +79,10 @@ export default async function SellerProfile() {
   };
 
   return (
-    <Card className="container mx-auto max-w-full p-2" >
+    <Card className="container mx-auto max-w-full p-2">
       <CardContent className="p-0">
-        <Collapsible className="rounded-md">
-          <CollapsibleTrigger asChild>
-            <div>
-              <Button variant="ghost">
-                Click here to Update your Business Address Details
-              </Button>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent >
-            <SellerProfileForm initialData={initialData} />
-          </CollapsibleContent>
-        </Collapsible>
+        <SellerProfileForm initialData={initialData} />
       </CardContent>
     </Card>
-
-
-
   );
 }

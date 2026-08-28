@@ -19,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Plus, Store } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import SellerProfile from "@/app/components/seller/SellerProfile";
 import { motion } from "framer-motion";
 
 export default async function SellersDashboardPage({
@@ -72,9 +71,6 @@ export default async function SellersDashboardPage({
                     </Link>
                 </Button> */}
             </div>
-
-            {/* Seller Profile */}
-            <SellerProfile />
 
             {(!flowStatus.activeStoresCount || (!lots.length && !auctions.length)) && (
                 <Alert className="border-amber-200 bg-amber-50/70 dark:border-amber-900/50 dark:bg-amber-950/20">
