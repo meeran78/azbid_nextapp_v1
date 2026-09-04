@@ -30,7 +30,7 @@ type HomeProps = {
 
 export default async function Home({ searchParams }: HomeProps) {
   const [upcomingAuctions, featuredAuctions] = await Promise.all([
-    getUpcomingAuctionsForHero(6),
+    getUpcomingAuctionsForHero(),
     getFeaturedAuctions(10),
   ]);
   const heroSlides: HeroSlide[] = upcomingAuctions.map((a) => ({

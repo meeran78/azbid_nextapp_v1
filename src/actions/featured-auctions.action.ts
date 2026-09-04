@@ -14,17 +14,15 @@ export type UpcomingAuctionHero = {
 };
 
 /**
- * Not-yet-started auctions for the homepage hero. Only auctions from stores the admin
- * has curated for hero display (Store.displayInHero), soonest start first.
+ * Not-yet-started auctions for the homepage hero: every SCHEDULED auction from an
+ * ACTIVE store, soonest start first. Shown even if it has no lots/items yet.
  */
-export async function getUpcomingAuctionsForHero(limit = 5): Promise<UpcomingAuctionHero[]> {
+export async function getUpcomingAuctionsForHero(limit = 20): Promise<UpcomingAuctionHero[]> {
   const auctions = await prisma.auction.findMany({
     where: {
       status: "SCHEDULED",
       startAt: { gt: new Date() },
-      store: { status: "ACTIVE", displayInHero: true },
-      // Only auctions that have at least one lot with at least one item
-      lots: { some: { items: { some: {} } } },
+      store: { status: "ACTIVE" },
     },
     orderBy: { startAt: "asc" },
     take: limit,
