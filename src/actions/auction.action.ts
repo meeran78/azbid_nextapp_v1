@@ -211,6 +211,28 @@ export async function createAuctionAction(
   }
 
   const validatedData = auctionSchema.parse(data);
+
+  // Don't allow scheduling an auction unless at least one associated lot has an item.
+  if (validatedData.status === "SCHEDULED") {
+    const itemCount =
+      lotIds && lotIds.length > 0
+        ? await prisma.item.count({
+            where: {
+              lot: {
+                id: { in: lotIds },
+                storeId: validatedData.storeId,
+                auctionId: null,
+              },
+            },
+          })
+        : 0;
+    if (itemCount === 0) {
+      throw new Error(
+        "Cannot schedule an auction with no items. Add at least one item to an associated lot before scheduling."
+      );
+    }
+  }
+
   const auctionDisplayId = await generateUniqueAuctionDisplayId();
 
   const auction = await prisma.auction.create({
@@ -267,6 +289,34 @@ export async function updateAuctionAction(
 
   const validatedData = auctionSchema.parse(data);
   const newStatus = validatedData.status as "DRAFT" | "SCHEDULED" | "LIVE" | "COMPLETED" | "CANCELLED";
+
+  // Don't allow scheduling an auction unless at least one associated lot has an item.
+  // The final lot set is the passed lotIds when provided, otherwise the current associations.
+  if (newStatus === "SCHEDULED") {
+    let finalLotIds: string[];
+    if (lotIds !== undefined && lotIds.length > 0) {
+      finalLotIds = lotIds;
+    } else {
+      const existing = await prisma.lot.findMany({
+        where: { auctionId: id },
+        select: { id: true },
+      });
+      finalLotIds = existing.map((l) => l.id);
+    }
+    const itemCount =
+      finalLotIds.length > 0
+        ? await prisma.item.count({
+            where: {
+              lot: { id: { in: finalLotIds }, storeId: validatedData.storeId },
+            },
+          })
+        : 0;
+    if (itemCount === 0) {
+      throw new Error(
+        "Cannot schedule an auction with no items. Add at least one item to an associated lot before scheduling."
+      );
+    }
+  }
 
   const auction = await prisma.auction.update({
     where: { id },

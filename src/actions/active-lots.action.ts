@@ -25,6 +25,8 @@ export async function getNextAuction(): Promise<NextAuction | null> {
     where: {
       status: { in: ["LIVE", "SCHEDULED"] },
       store: { status: "ACTIVE" },
+      // Only auctions that have at least one lot with at least one item
+      lots: { some: { items: { some: {} } } },
     },
     orderBy: { endAt: "asc" },
     select: { id: true, title: true, endAt: true, status: true },

@@ -23,6 +23,8 @@ export async function getUpcomingAuctionsForHero(limit = 5): Promise<UpcomingAuc
       status: "SCHEDULED",
       startAt: { gt: new Date() },
       store: { status: "ACTIVE", displayInHero: true },
+      // Only auctions that have at least one lot with at least one item
+      lots: { some: { items: { some: {} } } },
     },
     orderBy: { startAt: "asc" },
     take: limit,
@@ -101,6 +103,8 @@ export async function getFeaturedAuctions(limit = 10): Promise<FeaturedAuction[]
     where: {
       status: { in: ["LIVE"] },
       store: { status: "ACTIVE" },
+      // Only auctions that have at least one lot with at least one item
+      lots: { some: { items: { some: {} } } },
     },
     orderBy: { endAt: "asc" },
     take: limit,
